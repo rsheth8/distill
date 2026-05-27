@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Distill backend setup</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+        margin: 0;
+        padding: 28px 22px;
+        color: #0f172a;
+        background: #ffffff;
+      }
+      h1 { margin: 0 0 8px; font-size: 18px; }
+      p { margin: 10px 0; line-height: 1.45; color: #334155; }
+      code, pre {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      }
+      pre {
+        background: #0b1220;
+        color: #e2e8f0;
+        padding: 14px 14px;
+        border-radius: 10px;
+        overflow: auto;
+      }
+      .hint { color: #64748b; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <h1>Start the local Distill backend</h1>
+    <p>This enables “auto route through backend” and lets the extension fall back safely when the backend is down.</p>
+
+    <p>From the repo root:</p>
+    <pre>cp backend/.env.example backend/.env
+npm install --prefix backend
+npm start --prefix backend</pre>
+
+    <p class="hint">
+      Make sure <code>ANTHROPIC_API_KEY</code> is set in <code>backend/.env</code>. The backend listens on <code>http://localhost:8787</code>.
+    </p>
+  </body>
+</html>
+

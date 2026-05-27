@@ -1,0 +1,47 @@
+# Local Distill API — file-backed state by default, optional Postgres (profile).
+#
+#   cp backend/.env.example backend/.env   # edit BACKEND_SECRET + API keys
+#   docker compose up --build              # http://localhost:8787
+#
+# With Postgres (production-like persistence):
+#   docker compose --profile postgres up --build
+#   # In backend/.env add:
+#   #   DATABASE_URL=postgresql://distill:distill@postgres:5432/distill
+
+services:
+  api:
+    build: ./backend
+    ports:
+      - '8787:8787'
+    env_file:
+      - backend/.env
+    environment:
+      PORT: '8787'
+      STATE_FILE_PATH: /data/state.json
+    volumes:
+      - distill-api-data:/data
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    profiles:
+      - postgres
+    environment:
+      POSTGRES_USER: distill
+      POSTGRES_PASSWORD: distill
+      POSTGRES_DB: distill
+    ports:
+      - '5433:5432'
+    volumes:
+      - ./supabase/migrations/20250513000000_distill_user_state.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - distill-pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U distill -d distill']
+      interval: 3s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  distill-api-data:
+  distill-pg-data:

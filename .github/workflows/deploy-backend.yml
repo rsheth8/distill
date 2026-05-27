@@ -1,0 +1,110 @@
+# Deploy Distill API to Fly.io when backend code changes on main.
+# Requires repo secret: FLY_API_TOKEN (fly tokens create deploy -x 999999h)
+# Setup: docs/DEPLOY.md
+
+name: Deploy backend
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Fly app to deploy
+        type: choice
+        required: true
+        default: production
+        options:
+          - production
+          - staging
+          - both
+
+concurrency:
+  group: deploy-backend-${{ github.event.inputs.target || 'production' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy-production:
+    name: Deploy distill-api
+    if: >-
+      github.event_name == 'push' ||
+      github.event.inputs.target == 'production' ||
+      github.event.inputs.target == 'both'
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy production
+        run: fly deploy --ha=false
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  smoke-production:
+    name: Smoke production
+    needs: deploy-production
+    if: needs.deploy-production.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Wait for routes
+        run: sleep 15
+
+      - name: Remote health + config
+        run: node backend/scripts/check-remote.mjs https://distill-api.fly.dev
+
+      - name: Prometheus metrics
+        run: |
+          curl -fsS https://distill-api.fly.dev/metrics/prometheus | head -5
+          curl -fsS https://distill-api.fly.dev/metrics/prometheus | grep -q 'distill_requests_total'
+
+  deploy-staging:
+    name: Deploy distill-api-staging
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      (github.event.inputs.target == 'staging' || github.event.inputs.target == 'both')
+    runs-on: ubuntu-latest
+    environment: staging
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy staging
+        run: fly deploy --ha=false -c fly.staging.toml
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  smoke-staging:
+    name: Smoke staging
+    needs: deploy-staging
+    if: needs.deploy-staging.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Wait for routes
+        run: sleep 15
+
+      - name: Remote health + config
+        run: node backend/scripts/check-remote.mjs https://distill-api-staging.fly.dev

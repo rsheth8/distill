@@ -1,0 +1,119 @@
+# Nightly article-matrix eval against a local backend + live LLM (cost-controlled).
+# Requires repo secret: GEMINI_API_KEY (preferred) or ANTHROPIC_API_KEY
+# Setup: docs/DEPLOY.md#nightly-eval-matrix
+
+name: Eval matrix
+
+on:
+  schedule:
+    # Daily 06:00 UTC (after backend-remote at 14:00 UTC is unrelated; spread load)
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: Max matrix rows to run (each row = 2 modes × 6 AI tasks)
+        type: number
+        default: 1
+      start:
+        description: 1-based matrix row index (header is not counted)
+        type: number
+        default: 1
+
+concurrency:
+  group: eval-matrix
+  cancel-in-progress: true
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Require LLM API key (Gemini preferred)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$GEMINI_API_KEY" ] && [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error::Set repository secret GEMINI_API_KEY (free tier) or ANTHROPIC_API_KEY. See docs/DEPLOY.md#nightly-eval-matrix"
+            exit 1
+          fi
+
+      - name: Install backend dependencies
+        run: npm ci --prefix backend
+
+      - name: Start backend
+        working-directory: backend
+        env:
+          PORT: '8787'
+          ALLOW_INSECURE_SECRETS: '1'
+          BACKEND_SECRET: ci-eval-backend-secret-32chars-minimum
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LLM_PROVIDER: auto
+          STATE_FILE_PATH: ./data/ci-eval-state.json
+          DAILY_CREDITS: '50000'
+          CORS_ORIGIN: '*'
+        run: |
+          npm start > /tmp/distill-backend.log 2>&1 &
+          echo $! > /tmp/distill-backend.pid
+
+      - name: Wait for backend
+        run: |
+          for i in $(seq 1 60); do
+            if node backend/scripts/check-remote.mjs http://127.0.0.1:8787; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::group::Backend log"
+          tail -80 /tmp/distill-backend.log || true
+          echo "::endgroup::"
+          exit 1
+        env:
+          DISTILL_BACKEND_URL: http://127.0.0.1:8787
+
+      - name: Run eval matrix
+        env:
+          DISTILL_BACKEND_URL: http://127.0.0.1:8787
+          EVAL_MATRIX_LIMIT: ${{ github.event.inputs.limit || '1' }}
+          EVAL_MATRIX_START: ${{ github.event.inputs.start || '1' }}
+        run: |
+          node scripts/eval/run-matrix.mjs \
+            --base-url "$DISTILL_BACKEND_URL" \
+            --start "$EVAL_MATRIX_START" \
+            --limit "$EVAL_MATRIX_LIMIT" \
+            --out scripts/eval/article-test-matrix.ci.out.csv
+
+      - name: Assert no regression flags
+        run: node scripts/eval/assert-matrix-out.mjs scripts/eval/article-test-matrix.ci.out.csv
+
+      - name: Upload matrix output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-matrix-${{ github.run_id }}
+          path: scripts/eval/article-test-matrix.ci.out.csv
+          if-no-files-found: ignore
+
+      - name: Upload backend log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-matrix-backend-log-${{ github.run_id }}
+          path: /tmp/distill-backend.log
+          if-no-files-found: ignore
+
+      - name: Stop backend
+        if: always()
+        run: |
+          if [ -f /tmp/distill-backend.pid ]; then
+            kill "$(cat /tmp/distill-backend.pid)" 2>/dev/null || true
+          fi

@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Distill</title>
+  <link rel="stylesheet" href="sidepanel.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- Header -->
+    <header>
+      <div class="header-left">
+        <span class="logo" aria-hidden="true">
+          <svg
+            class="logo-mark wavy-d-logo"
+            width="26"
+            height="26"
+            preserveAspectRatio="xMidYMid meet"
+            viewBox="0 0 512 512"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+          >
+            <defs>
+              <clipPath id="distillLogoClip">
+                <path
+                  d="
+                    M96 72
+                    H256
+                    C360 72 432 148 432 256
+                    C432 364 360 440 256 440
+                    H96
+                    Z
+                  "
+                />
+              </clipPath>
+              <mask id="distillLogoMask">
+                <rect width="512" height="512" fill="white" />
+                <path
+                  d="
+                    M256 160
+                    C230 204 204 246 204 286
+                    C204 324 228 350 256 350
+                    C284 350 308 324 308 286
+                    C308 246 282 204 256 160
+                    Z
+                  "
+                  fill="black"
+                />
+              </mask>
+            </defs>
+            <g
+              clip-path="url(#distillLogoClip)"
+              mask="url(#distillLogoMask)"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="17"
+              stroke-linecap="butt"
+            >
+              <path d="M64 84 C112 100 158 62 214 82 C270 102 302 94 354 82 C390 74 424 82 460 94" />
+              <path d="M64 124 C116 140 158 104 214 122 C270 140 304 134 356 122 C394 114 426 122 460 134" />
+              <path d="M64 164 C112 180 160 142 218 162 C274 182 308 174 360 160 C398 150 428 162 460 174" />
+              <path d="M64 204 C116 220 162 184 220 202 C278 220 310 214 364 202 C400 194 430 202 460 214" />
+              <path d="M64 244 C112 260 160 224 220 242 C278 260 314 254 366 240 C404 230 432 244 460 254" />
+              <path d="M64 284 C116 300 164 264 224 282 C282 300 316 294 370 282 C408 274 434 284 460 294" />
+              <path d="M64 324 C112 340 164 304 226 322 C286 340 320 334 374 320 C410 312 436 322 460 334" />
+              <path d="M64 364 C116 380 166 344 228 362 C288 380 324 374 378 362 C414 354 438 364 460 374" />
+              <path d="M64 404 C112 420 166 384 230 402 C292 420 326 414 382 400 C416 392 440 402 460 414" />
+              <path d="M64 444 C116 460 168 424 232 442 C294 460 328 454 384 440 C418 432 442 442 460 454" />
+            </g>
+          </svg>
+        </span>
+        <span class="title">Distill</span>
+      </div>
+      <button id="settingsBtn" class="icon-btn" title="Settings">⚙</button>
+    </header>
+
+    <nav class="tab-bar" aria-label="Distill sections">
+      <button id="tabReadBtn" class="tab-btn tab-btn-active" type="button">Read</button>
+      <button id="tabSettingsBtn" class="tab-btn" type="button">Settings</button>
+    </nav>
+
+    <!-- Article title strip -->
+    <div id="articleTitleBar" class="title-bar hidden">
+      <span id="articleTitle" class="article-title"></span>
+    </div>
+
+    <div id="viewRead" class="panel-view">
+    <!-- First-run / missing AI credentials (dismissible) -->
+    <div id="setupHintCard" class="setup-hint-card hidden" role="status">
+      <div class="setup-hint-body">
+        <p class="setup-hint-title">Welcome to Distill 👋</p>
+        <p class="setup-hint-text">Distill uses your own <strong>free</strong> AI key — no account, no cost. Two quick steps:</p>
+        <ol class="onboard-steps">
+          <li><a id="onboardGetKeyLink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free Gemini key →</a><br /><span class="onboard-substep">Google AI Studio · no credit card</span></li>
+          <li>Paste it below and connect.</li>
+        </ol>
+        <input id="onboardKeyInput" type="password" placeholder="Paste your Gemini API key (AIza…)" autocomplete="off" spellcheck="false" />
+        <p id="onboardStatusLine" class="hint key-status-line" role="status"></p>
+      </div>
+      <div class="setup-hint-actions">
+        <button id="onboardConnectBtn" type="button" class="btn-primary">Connect</button>
+        <button id="setupHintOpenSettingsBtn" type="button" class="btn-copy">More options</button>
+        <button id="setupHintDismissBtn" type="button" class="btn-copy">Dismiss</button>
+      </div>
+    </div>
+    <!-- Backend down / recovery -->
+    <div id="backendDownCard" class="state-msg hidden">
+      <span class="state-icon">🖥</span>
+      <p id="backendDownTitle">Can't reach Distill cloud.</p>
+      <p id="backendDownHint" class="hint">Check your internet connection, then try again. For local development, open Settings → Advanced.</p>
+      <div class="settings-key-actions">
+        <button id="backendStartHelpBtn" class="btn-copy" type="button">Developer help</button>
+        <button id="backendCopyCmdBtn" class="btn-copy" type="button">Copy start command</button>
+        <button id="backendRetryBtn" class="btn-primary" type="button">Retry</button>
+      </div>
+    </div>
+
+    <!-- No article detected -->
+    <div id="noArticle" class="state-msg hidden">
+      <span class="state-icon">📄</span>
+      <p>No article detected on this page.</p>
+      <p class="hint">But I can still explain what this page is about.</p>
+      <button id="explainBtnNoArticle" class="btn-explain-page">Explain this page →</button>
+    </div>
+
+    <!-- Waiting for user to start reading -->
+    <div id="waiting" class="state-msg hidden"></div>
+
+    <!-- Main reading panel -->
+    <div id="mainContent">
+
+      <!-- Assistant status -->
+      <section id="assistantStatus" class="section assistant-status">
+        <div class="status-top">
+          <div class="status-left">
+            <div class="status-title">Assistant</div>
+            <div class="status-meta">
+              <span id="progressLabel" class="progress-label">0 paragraphs read</span>
+              <span id="timeLabel" class="time-label"></span>
+            </div>
+          </div>
+          <div class="status-right">
+            <div class="status-pill">
+              <span id="routingDot" class="routing-dot"></span>
+              <span id="routingText" class="routing-text">Direct</span>
+            </div>
+            <div class="status-pill">
+              <span id="usageLabel" class="usage-label hidden"></span>
+              <span id="usageFallback" class="usage-fallback">Your key</span>
+            </div>
+          </div>
+        </div>
+        <div class="progress-wrap">
+          <div id="progressBar" class="progress-bar"></div>
+        </div>
+      </section>
+
+      <!-- Actions -->
+      <section id="actionsRow" class="section actions-row">
+        <div class="actions-row-top">
+          <button id="focusBtn" type="button" class="action-btn action-icon" title="Dim surrounding text" aria-pressed="false">
+            <span id="focusIcon" class="action-ico">◎</span>
+            <span class="action-label">Focus</span>
+          </button>
+          <button id="learnBtn" type="button" class="action-btn action-icon" title="Comprehension quizzes (Learn Mode)" aria-pressed="false">
+            <span class="action-ico">◈</span>
+            <span class="action-label">Learn</span>
+          </button>
+
+          <div class="tele-wrap">
+            <button id="scrollPlayBtn" type="button" class="action-btn action-icon tele-play" title="Auto-scroll word by word" aria-pressed="false">
+              <span class="action-ico">▶</span>
+              <span class="action-label">Scroll</span>
+            </button>
+            <button id="scrollSlowBtn" class="action-btn action-icon tele-adj" title="Slower">
+              <span class="action-ico">−</span>
+              <span class="sr-only">Slower</span>
+            </button>
+            <span id="scrollSpeedLabel" class="tele-speed">200</span>
+            <span class="tele-unit">wpm</span>
+            <button id="scrollFastBtn" class="action-btn action-icon tele-adj" title="Faster">
+              <span class="action-ico">+</span>
+              <span class="sr-only">Faster</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="actions-row-bottom">
+          <button id="explainBtnMain" type="button" class="action-btn action-icon" title="Explain current page" aria-pressed="false">
+            <span class="action-ico">◌</span>
+            <span class="action-label">Explain</span>
+          </button>
+          <button id="analyzeActionBtn" type="button" class="action-btn action-icon" title="Analyze selected text" aria-pressed="false">
+            <span class="action-ico">✦</span>
+            <span class="action-label">Analyze</span>
+          </button>
+          <button id="historyActionBtn" type="button" class="action-btn action-icon" title="Open history" aria-pressed="false">
+            <span class="action-ico">≡</span>
+            <span class="action-label">History</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Suggestions -->
+      <section id="suggestionsCard" class="section suggestions-card hidden">
+        <div class="section-header">
+          <span class="section-title">Suggestions</span>
+        </div>
+        <div id="suggestionsList" class="suggestions-list"></div>
+      </section>
+
+      <!-- Comprehension quiz -->
+      <section id="quizSection" class="section quiz-section hidden">
+        <div class="section-header">
+          <span class="section-title">Check-in</span>
+          <button id="skipQuizBtn" class="btn-skip">Skip →</button>
+        </div>
+        <p id="quizStateText" class="quiz-state-text hidden"></p>
+        <p id="quizQuestion" class="quiz-question"></p>
+        <div id="quizAnswerWrap" class="quiz-answer-wrap hidden">
+          <textarea id="quizAnswer" class="quiz-input" placeholder="Type your answer..." rows="2"></textarea>
+          <button id="submitAnswerBtn" class="btn-primary btn-sm">Submit</button>
+        </div>
+        <div id="quizAnswerDisplay" class="quiz-answer-display hidden">
+          <span class="quiz-answer-label">Your answer</span>
+          <span id="quizAnswerText" class="quiz-answer-text"></span>
+        </div>
+        <div id="quizFeedback" class="quiz-feedback hidden body-text"></div>
+        <p id="quizNext" class="quiz-next hidden"></p>
+      </section>
+
+      <!-- Now Reading -->
+      <section id="nowSection" class="section now-section hidden">
+        <div class="section-header">
+          <span class="now-dot"></span>
+          <span class="section-title">Now reading</span>
+          <div class="header-actions">
+            <span id="nowHintChip" class="now-hint-chip hidden" role="status">Dense section — tap Tip</span>
+            <span id="nowStatus" class="status-badge"></span>
+            <button id="nowTipBtn" type="button" class="btn-copy btn-export-mini" title="Get a one-line tip for this paragraph">Tip</button>
+            <button id="nowRefreshBtn" type="button" class="btn-copy btn-export-mini" title="Generate a new tip">Refresh</button>
+          </div>
+        </div>
+        <div id="nowText" class="body-text now-text"></div>
+      </section>
+
+      <!-- So Far -->
+      <section id="summarySection" class="section">
+        <div class="section-header">
+          <span class="section-title">So far</span>
+          <div class="header-actions">
+            <button id="copyNotesBtn" class="btn-copy hidden" title="Copy notes as Markdown">Notes · MD</button>
+            <button id="copyNotesPlainBtn" class="btn-copy hidden" title="Copy notes as plain text">Notes · text</button>
+            <button id="copyBtn" class="btn-copy hidden" title="Copy summary">Copy</button>
+            <span id="summaryStatus" class="status-badge"></span>
+          </div>
+        </div>
+        <div id="summaryText" class="body-text muted">Scroll through the article — your summary builds here.</div>
+      </section>
+
+      <!-- Explain (secondary) -->
+      <section id="explainSection" class="section explain-section hidden">
+        <div class="section-header">
+          <span class="section-title">Explain</span>
+          <div class="header-actions">
+            <span id="explainStatus" class="status-badge"></span>
+            <button id="exportExplainMdBtn" type="button" class="btn-copy btn-export-mini" disabled title="Copy explanation as Markdown">MD</button>
+            <button id="exportExplainTxtBtn" type="button" class="btn-copy btn-export-mini" disabled title="Copy explanation as plain text">Txt</button>
+            <button id="explainRefreshBtn" type="button" class="btn-copy" title="Generate a new explanation">Refresh</button>
+            <button id="explainCloseBtn" class="btn-copy" title="Turn off explain mode">Close</button>
+          </div>
+        </div>
+        <div id="explainText" class="body-text"></div>
+      </section>
+
+      <!-- Highlight (secondary) -->
+      <section id="highlightSection" class="section highlight-section hidden">
+        <div class="section-header">
+          <span class="section-title">Highlight</span>
+          <div class="header-actions">
+            <button id="exportAnalysisMdBtn" type="button" class="btn-copy btn-export-mini" disabled title="Copy analysis as Markdown">MD</button>
+            <button id="exportAnalysisTxtBtn" type="button" class="btn-copy btn-export-mini" disabled title="Copy analysis as plain text">Txt</button>
+            <button id="analyzeBtn" class="btn-analyze">Analyze →</button>
+          </div>
+        </div>
+        <blockquote id="selectedPreview" class="selected-preview"></blockquote>
+        <div id="analysisText" class="body-text analysis-text hidden"></div>
+        <div id="highlightNoteWrap" class="highlight-note-wrap hidden">
+          <label class="highlight-note-label">Your note</label>
+          <textarea id="highlightNoteInput" class="highlight-note-input" rows="2" placeholder="Add a note (optional)"></textarea>
+          <button id="highlightNoteSaveBtn" class="btn-copy">Save note</button>
+        </div>
+      </section>
+
+      <!-- History drawer -->
+      <details id="historyDetails" class="more-details">
+        <summary class="more-summary">
+          <span class="more-title">History</span>
+          <span class="more-hint">
+            Pins • Check-ins • Resume
+            <span id="moreResumeBadge" class="more-badge hidden">Resume available</span>
+          </span>
+        </summary>
+
+        <section id="pinnedAnalysesSection" class="section hidden">
+          <div class="section-header">
+            <span class="section-title">Pinned analyses</span>
+          </div>
+          <p class="hint analyses-hint">Star an analysis from this page (below) to keep it here across visits.</p>
+          <div id="pinnedAnalysesList" class="analyses-list"></div>
+        </section>
+
+        <section id="pageAnalysesSection" class="section hidden">
+          <div class="section-header">
+            <span class="section-title">On this page</span>
+          </div>
+          <div id="pageAnalysesList" class="analyses-list"></div>
+        </section>
+
+        <!-- Recent check-ins -->
+        <section id="recentCheckinsSection" class="section hidden">
+          <div class="section-header">
+            <span class="section-title">Recent check-ins</span>
+          </div>
+          <div id="recentCheckinsList" class="checkins-list"></div>
+        </section>
+
+        <!-- Resume card -->
+        <section id="resumeCard" class="section resume-card hidden">
+          <div class="section-header">
+            <span class="section-title">Resume</span>
+            <button id="resumeClearBtn" class="btn-copy" title="Clear saved progress">Clear</button>
+          </div>
+          <div id="resumeMeta" class="hint"></div>
+          <div id="resumeText" class="body-text"></div>
+        </section>
+      </details>
+
+    </div>
+    </div>
+
+    <div id="viewSettings" class="panel-view hidden">
+      <div id="settingsPanel" class="settings-panel">
+        <div class="settings-row settings-ai-row">
+          <label for="aiProviderSelect">AI key</label>
+          <p class="hint settings-intro">Distill runs on your own <strong>free</strong> AI key — no account, no cost, nothing sent to our servers. Connect a key once.</p>
+          <select id="aiProviderSelect">
+            <option value="gemini">Google Gemini (free tier)</option>
+            <option value="anthropic">Anthropic Claude (your key)</option>
+          </select>
+          <p class="hint get-key-hint">
+            <a id="getKeyLink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free Gemini key →</a>
+            <span id="getKeyNote">No credit card required.</span>
+          </p>
+          <input id="apiKeyInput" type="password" placeholder="Paste your Gemini API key (AIza…)" autocomplete="off" spellcheck="false" />
+          <div class="settings-key-actions">
+            <button id="saveKeyBtn" type="button" class="btn-primary">Save &amp; connect</button>
+            <button id="validateKeyBtn" type="button" class="btn-copy">Test key</button>
+            <button id="removeKeyBtn" type="button" class="btn-copy">Remove</button>
+          </div>
+          <p id="keyStatusLine" class="hint key-status-line" role="status"></p>
+        </div>
+        <div class="settings-row privacy-settings-block">
+          <label>Privacy &amp; data</label>
+          <p class="hint privacy-note-line"><strong>Your key stays on this device.</strong> It’s saved in Chrome local storage and never sent to Distill’s servers.</p>
+          <p class="hint privacy-note-line"><strong>Article text goes straight to your AI provider.</strong> When you ask for a summary, explanation, or analysis, the relevant text is sent over HTTPS from your browser directly to Google (Gemini) or Anthropic using your key — Distill has no server in the middle.</p>
+          <p class="hint privacy-note-line"><strong>Gemini free-tier note.</strong> Google may use content sent on the free tier to improve its products. For sensitive documents, use a paid key or Anthropic instead.</p>
+        </div>
+        <details class="settings-advanced details-block">
+          <summary class="settings-advanced-summary">Advanced — hosted backend (optional)</summary>
+          <div class="settings-row">
+            <p class="hint">Off by default. Only turn this on to route AI through a self-hosted or shared Distill backend instead of your own key.</p>
+            <label class="toggle-row">
+              <input id="useBackendProxyToggle" type="checkbox" />
+              <span>Use Distill cloud backend</span>
+            </label>
+            <div id="backendStatusRow" class="backend-status-row hidden">
+              <span id="backendStatusDot" class="backend-status-dot"></span>
+              <span id="backendStatusText" class="backend-status-text">Checking…</span>
+            </div>
+            <button id="testBackendBtn" type="button" class="btn-copy">Test connection</button>
+            <label class="settings-sub" for="backendTargetSelect">Server</label>
+            <select id="backendTargetSelect">
+              <option value="prod">Production</option>
+              <option value="staging">Staging</option>
+              <option value="dev">Local development</option>
+            </select>
+            <label class="settings-sub" for="backendUrlOverrideInput">Custom server URL (optional)</label>
+            <input id="backendUrlOverrideInput" type="url" placeholder="https://your-api.example" autocomplete="off" spellcheck="false" />
+          </div>
+        </details>
+        <div class="settings-row">
+          <label>Usage</label>
+          <p id="fairUseText" class="usage-help-text">
+            You use your own provider’s free quota — Distill adds no limits of its own.
+          </p>
+          <p id="usageResetText" class="usage-help-subtext">
+            <a id="quotaDashLink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Check your Gemini usage →</a>
+          </p>
+        </div>
+        <div class="settings-row">
+          <label class="toggle-row">
+            <input id="autoResumeToggle" type="checkbox" />
+            <span>Auto-resume teleprompter after check-ins</span>
+          </label>
+        </div>
+        <div class="settings-row">
+          <label for="aiModeSelect">AI Mode</label>
+          <select id="aiModeSelect">
+            <option value="balanced">Balanced</option>
+            <option value="ultra-lean">Ultra-lean</option>
+          </select>
+          <p class="hint">Balanced for quality, Ultra-lean for lower cost.</p>
+        </div>
+        <div class="settings-row">
+          <label for="readerModeSelect">Reader mode</label>
+          <select id="readerModeSelect">
+            <option value="skim">Skim</option>
+            <option value="study">Study</option>
+            <option value="research">Research</option>
+          </select>
+          <p class="hint">One-click behavior presets (noise, quizzes, and costs).</p>
+        </div>
+        <div class="settings-row">
+          <label for="autoNowModeSelect">Auto "Now reading"</label>
+          <select id="autoNowModeSelect">
+            <option value="off">Off</option>
+            <option value="smart">Smart (only difficult sections)</option>
+          </select>
+          <p class="hint">Smart shows tips on dense paragraphs. Use <strong>Tip</strong> on the Now reading card anytime (cached when possible).</p>
+        </div>
+        <div id="sitePrefsSection" class="settings-row hidden">
+          <label id="sitePrefsLabel">This site</label>
+          <p id="sitePrefsHint" class="hint">Defaults for <strong id="sitePrefsHostname"></strong> apply whenever you open Distill here.</p>
+          <label class="settings-sub" for="siteFontScale">Panel size</label>
+          <div class="site-prefs-row">
+            <input type="range" id="siteFontScale" min="85" max="135" value="100" step="5" />
+            <span id="siteFontScaleLabel" class="site-prefs-value">100%</span>
+          </div>
+          <label class="settings-sub" for="siteThemeSelect">Panel theme</label>
+          <select id="siteThemeSelect">
+            <option value="system">Match system</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+          <label class="toggle-row site-backend-toggle">
+            <input id="siteBackendOnlyToggle" type="checkbox" />
+            <span>Always use backend for this site (no direct API fallback)</span>
+          </label>
+          <p class="hint">Use when you want this domain to stay on the configured backend only (no direct API fallback).</p>
+        </div>
+        <div class="settings-row">
+          <label>Keyboard shortcuts</label>
+          <p class="hint">Open <code>chrome://extensions/shortcuts</code> to customize. Chrome allows up to four extension shortcuts; defaults are Alt+Shift+R (reader), F (focus), E (explain), and A (analyze). Use the panel for highlight navigation.</p>
+        </div>
+        <div class="settings-row">
+          <label>Accent Color</label>
+          <div id="accentSwatches" class="accent-swatches"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast hidden"></div>
+
+  </div>
+  <script src="utils/pageUrlKey.js"></script>
+  <script src="utils/aiResultCache.js"></script>
+  <script src="utils/backendEnv.js"></script>
+  <script src="utils/exportClip.js"></script>
+  <script src="utils/accentColor.js"></script>
+  <script src="sidepanel.js"></script>
+</body>
+</html>

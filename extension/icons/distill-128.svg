@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" fill="none">
+  <rect width="128" height="128" rx="24" fill="#0f172a"/>
+  <g clip-path="url(#c)">
+    <mask id="m" fill="white">
+      <rect width="128" height="128" fill="white"/>
+      <path d="M64 40c-6 10-12 20-12 32 0 14 8 22 20 22s20-8 20-22c0-12-6-22-12-32-4 8-8 16-8 26 0 10 4 14 8 14s8-4 8-14c0-10-4-18-8-26z" fill="black"/>
+    </mask>
+    <g mask="url(#m)" stroke="#60a5fa" stroke-width="4" stroke-linecap="butt" fill="none">
+      <path d="M16 22c12 4 24-2 40 6s28 4 40-2 24-2 32 2"/>
+      <path d="M16 34c14 5 26-2 42 7s26 5 38-1 22-1 32 3"/>
+      <path d="M16 46c12 5 26-2 42 8s28 4 40-2 20-2 30 4"/>
+      <path d="M16 58c14 5 28-2 44 8s26 6 36 0 18-2 28 4"/>
+      <path d="M16 70c12 5 26-2 42 8s28 5 40-1 20-1 30 5"/>
+      <path d="M16 82c14 5 28-2 44 8s26 6 36 0 18-2 28 5"/>
+      <path d="M16 94c12 5 26-2 42 8s28 5 40-1 20-1 30 5"/>
+      <path d="M16 106c14 5 28-2 44 8s26 6 36 0 18-2 28 5"/>
+    </g>
+  </g>
+  <defs>
+    <clipPath id="c">
+      <path d="M24 16h40c28 0 48 18 48 48s-20 48-48 48H24V16z"/>
+    </clipPath>
+  </defs>
+</svg>

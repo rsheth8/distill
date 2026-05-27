@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Distill — Privacy Policy</title>
+  <meta name="description" content="Privacy policy for the Distill Chrome extension: bring-your-own-key, no developer backend, your data goes directly to your chosen AI provider." />
+  <style>
+    :root { color-scheme: light dark; }
+    body { max-width: 760px; margin: 0 auto; padding: 32px 20px 80px; font: 16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: #1f2937; background: #fff; }
+    @media (prefers-color-scheme: dark) { body { color: #e5e7eb; background: #0f172a; } a { color: #60a5fa; } code { background: #1e293b; } }
+    h1 { font-size: 28px; margin-bottom: 4px; }
+    h2 { font-size: 20px; margin-top: 32px; }
+    .updated { color: #6b7280; font-size: 14px; }
+    code { background: #f1f5f9; padding: 1px 5px; border-radius: 4px; font-size: 14px; }
+    .tldr { border-left: 4px solid #2563eb; padding: 8px 16px; background: rgba(37,99,235,0.06); border-radius: 6px; }
+    a { color: #2563eb; }
+  </style>
+</head>
+<body>
+  <h1>Distill — Privacy Policy</h1>
+  <p class="updated">Last updated: 2026-05-27</p>
+
+  <p>Distill is a Chrome extension that helps you read long articles with AI-assisted
+  summaries, comprehension check-ins, highlight analysis, and reading-time tools.</p>
+
+  <p><strong>Distill has no backend of its own in the default configuration.</strong>
+  It runs entirely in your browser using an AI API key that <strong>you</strong> provide.
+  The developers of Distill do not operate a server that receives your data in this mode,
+  and do not collect, store, sell, or share your personal information.</p>
+
+  <div class="tldr">
+    <ul>
+      <li>Your AI API key is stored <strong>only on your device</strong> (Chrome local storage). It is never transmitted to us.</li>
+      <li>When you ask for a summary/explanation/analysis, the relevant article text is sent <strong>directly from your browser to your chosen AI provider</strong> (Google Gemini or Anthropic), using your key. It does not pass through any Distill server.</li>
+      <li>No analytics, no ad trackers, no telemetry.</li>
+      <li>You can remove your key and all local data at any time.</li>
+    </ul>
+  </div>
+
+  <h2>What data Distill handles</h2>
+  <p><strong>Your AI API key</strong> — stored in <code>chrome.storage.local</code> on your
+  computer only; used to authenticate requests you initiate to your AI provider; never sent
+  to the Distill developers.</p>
+  <p><strong>Article and page content</strong> — when you trigger an AI action, the relevant
+  text from the page is sent over HTTPS directly to your selected AI provider. Distill keeps
+  no server-side copy. Recent summaries may be cached locally so you can resume reading.</p>
+  <p><strong>Reading state and preferences</strong> — progress, per-site preferences, accent
+  color, etc. are stored locally and never leave your device.</p>
+
+  <h2>Third-party AI providers</h2>
+  <p>Depending on the provider you choose, your text is sent to:</p>
+  <ul>
+    <li><strong>Google Gemini</strong> — see the <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener">Gemini API terms</a>. Content submitted on Google's <em>free tier</em> may be used to improve Google's products. For sensitive material, use a paid key or another provider/plan.</li>
+    <li><strong>Anthropic Claude</strong> — see <a href="https://www.anthropic.com/legal/privacy" target="_blank" rel="noopener">Anthropic's privacy policy</a>. Anthropic does not train on API inputs/outputs by default.</li>
+  </ul>
+  <p>You send data to these providers under your own account and key; their terms govern that relationship.</p>
+
+  <h2>Optional self-hosted backend (advanced, off by default)</h2>
+  <p>Distill includes an optional advanced mode that routes requests through a self-hosted or
+  shared backend instead of your own key. It is <strong>disabled by default</strong> and the
+  published extension designates no developer-operated default server for end users. If you
+  enable it, the privacy terms of whoever runs that server apply.</p>
+
+  <h2>What we do not do</h2>
+  <p>We do not sell or rent your data, use it for advertising, embed third-party analytics, or collect your browsing history.</p>
+
+  <h2>Removing your data</h2>
+  <p>Remove your key in Settings → AI key → "Remove", or remove the extension to clear all local data.</p>
+
+  <h2>Children</h2>
+  <p>Distill is not directed to children under 13 and does not knowingly collect data from them.</p>
+
+  <h2>Contact</h2>
+  <p>Questions about privacy? Contact: <strong>&lt;CONTACT_EMAIL&gt;</strong></p>
+</body>
+</html>

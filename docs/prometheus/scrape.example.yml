@@ -1,0 +1,21 @@
+# Example Prometheus config for Distill API (JSON metrics → Prometheus text endpoint).
+# Usage: prometheus --config.file=docs/prometheus/scrape.example.yml
+#
+# Targets are public HTTPS hosts; no auth on /metrics/prometheus.
+
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+scrape_configs:
+  - job_name: distill-api-production
+    metrics_path: /metrics/prometheus
+    scheme: https
+    static_configs:
+      - targets: ['distill-api.fly.dev']
+
+  - job_name: distill-api-staging
+    metrics_path: /metrics/prometheus
+    scheme: https
+    static_configs:
+      - targets: ['distill-api-staging.fly.dev']

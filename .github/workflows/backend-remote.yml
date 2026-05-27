@@ -1,0 +1,27 @@
+# Read-only smoke against the deployed API (no secrets).
+# Catches DNS/TLS/deploy regressions without running the full test suite against prod.
+
+name: Backend remote
+
+on:
+  push:
+    branches: [main, master]
+  schedule:
+    # Daily 14:00 UTC
+    - cron: '0 14 * * *'
+  workflow_dispatch:
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Remote health + config
+        run: node backend/scripts/check-remote.mjs
+        env:
+          DISTILL_BACKEND_URL: https://distill-api.fly.dev

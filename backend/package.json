@@ -1,0 +1,22 @@
+{
+  "name": "distill-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "eval:matrix": "node ../scripts/eval/run-matrix.mjs",
+    "eval:matrix:ci": "node ../scripts/eval/run-matrix.mjs --base-url http://127.0.0.1:8787 --limit 1 --out ../scripts/eval/article-test-matrix.ci.out.csv",
+    "deploy": "fly deploy --ha=false",
+    "deploy:staging": "fly deploy --ha=false -c fly.staging.toml",
+    "remote:check": "node scripts/check-remote.mjs",
+    "remote:check:staging": "node scripts/check-remote.mjs https://distill-api-staging.fly.dev"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^16.4.5",
+    "express": "^5.2.1",
+    "pg": "^8.13.1"
+  }
+}

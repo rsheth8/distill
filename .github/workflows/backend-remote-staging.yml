@@ -1,0 +1,19 @@
+# Staging API smoke (optional until distill-api-staging is deployed).
+name: Backend remote (staging)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 14 * * *'
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Staging health + config
+        run: node backend/scripts/check-remote.mjs https://distill-api-staging.fly.dev

@@ -1,0 +1,21 @@
+# Staging Distill API on Fly.io (separate app from production).
+#
+# First-time setup: see backend/STAGING.md
+# Logging: REQUEST_LOG_STDOUT=1 (see docs/LOGGING.md).
+# Deploy: npm run deploy:staging  (from backend/) or npm run deploy:backend:staging (repo root)
+
+app = 'distill-api-staging'
+primary_region = 'iad'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[http_service]
+  internal_port = 8787
+  force_https = true
+  auto_stop_machines = 'off'
+
+[[vm]]
+  memory = '512mb'
+  cpu_kind = 'shared'
+  cpus = 1
