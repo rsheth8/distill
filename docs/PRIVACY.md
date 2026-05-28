@@ -88,8 +88,7 @@ new version will ship with the extension and in this repository.
 
 ## Contact
 
-Questions about privacy? Contact: **<CONTACT_EMAIL>**
+Questions about privacy? Contact: **rahilsheth05@gmail.com**
 
-> Maintainer note: replace `<CONTACT_EMAIL>` with a real support address before
-> publishing, and host the companion `privacy.html` at a public URL (e.g. GitHub
-> Pages) to use as the Chrome Web Store "Privacy policy URL".
+> Maintainer note: host the companion `privacy.html` at a public URL (e.g. GitHub
+> Pages) and use that URL as the Chrome Web Store "Privacy policy URL".

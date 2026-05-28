@@ -7,7 +7,7 @@ developer-operated backend in the default build.
 
 ## Pre-submission checklist
 
-- [ ] Replace `<CONTACT_EMAIL>` in `docs/PRIVACY.md` and `docs/privacy.html` with a real address.
+- [x] Contact email set to `rahilsheth05@gmail.com` in `docs/PRIVACY.md` and `docs/privacy.html`.
 - [ ] Host `docs/privacy.html` at a public URL (e.g. GitHub Pages) → use as the **Privacy policy URL**.
 - [ ] Confirm `extension/manifest.json` `version` is bumped (currently `2.0.0`) and matches `CHANGELOG.md`.
 - [ ] Zip the **contents of `extension/`** (so `manifest.json` is at the zip root) — do **not** zip the repo root.
