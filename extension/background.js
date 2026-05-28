@@ -1,6 +1,6 @@
 'use strict';
 
-importScripts('utils/pageUrlKey.js', 'utils/backendEnv.js', 'utils/aiResultCache.js', 'utils/geminiAdapter.js', 'utils/groqAdapter.js');
+importScripts('utils/pageUrlKey.js', 'utils/backendEnv.js', 'utils/aiResultCache.js', 'utils/geminiAdapter.js', 'utils/openaiCompatAdapter.js');
 
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
 
@@ -135,15 +135,26 @@ const AI_PROVIDER_KEY = 'aiProvider';
 const GEMINI_API_KEY_STORAGE = 'geminiApiKey';
 const ANTHROPIC_API_KEY_STORAGE = 'anthropicApiKey';
 const GROQ_API_KEY_STORAGE = 'groqApiKey';
-const DEFAULT_AI_PROVIDER = 'gemini';
-const AI_PROVIDERS = ['gemini', 'anthropic', 'groq'];
-// gemini-2.0-flash is the broadly-available free-tier model. (flash-lite was tried
-// but offers no clear free-tier advantage and varies by account eligibility.)
+const OPENAI_API_KEY_STORAGE = 'openaiApiKey';
+// Groq is the default: genuinely free tier with broad availability. Gemini/OpenAI/
+// Anthropic are quick-switch options for users who prefer them.
+const DEFAULT_AI_PROVIDER = 'groq';
+const AI_PROVIDERS = ['groq', 'openai', 'gemini', 'anthropic'];
 const GEMINI_MODEL = 'gemini-2.0-flash';
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
-// Groq: genuinely free tier, broad availability, OpenAI-compatible API.
+// Groq + OpenAI share the OpenAI-compatible chat/completions wire format.
 const GROQ_MODEL = 'llama-3.1-8b-instant';
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const OPENAI_MODEL = 'gpt-4o-mini';
+const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+
+/** Endpoint/model/label/keyUrl for OpenAI-compatible providers (Groq, OpenAI). */
+function chatProviderConfig(provider) {
+  if (provider === 'openai') {
+    return { url: OPENAI_API_URL, model: OPENAI_MODEL, label: 'OpenAI', keyUrl: 'platform.openai.com/api-keys' };
+  }
+  return { url: GROQ_API_URL, model: GROQ_MODEL, label: 'Groq', keyUrl: 'console.groq.com/keys' };
+}
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -2168,8 +2179,9 @@ async function streamTask({
   if (preferBackend) void publishBackendStatus(tabId, { status: 'fallback_direct' });
   if (provider === 'anthropic') {
     await streamClaude({ apiKey, signal, systemPrompt, messages, maxTokens: taskMaxTokens, onChunk, onDone, onError });
-  } else if (provider === 'groq') {
-    await streamGroq({ apiKey, signal, systemPrompt, messages, maxTokens: taskMaxTokens, onChunk, onDone, onError });
+  } else if (provider === 'groq' || provider === 'openai') {
+    const cfg = chatProviderConfig(provider);
+    await streamOpenAiCompat({ apiKey, cfg, signal, systemPrompt, messages, maxTokens: taskMaxTokens, onChunk, onDone, onError });
   } else {
     await streamGemini({ apiKey, signal, systemPrompt, messages, maxTokens: taskMaxTokens, onChunk, onDone, onError });
   }
@@ -2474,16 +2486,17 @@ async function streamGemini({ apiKey, signal, systemPrompt, messages, maxTokens 
   onDone();
 }
 
-// ── Groq API streaming (direct, user's own free key; OpenAI-compatible) ───────
+// ── OpenAI-compatible streaming (Groq, OpenAI) — direct, user's own key ────────
 
-async function streamGroq({ apiKey, signal, systemPrompt, messages, maxTokens = 256, onChunk, onDone, onError }) {
-  const body = distillBuildGroqRequestBody({ systemPrompt, messages, maxTokens, temperature: 0.5, model: GROQ_MODEL });
+async function streamOpenAiCompat({ apiKey, cfg, signal, systemPrompt, messages, maxTokens = 256, onChunk, onDone, onError }) {
+  const body = distillBuildChatRequestBody({ systemPrompt, messages, maxTokens, temperature: 0.5, model: cfg.model });
+  const classifyOpts = { label: cfg.label, keyUrl: cfg.keyUrl };
 
   let response;
   let attempt = 0;
   for (;;) {
     try {
-      response = await fetch(GROQ_API_URL, {
+      response = await fetch(cfg.url, {
         method: 'POST', signal,
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify(body)
@@ -2494,7 +2507,7 @@ async function streamGroq({ apiKey, signal, systemPrompt, messages, maxTokens = 
 
     let errBody = null;
     try { errBody = await response.clone().json(); } catch { /* non-JSON error */ }
-    const info = distillClassifyGroqError(response.status, errBody);
+    const info = distillClassifyChatError(response.status, errBody, classifyOpts);
 
     if (info.retryable && response.status >= 500 && attempt < 1) {
       attempt++;
@@ -2503,7 +2516,7 @@ async function streamGroq({ apiKey, signal, systemPrompt, messages, maxTokens = 
       continue;
     }
 
-    if (info.code === 'GROQ_RATE_LIMIT' && attempt < 2) {
+    if (info.code === 'CHAT_RATE_LIMIT' && attempt < 2) {
       const sec = parseRetryAfterSeconds(response, {}) || 0;
       const waitMs = Math.min(Math.max(sec, 3) * 1000, GEMINI_RATELIMIT_MAX_WAIT_MS);
       attempt++;
@@ -2513,7 +2526,7 @@ async function streamGroq({ apiKey, signal, systemPrompt, messages, maxTokens = 
     }
 
     let message = info.message;
-    if (info.code === 'GROQ_RATE_LIMIT') {
+    if (info.code === 'CHAT_RATE_LIMIT') {
       const phrase = formatRetryAfterPhrase(parseRetryAfterSeconds(response, {}));
       message = phrase ? `${info.message} ${phrase}` : `${info.message} Wait a moment, then retry.`;
     }
@@ -2541,7 +2554,7 @@ async function streamGroq({ apiKey, signal, systemPrompt, messages, maxTokens = 
         if (raw === '[DONE]') { onDone(); return; }
         let obj;
         try { obj = JSON.parse(raw); } catch { continue; }
-        const parsed = distillParseGroqChunk(obj);
+        const parsed = distillParseChatChunk(obj);
         if (parsed.text) onChunk(parsed.text);
       }
     }
@@ -2570,17 +2583,20 @@ async function validateAiKey(provider, key) {
       if (r.status === 401) return { ok: false, message: 'Anthropic rejected that key. Re-check it.' };
       return { ok: false, message: `Anthropic error ${r.status}.` };
     }
-    if (provider === 'groq') {
-      const r = await fetch(GROQ_API_URL, {
+    if (provider === 'groq' || provider === 'openai') {
+      const cfg = chatProviderConfig(provider);
+      const r = await fetch(cfg.url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${trimmed}` },
-        body: JSON.stringify({ model: GROQ_MODEL, messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 })
+        body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 })
       });
       if (r.ok) return { ok: true, message: 'Key works — you’re all set.' };
-      if (r.status === 429) return { ok: true, message: 'Key is valid (rate-limited right now, but it works).' };
-      let gBody = null;
-      try { gBody = await r.json(); } catch { /* ignore */ }
-      return { ok: false, message: distillClassifyGroqError(r.status, gBody).message };
+      let cBody = null;
+      try { cBody = await r.json(); } catch { /* ignore */ }
+      const info = distillClassifyChatError(r.status, cBody, { label: cfg.label, keyUrl: cfg.keyUrl });
+      // A plain per-minute rate limit still means the key itself is valid.
+      if (info.code === 'CHAT_RATE_LIMIT') return { ok: true, message: 'Key is valid (rate-limited right now, but it works).' };
+      return { ok: false, message: info.message };
     }
     const r = await fetch(`${GEMINI_API_BASE}/models/${GEMINI_MODEL}:generateContent`, {
       method: 'POST',
@@ -2668,6 +2684,7 @@ function getAiProvider() {
 function providerStorageKey(provider) {
   if (provider === 'anthropic') return ANTHROPIC_API_KEY_STORAGE;
   if (provider === 'groq') return GROQ_API_KEY_STORAGE;
+  if (provider === 'openai') return OPENAI_API_KEY_STORAGE;
   return GEMINI_API_KEY_STORAGE;
 }
 function getProviderKey(provider) {
@@ -2744,12 +2761,13 @@ async function publishUsage(tabId) {
   if (!tabId) return;
   if (!(await useBackendProxy())) {
     const provider = await getAiProvider();
-    const label = provider === 'anthropic'
-      ? 'Using your own Anthropic key — usage counts against your account.'
-      : provider === 'groq'
-        ? 'Using your own Groq key — usage counts against your free Groq quota.'
-        : 'Using your own Gemini key — usage counts against your free Google quota.';
-    toPanel({ type: 'USAGE_UNAVAILABLE', tabId, message: label });
+    const labels = {
+      anthropic: 'Using your own Anthropic key — usage counts against your account.',
+      openai: 'Using your own OpenAI key — usage counts against your account.',
+      groq: 'Using your own Groq key — usage counts against your free Groq quota.',
+      gemini: 'Using your own Gemini key — usage counts against your free Google quota.'
+    };
+    toPanel({ type: 'USAGE_UNAVAILABLE', tabId, message: labels[provider] || labels.groq });
     return;
   }
 

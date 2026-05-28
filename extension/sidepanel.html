@@ -93,10 +93,11 @@
         <p class="setup-hint-title">Welcome to Distill 👋</p>
         <p class="setup-hint-text">Distill uses your own <strong>free</strong> AI key — no account, no cost. Two quick steps:</p>
         <ol class="onboard-steps">
-          <li><a id="onboardGetKeyLink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free Gemini key →</a><br /><span class="onboard-substep">Google AI Studio · no credit card</span></li>
+          <li><a id="onboardGetKeyLink" href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">Get a free Groq key →</a><br /><span id="onboardSubstep" class="onboard-substep">Groq Console · no credit card</span></li>
           <li>Paste it below and connect.</li>
         </ol>
-        <input id="onboardKeyInput" type="password" placeholder="Paste your Gemini API key (AIza…)" autocomplete="off" spellcheck="false" />
+        <p class="hint onboard-switch">Prefer another provider? Change it in Settings (Gemini, OpenAI, Anthropic).</p>
+        <input id="onboardKeyInput" type="password" placeholder="Paste your Groq API key (gsk_…)" autocomplete="off" spellcheck="false" />
         <p id="onboardStatusLine" class="hint key-status-line" role="status"></p>
       </div>
       <div class="setup-hint-actions">
@@ -347,8 +348,9 @@
           <label for="aiProviderSelect">AI key</label>
           <p class="hint settings-intro">Distill runs on your own <strong>free</strong> AI key — no account, no cost, nothing sent to our servers. Connect a key once.</p>
           <select id="aiProviderSelect">
-            <option value="gemini">Google Gemini (free tier)</option>
             <option value="groq">Groq (free tier)</option>
+            <option value="openai">OpenAI (your key)</option>
+            <option value="gemini">Google Gemini (free tier)</option>
             <option value="anthropic">Anthropic Claude (your key)</option>
           </select>
           <p class="hint get-key-hint">

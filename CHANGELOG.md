@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented here. The extension version is defined in `extension/manifest.json` (Chrome Web Store uses that value).
 
+## [2.2.0] — 2026-05-28
+
+### Changed
+
+- **Groq is now the default provider** (was Gemini). Groq's free tier is reliably available across accounts/regions, so it's the most dependable "$0" default. New installs default to `aiProvider: 'groq'`; the first-run onboarding now points to a free Groq key.
+
+### Added
+
+- **OpenAI as a provider** (`gpt-4o-mini`). The provider menu is now Groq (free) · OpenAI · Gemini (free) · Anthropic.
+- **Shared OpenAI-compatible adapter** — `extension/utils/groqAdapter.js` was generalized into `extension/utils/openaiCompatAdapter.js` (provider-neutral `distillBuildChatRequestBody` / `distillParseChatChunk` / `distillClassifyChatError`), powering both Groq and OpenAI via one `streamOpenAiCompat` path in `background.js`. Error messages now interpolate the provider label + key-console URL, and detect `insufficient_quota`/billing 429s (non-retryable) vs. transient rate limits (retried). 12 unit tests.
+- Provider-aware onboarding/Settings copy (key link text, source line, and placeholder update per selected provider).
+
 ## [2.1.0] — 2026-05-28
 
 ### Added

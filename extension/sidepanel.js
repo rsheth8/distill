@@ -121,6 +121,7 @@ const keyStatusLine    = $('keyStatusLine');
 const saveKeyBtn       = $('saveKeyBtn');
 const removeKeyBtn     = $('removeKeyBtn');
 const onboardGetKeyLink = $('onboardGetKeyLink');
+const onboardSubstep   = $('onboardSubstep');
 const onboardKeyInput  = $('onboardKeyInput');
 const onboardConnectBtn = $('onboardConnectBtn');
 const onboardStatusLine = $('onboardStatusLine');
@@ -149,38 +150,51 @@ let cachedHasApiKey = false;
 let cachedSetupHintDismissed = false;
 let cachedBackendAiReady = false;
 
+const DEFAULT_PROVIDER = 'groq';
 const PROVIDER_META = {
-  gemini: {
-    keyLink: 'https://aistudio.google.com/apikey',
-    keyLinkText: 'Get a free Gemini key →',
-    keyNote: 'No credit card required.',
-    placeholder: 'Paste your Gemini API key (AIza…)',
-    quotaLink: 'https://aistudio.google.com/apikey',
-    quotaText: 'Check your Gemini usage →'
-  },
   groq: {
     keyLink: 'https://console.groq.com/keys',
     keyLinkText: 'Get a free Groq key →',
     keyNote: 'No credit card required.',
+    keySource: 'Groq Console · no credit card',
     placeholder: 'Paste your Groq API key (gsk_…)',
     quotaLink: 'https://console.groq.com/settings/limits',
     quotaText: 'Check your Groq limits →'
+  },
+  openai: {
+    keyLink: 'https://platform.openai.com/api-keys',
+    keyLinkText: 'Get an OpenAI API key →',
+    keyNote: 'OpenAI billing applies (no free tier).',
+    keySource: 'OpenAI Platform · billing required',
+    placeholder: 'Paste your OpenAI key (sk-…)',
+    quotaLink: 'https://platform.openai.com/usage',
+    quotaText: 'Check your OpenAI usage →'
+  },
+  gemini: {
+    keyLink: 'https://aistudio.google.com/apikey',
+    keyLinkText: 'Get a free Gemini key →',
+    keyNote: 'No credit card required.',
+    keySource: 'Google AI Studio · no credit card',
+    placeholder: 'Paste your Gemini API key (AIza…)',
+    quotaLink: 'https://aistudio.google.com/apikey',
+    quotaText: 'Check your Gemini usage →'
   },
   anthropic: {
     keyLink: 'https://console.anthropic.com/settings/keys',
     keyLinkText: 'Get an Anthropic API key →',
     keyNote: 'Anthropic billing applies (no free tier).',
+    keySource: 'Anthropic Console · billing required',
     placeholder: 'Paste your Anthropic key (sk-ant-…)',
     quotaLink: 'https://console.anthropic.com/settings/usage',
     quotaText: 'Check your Anthropic usage →'
   }
 };
-const PROVIDER_STORAGE = { gemini: 'geminiApiKey', groq: 'groqApiKey', anthropic: 'anthropicApiKey' };
-let currentProvider = 'gemini';
-const providerKeys = { gemini: '', groq: '', anthropic: '' };
+const PROVIDER_STORAGE = { groq: 'groqApiKey', openai: 'openaiApiKey', gemini: 'geminiApiKey', anthropic: 'anthropicApiKey' };
+let currentProvider = DEFAULT_PROVIDER;
+const providerKeys = { groq: '', openai: '', gemini: '', anthropic: '' };
 let pendingValidation = null; // 'settings' | 'onboard'
 
-function normProvider(p) { return (p === 'anthropic' || p === 'groq') ? p : 'gemini'; }
+function normProvider(p) { return Object.prototype.hasOwnProperty.call(PROVIDER_META, p) ? p : DEFAULT_PROVIDER; }
 function providerMeta(p) { return PROVIDER_META[normProvider(p)]; }
 
 /** Repaint the key UI (placeholder, links, stored key, hasKey flag) for the active provider. */
@@ -195,7 +209,8 @@ function applyProviderUi(provider) {
   if (getKeyLink) { getKeyLink.href = meta.keyLink; getKeyLink.textContent = meta.keyLinkText; }
   if (getKeyNote) getKeyNote.textContent = meta.keyNote;
   if (quotaDashLink) { quotaDashLink.href = meta.quotaLink; quotaDashLink.textContent = meta.quotaText; }
-  if (onboardGetKeyLink) onboardGetKeyLink.href = meta.keyLink;
+  if (onboardGetKeyLink) { onboardGetKeyLink.href = meta.keyLink; onboardGetKeyLink.textContent = meta.keyLinkText; }
+  if (onboardSubstep) onboardSubstep.textContent = meta.keySource;
   if (onboardKeyInput) onboardKeyInput.placeholder = meta.placeholder;
   cachedHasApiKey = !!(providerKeys[currentProvider] && providerKeys[currentProvider].trim());
 }
@@ -453,9 +468,10 @@ async function refreshSitePrefsUi() {
   }
 }
 
-chrome.storage.local.get(['aiProvider', 'geminiApiKey', 'groqApiKey', 'anthropicApiKey', 'accentId', 'autoResumeAfterQuiz', 'aiMode', 'autoNowMode', 'readerMode', 'learnMode', 'useBackendProxy', 'backendTarget', 'backendBaseUrlOverride', 'distillSetupHintDismissed'], r => {
+chrome.storage.local.get(['aiProvider', 'geminiApiKey', 'groqApiKey', 'openaiApiKey', 'anthropicApiKey', 'accentId', 'autoResumeAfterQuiz', 'aiMode', 'autoNowMode', 'readerMode', 'learnMode', 'useBackendProxy', 'backendTarget', 'backendBaseUrlOverride', 'distillSetupHintDismissed'], r => {
   providerKeys.gemini = typeof r.geminiApiKey === 'string' ? r.geminiApiKey : '';
   providerKeys.groq = typeof r.groqApiKey === 'string' ? r.groqApiKey : '';
+  providerKeys.openai = typeof r.openaiApiKey === 'string' ? r.openaiApiKey : '';
   providerKeys.anthropic = typeof r.anthropicApiKey === 'string' ? r.anthropicApiKey : '';
   applyProviderUi(normProvider(r.aiProvider));
   cachedSetupHintDismissed = !!r.distillSetupHintDismissed;

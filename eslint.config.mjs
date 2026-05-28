@@ -31,9 +31,9 @@ export default [
         distillGeminiBlockedMessage: 'readonly',
         distillParseGeminiRetrySeconds: 'readonly',
         distillClassifyGeminiError: 'readonly',
-        distillBuildGroqRequestBody: 'readonly',
-        distillParseGroqChunk: 'readonly',
-        distillClassifyGroqError: 'readonly',
+        distillBuildChatRequestBody: 'readonly',
+        distillParseChatChunk: 'readonly',
+        distillClassifyChatError: 'readonly',
         distillApplyAccentCssVars: 'readonly',
         distillNormalizeSelection: 'readonly',
         distillStableStringHash: 'readonly',
@@ -107,7 +107,7 @@ export default [
     }
   },
   {
-    files: ['extension/utils/exportClip.js', 'extension/utils/accentColor.js', 'extension/utils/articleExtractor.js', 'extension/utils/geminiAdapter.js', 'extension/utils/groqAdapter.js'],
+    files: ['extension/utils/exportClip.js', 'extension/utils/accentColor.js', 'extension/utils/articleExtractor.js', 'extension/utils/geminiAdapter.js', 'extension/utils/openaiCompatAdapter.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',
