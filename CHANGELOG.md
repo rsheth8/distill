@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The extension version is defined in `extension/manifest.json` (Chrome Web Store uses that value).
 
+## [2.0.2] — 2026-05-28
+
+### Changed
+
+- **Default Gemini model is now `gemini-2.0-flash-lite`** (was `gemini-2.0-flash`). It has roughly double the free-tier requests-per-minute limit and lower latency, which reduces "free-tier limit reached" (HTTP 429) errors for Distill's chatty workload (progressive summaries + tips). Quality is more than sufficient for short reading-companion outputs.
+
 ## [2.0.1] — 2026-05-28
 
 ### Fixed
