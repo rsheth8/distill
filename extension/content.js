@@ -558,21 +558,24 @@
         pointer-events: none;
         z-index: 2147483647;
       }
-      #air-marker-left  { left: 0; }
-      #air-marker-right { right: 0; flex-direction: row-reverse; }
+      /* Nudge inward so they aren't lost on the very edge/scrollbar. */
+      #air-marker-left  { left: 8px; }
+      #air-marker-right { right: 8px; flex-direction: row-reverse; }
       .air-marker-arrow {
         width: 0; height: 0;
-        border-top: 5px solid transparent;
-        border-bottom: 5px solid transparent;
-        border-left: 8px solid var(--air-a35, rgba(37,99,235,0.35));
+        border-top: 6px solid transparent;
+        border-bottom: 6px solid transparent;
+        border-left: 10px solid var(--air-a35, rgba(37,99,235,0.35));
+        filter: drop-shadow(0 0 6px var(--air-a12, rgba(37,99,235,0.12)));
       }
       .air-marker-arrow-flip {
         border-left: none;
-        border-right: 8px solid var(--air-a35, rgba(37,99,235,0.35));
+        border-right: 10px solid var(--air-a35, rgba(37,99,235,0.35));
       }
       .air-marker-tick {
-        width: 14px; height: 1px;
+        width: 22px; height: 2px;
         background: var(--air-a22, rgba(37,99,235,0.22));
+        border-radius: 999px;
       }
       .air-word {
         position: relative;
@@ -691,7 +694,8 @@
 
     const markerLeft = document.createElement('div');
     markerLeft.id = 'air-marker-left';
-    markerLeft.innerHTML = '<div class="air-marker-arrow"></div><div class="air-marker-tick"></div>';
+    // Left marker should read "line → arrowhead" so the tip is at the end.
+    markerLeft.innerHTML = '<div class="air-marker-tick"></div><div class="air-marker-arrow"></div>';
     document.body.appendChild(markerLeft);
 
     const markerRight = document.createElement('div');

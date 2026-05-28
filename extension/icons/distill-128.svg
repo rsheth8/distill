@@ -1,24 +1,51 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" fill="none">
-  <rect width="128" height="128" rx="24" fill="#0f172a"/>
-  <g clip-path="url(#c)">
-    <mask id="m" fill="white">
-      <rect width="128" height="128" fill="white"/>
-      <path d="M64 40c-6 10-12 20-12 32 0 14 8 22 20 22s20-8 20-22c0-12-6-22-12-32-4 8-8 16-8 26 0 10 4 14 8 14s8-4 8-14c0-10-4-18-8-26z" fill="black"/>
-    </mask>
-    <g mask="url(#m)" stroke="#60a5fa" stroke-width="4" stroke-linecap="butt" fill="none">
-      <path d="M16 22c12 4 24-2 40 6s28 4 40-2 24-2 32 2"/>
-      <path d="M16 34c14 5 26-2 42 7s26 5 38-1 22-1 32 3"/>
-      <path d="M16 46c12 5 26-2 42 8s28 4 40-2 20-2 30 4"/>
-      <path d="M16 58c14 5 28-2 44 8s26 6 36 0 18-2 28 4"/>
-      <path d="M16 70c12 5 26-2 42 8s28 5 40-1 20-1 30 5"/>
-      <path d="M16 82c14 5 28-2 44 8s26 6 36 0 18-2 28 5"/>
-      <path d="M16 94c12 5 26-2 42 8s28 5 40-1 20-1 30 5"/>
-      <path d="M16 106c14 5 28-2 44 8s26 6 36 0 18-2 28 5"/>
-    </g>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 512 512" fill="none">
+  <!-- Single source-of-truth: matches the inline sidepanel SVG geometry -->
+  <rect width="512" height="512" rx="96" fill="#0f172a"/>
   <defs>
-    <clipPath id="c">
-      <path d="M24 16h40c28 0 48 18 48 48s-20 48-48 48H24V16z"/>
+    <clipPath id="distillLogoClip">
+      <path
+        d="
+          M96 72
+          H256
+          C360 72 432 148 432 256
+          C432 364 360 440 256 440
+          H96
+          Z
+        "
+      />
     </clipPath>
+    <mask id="distillLogoMask">
+      <rect width="512" height="512" fill="white" />
+      <path
+        d="
+          M256 160
+          C230 204 204 246 204 286
+          C204 324 228 350 256 350
+          C284 350 308 324 308 286
+          C308 246 282 204 256 160
+          Z
+        "
+        fill="black"
+      />
+    </mask>
   </defs>
+  <g
+    clip-path="url(#distillLogoClip)"
+    mask="url(#distillLogoMask)"
+    fill="none"
+    stroke="#60a5fa"
+    stroke-width="17"
+    stroke-linecap="butt"
+  >
+    <path d="M64 84 C112 100 158 62 214 82 C270 102 302 94 354 82 C390 74 424 82 460 94" />
+    <path d="M64 124 C116 140 158 104 214 122 C270 140 304 134 356 122 C394 114 426 122 460 134" />
+    <path d="M64 164 C112 180 160 142 218 162 C274 182 308 174 360 160 C398 150 428 162 460 174" />
+    <path d="M64 204 C116 220 162 184 220 202 C278 220 310 214 364 202 C400 194 430 202 460 214" />
+    <path d="M64 244 C112 260 160 224 220 242 C278 260 314 254 366 240 C404 230 432 244 460 254" />
+    <path d="M64 284 C116 300 164 264 224 282 C282 300 316 294 370 282 C408 274 434 284 460 294" />
+    <path d="M64 324 C112 340 164 304 226 322 C286 340 320 334 374 320 C410 312 436 322 460 334" />
+    <path d="M64 364 C116 380 166 344 228 362 C288 380 324 374 378 362 C414 354 438 364 460 374" />
+    <path d="M64 404 C112 420 166 384 230 402 C292 420 326 414 382 400 C416 392 440 402 460 414" />
+    <path d="M64 444 C116 460 168 424 232 442 C294 460 328 454 384 440 C418 432 442 442 460 454" />
+  </g>
 </svg>
