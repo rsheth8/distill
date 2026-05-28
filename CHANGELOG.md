@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. The extension version is defined in `extension/manifest.json` (Chrome Web Store uses that value).
 
+## [2.4.0] — 2026-05-28
+
+### Added
+
+- **BYOK-only production build.** `npm run pack` produces `dist/distill-<version>.zip` for the Web Store: it ships only `extension/` (the `backend/` server is never included) and sets `DISTILL_INCLUDE_BACKEND = false` so the hosted-backend client is compiled out — the shipped product is pure bring-your-own-key. The backend stays in the repo for dev/self-host, where the unpacked build keeps `DISTILL_INCLUDE_BACKEND = true`.
+- `extension/utils/buildConfig.js` build flag; `useBackendProxy()` returns false and the Settings "Advanced — hosted backend" section is hidden when the flag is off.
+
 ## [2.3.0] — 2026-05-28
 
 ### Added

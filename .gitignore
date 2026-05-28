@@ -16,6 +16,9 @@ backend/backend/
 # Coverage (vitest --coverage)
 coverage/
 
+# Production build output (npm run pack)
+dist/
+
 # Eval / matrix outputs (regenerate with `node scripts/eval/run-matrix.mjs`)
 scripts/eval/*.smoke.out.csv
 scripts/eval/*.out.csv

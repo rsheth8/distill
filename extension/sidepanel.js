@@ -125,6 +125,10 @@ const onboardSubstep   = $('onboardSubstep');
 const onboardKeyInput  = $('onboardKeyInput');
 const onboardConnectBtn = $('onboardConnectBtn');
 const onboardStatusLine = $('onboardStatusLine');
+const advancedBackendDetails = $('advancedBackendDetails');
+// BYOK-only production builds compile out the hosted-backend option entirely.
+const backendUiEnabled = !(typeof DISTILL_INCLUDE_BACKEND !== 'undefined' && !DISTILL_INCLUDE_BACKEND);
+if (!backendUiEnabled && advancedBackendDetails) advancedBackendDetails.classList.add('hidden');
 const useBackendProxyToggle = $('useBackendProxyToggle');
 const backendTargetSelect = $('backendTargetSelect');
 const backendUrlOverrideInput = $('backendUrlOverrideInput');

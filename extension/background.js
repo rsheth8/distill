@@ -1,6 +1,6 @@
 'use strict';
 
-importScripts('utils/pageUrlKey.js', 'utils/backendEnv.js', 'utils/aiResultCache.js', 'utils/geminiAdapter.js', 'utils/openaiCompatAdapter.js', 'utils/pageStore.js');
+importScripts('utils/buildConfig.js', 'utils/pageUrlKey.js', 'utils/backendEnv.js', 'utils/aiResultCache.js', 'utils/geminiAdapter.js', 'utils/openaiCompatAdapter.js', 'utils/pageStore.js');
 
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
 
@@ -208,6 +208,8 @@ async function probeBackend() {
 
 /** True only when the user explicitly opts into the hosted Distill cloud backend. Default is direct BYOK mode. */
 async function useBackendProxy() {
+  // Production (BYOK-only) builds compile out the hosted-backend path entirely.
+  if (typeof DISTILL_INCLUDE_BACKEND !== 'undefined' && !DISTILL_INCLUDE_BACKEND) return false;
   const r = await chrome.storage.local.get(USE_BACKEND_PROXY_KEY);
   return r[USE_BACKEND_PROXY_KEY] === true;
 }

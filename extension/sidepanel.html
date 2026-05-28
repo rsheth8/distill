@@ -371,7 +371,7 @@
           <p class="hint privacy-note-line"><strong>Article text goes straight to your AI provider.</strong> When you ask for a summary, explanation, or analysis, the relevant text is sent over HTTPS from your browser directly to Google (Gemini) or Anthropic using your key — Distill has no server in the middle.</p>
           <p class="hint privacy-note-line"><strong>Gemini free-tier note.</strong> Google may use content sent on the free tier to improve its products. For sensitive documents, use a paid key or Anthropic instead.</p>
         </div>
-        <details class="settings-advanced details-block">
+        <details id="advancedBackendDetails" class="settings-advanced details-block">
           <summary class="settings-advanced-summary">Advanced — hosted backend (optional)</summary>
           <div class="settings-row">
             <p class="hint">Off by default. Only turn this on to route AI through a self-hosted or shared Distill backend instead of your own key.</p>
@@ -474,6 +474,7 @@
     <div id="toast" class="toast hidden"></div>
 
   </div>
+  <script src="utils/buildConfig.js"></script>
   <script src="utils/pageUrlKey.js"></script>
   <script src="utils/aiResultCache.js"></script>
   <script src="utils/backendEnv.js"></script>

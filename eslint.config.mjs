@@ -46,6 +46,7 @@ export default [
         distillPagePayloadToState: 'readonly',
         distillHistoryPayloadToState: 'readonly',
         distillSelectPrunedKeys: 'readonly',
+        DISTILL_INCLUDE_BACKEND: 'readonly',
         distillApplyAccentCssVars: 'readonly',
         distillNormalizeSelection: 'readonly',
         distillStableStringHash: 'readonly',
@@ -119,7 +120,7 @@ export default [
     }
   },
   {
-    files: ['extension/utils/exportClip.js', 'extension/utils/accentColor.js', 'extension/utils/articleExtractor.js', 'extension/utils/geminiAdapter.js', 'extension/utils/openaiCompatAdapter.js', 'extension/utils/pageStore.js'],
+    files: ['extension/utils/exportClip.js', 'extension/utils/accentColor.js', 'extension/utils/articleExtractor.js', 'extension/utils/geminiAdapter.js', 'extension/utils/openaiCompatAdapter.js', 'extension/utils/pageStore.js', 'extension/utils/buildConfig.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',
