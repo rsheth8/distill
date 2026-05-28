@@ -2,7 +2,7 @@
   "name": "distill-extension",
   "private": true,
   "scripts": {
-    "lint": "eslint extension/background.js extension/content.js extension/sidepanel.js extension/utils/pageUrlKey.js extension/utils/backendEnv.js extension/utils/aiResultCache.js extension/utils/exportClip.js extension/utils/accentColor.js extension/utils/articleExtractor.js extension/utils/geminiAdapter.js backend/server.js backend/lib/stateStore.js backend/scripts/check-remote.mjs scripts/smoke.mjs tests/**/*.mjs vitest.config.mjs",
+    "lint": "eslint extension/background.js extension/content.js extension/sidepanel.js extension/utils/pageUrlKey.js extension/utils/backendEnv.js extension/utils/aiResultCache.js extension/utils/exportClip.js extension/utils/accentColor.js extension/utils/articleExtractor.js extension/utils/geminiAdapter.js extension/utils/groqAdapter.js backend/server.js backend/lib/stateStore.js backend/scripts/check-remote.mjs scripts/smoke.mjs tests/**/*.mjs vitest.config.mjs",
     "smoke": "node scripts/smoke.mjs && node scripts/check-api-doc.mjs",
     "unit": "vitest run",
     "coverage": "vitest run --coverage",

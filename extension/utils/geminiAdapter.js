@@ -151,7 +151,7 @@ function distillClassifyGeminiError(status, body) {
       return {
         code: 'GEMINI_NO_FREE_QUOTA',
         retryable: false,
-        message: 'This Gemini key has no free-tier quota (limit 0). The Google Cloud project likely needs billing enabled, or your account/region isn’t eligible for the free tier. In Settings you can switch to Anthropic, or enable billing for this key.'
+        message: 'This Gemini key has no free-tier quota (limit 0). Your Google account/region likely isn’t eligible for the free tier, or the project needs billing. In Settings, switch the provider to Groq (also free) — or enable billing for this Gemini key.'
       };
     }
     // Daily quota exhausted — resets in hours, not seconds; don't busy-retry.

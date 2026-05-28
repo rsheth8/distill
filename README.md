@@ -1,6 +1,6 @@
 # Distill
 
-**Distill** is a Chrome extension (MV3) that helps you read long articles: progressive summaries, optional comprehension check-ins, highlight analysis, explain-page, and reading-time style affordances. **Out of the box**, Distill is **bring-your-own-key (BYOK)**: AI runs **browser → provider** using a free API key you supply (a free **Google Gemini** key works—no credit card). Your key stays in your browser, and there is **no Distill server in the middle**. This keeps it free for the maintainer (nothing to host) and free for users (their own free-tier quota). Prefer Claude? Switch the provider to Anthropic and paste your own key.
+**Distill** is a Chrome extension (MV3) that helps you read long articles: progressive summaries, optional comprehension check-ins, highlight analysis, explain-page, and reading-time style affordances. **Out of the box**, Distill is **bring-your-own-key (BYOK)**: AI runs **browser → provider** using a free API key you supply (a free **Google Gemini** key works—no credit card). Your key stays in your browser, and there is **no Distill server in the middle**. This keeps it free for the maintainer (nothing to host) and free for users (their own free-tier quota). Providers: **Gemini** or **Groq** (both free tier), or **Anthropic Claude** (paid) — switch in Settings and paste your own key.
 
 - **Extension UI & logic:** `extension/` — load this folder as an **unpacked** extension in `chrome://extensions` (Developer mode → Load unpacked). First run shows a 2-step onboarding: get a free key → paste & connect.
 - **Backend API (optional, advanced):** `backend/` — Express app with guest JWT auth, SSE streaming, daily credits, rate limits, optional **Supabase Postgres**. It is **off by default** and only needed if you want to self-host or run a shared deployment instead of BYOK. See **[`backend/README.md`](backend/README.md)** for Fly.io deploy, Docker, admin routes, and logging. Long-term backend work is tracked in **[`docs/BACKEND_ROADMAP.md`](docs/BACKEND_ROADMAP.md)**.
@@ -48,7 +48,7 @@ article-reader-extension/
 ## Requirements
 
 - **Chrome** (or Chromium) for the extension.
-- **For end users:** a free AI key. Easiest is **Google Gemini** via [Google AI Studio](https://aistudio.google.com/apikey) (no credit card). Paste it on first run. Optionally use your own Anthropic key instead.
+- **For end users:** a free AI key. Easiest is **Google Gemini** via [Google AI Studio](https://aistudio.google.com/apikey) (no credit card). If Gemini's free tier isn't available in your country/account, use **Groq** ([console.groq.com/keys](https://console.groq.com/keys)) — also free, broader availability. Paste it on first run. Anthropic (paid) is also supported.
 - **Node 18+** (global `fetch`) for tests and the optional backend.
 - **For self-hosting the optional backend / dev:** Node backend plus `BACKEND_SECRET` and `GEMINI_API_KEY` (see [`docs/FREE_LLM.md`](docs/FREE_LLM.md)) or `ANTHROPIC_API_KEY`. See [`backend/README.md`](backend/README.md).
 

@@ -158,6 +158,14 @@ const PROVIDER_META = {
     quotaLink: 'https://aistudio.google.com/apikey',
     quotaText: 'Check your Gemini usage →'
   },
+  groq: {
+    keyLink: 'https://console.groq.com/keys',
+    keyLinkText: 'Get a free Groq key →',
+    keyNote: 'No credit card required.',
+    placeholder: 'Paste your Groq API key (gsk_…)',
+    quotaLink: 'https://console.groq.com/settings/limits',
+    quotaText: 'Check your Groq limits →'
+  },
   anthropic: {
     keyLink: 'https://console.anthropic.com/settings/keys',
     keyLinkText: 'Get an Anthropic API key →',
@@ -167,16 +175,17 @@ const PROVIDER_META = {
     quotaText: 'Check your Anthropic usage →'
   }
 };
-const PROVIDER_STORAGE = { gemini: 'geminiApiKey', anthropic: 'anthropicApiKey' };
+const PROVIDER_STORAGE = { gemini: 'geminiApiKey', groq: 'groqApiKey', anthropic: 'anthropicApiKey' };
 let currentProvider = 'gemini';
-const providerKeys = { gemini: '', anthropic: '' };
+const providerKeys = { gemini: '', groq: '', anthropic: '' };
 let pendingValidation = null; // 'settings' | 'onboard'
 
-function providerMeta(p) { return PROVIDER_META[p === 'anthropic' ? 'anthropic' : 'gemini']; }
+function normProvider(p) { return (p === 'anthropic' || p === 'groq') ? p : 'gemini'; }
+function providerMeta(p) { return PROVIDER_META[normProvider(p)]; }
 
 /** Repaint the key UI (placeholder, links, stored key, hasKey flag) for the active provider. */
 function applyProviderUi(provider) {
-  currentProvider = provider === 'anthropic' ? 'anthropic' : 'gemini';
+  currentProvider = normProvider(provider);
   const meta = providerMeta(currentProvider);
   if (aiProviderSelect) aiProviderSelect.value = currentProvider;
   if (apiKeyInput) {
@@ -444,10 +453,11 @@ async function refreshSitePrefsUi() {
   }
 }
 
-chrome.storage.local.get(['aiProvider', 'geminiApiKey', 'anthropicApiKey', 'accentId', 'autoResumeAfterQuiz', 'aiMode', 'autoNowMode', 'readerMode', 'learnMode', 'useBackendProxy', 'backendTarget', 'backendBaseUrlOverride', 'distillSetupHintDismissed'], r => {
+chrome.storage.local.get(['aiProvider', 'geminiApiKey', 'groqApiKey', 'anthropicApiKey', 'accentId', 'autoResumeAfterQuiz', 'aiMode', 'autoNowMode', 'readerMode', 'learnMode', 'useBackendProxy', 'backendTarget', 'backendBaseUrlOverride', 'distillSetupHintDismissed'], r => {
   providerKeys.gemini = typeof r.geminiApiKey === 'string' ? r.geminiApiKey : '';
+  providerKeys.groq = typeof r.groqApiKey === 'string' ? r.groqApiKey : '';
   providerKeys.anthropic = typeof r.anthropicApiKey === 'string' ? r.anthropicApiKey : '';
-  applyProviderUi(r.aiProvider === 'anthropic' ? 'anthropic' : 'gemini');
+  applyProviderUi(normProvider(r.aiProvider));
   cachedSetupHintDismissed = !!r.distillSetupHintDismissed;
   if (useBackendProxyToggle) useBackendProxyToggle.checked = r.useBackendProxy === true;
   if (backendTargetSelect) {
@@ -522,7 +532,7 @@ removeKeyBtn?.addEventListener('click', () => {
 });
 
 aiProviderSelect?.addEventListener('change', () => {
-  const provider = aiProviderSelect.value === 'anthropic' ? 'anthropic' : 'gemini';
+  const provider = normProvider(aiProviderSelect.value);
   applyProviderUi(provider);
   setKeyStatus(keyStatusLine, '', '');
   chrome.storage.local.set({ aiProvider: provider }, () => {

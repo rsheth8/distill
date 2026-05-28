@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here. The extension version is defined in `extension/manifest.json` (Chrome Web Store uses that value).
 
+## [2.1.0] — 2026-05-28
+
+### Added
+
+- **Groq as a third BYOK provider (free tier).** Groq has a genuinely free API tier with broader regional availability than Google's Gemini free tier (which isn't offered to every account/region). Pick **Groq** in Settings → AI provider, grab a free key at [console.groq.com/keys](https://console.groq.com/keys), and connect. Uses the OpenAI-compatible chat completions API.
+  - `extension/utils/groqAdapter.js` — request builder (Anthropic-style messages → OpenAI `messages`), streaming chunk parser (`choices[].delta.content`), and error classifier (invalid key / rate limit / model / overload). Covered by `tests/unit/groqAdapter.test.mjs` (11 tests).
+  - `streamGroq` in `background.js` (SSE, retry on 5xx + 429 retry-after), provider routing, key validation, and `groqApiKey` storage. Default Groq model: `llama-3.1-8b-instant` (fast, high free-tier limits — well suited to Distill's many short calls).
+  - The "no free-tier Gemini quota" message now points users to Groq as the free alternative.
+
 ## [2.0.5] — 2026-05-28
 
 ### Fixed
