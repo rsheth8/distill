@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Distill",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Read long articles better: progressive summaries, highlight analysis, and reading time — powered by your own free AI key.",
   "permissions": [
     "storage",
@@ -21,6 +21,18 @@
   "content_scripts": [
     {
       "matches": ["http://*/*", "https://*/*"],
+      "exclude_matches": [
+        "https://aistudio.google.com/*",
+        "https://console.cloud.google.com/*",
+        "https://console.anthropic.com/*",
+        "https://accounts.google.com/*",
+        "https://mail.google.com/*",
+        "https://docs.google.com/*",
+        "https://drive.google.com/*",
+        "https://calendar.google.com/*",
+        "https://meet.google.com/*",
+        "https://chat.google.com/*"
+      ],
       "js": ["utils/articleExtractor.js", "content.js"],
       "run_at": "document_idle"
     }

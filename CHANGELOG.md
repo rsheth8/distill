@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The extension version is defined in `extension/manifest.json` (Chrome Web Store uses that value).
 
+## [2.0.1] — 2026-05-28
+
+### Fixed
+
+- **Content script no longer runs on web-app/console/auth pages.** It declared any page with >500 chars of text an "article" and mutated the DOM (injected styles, added classes + `data-air-id`), which crashed framework-managed SPAs — notably **Google AI Studio**, the page our own onboarding links to (symptom: "unable to fetch" errors). Added `exclude_matches` for AI Studio, Google Cloud Console, Anthropic Console, and Google account/Workspace apps (Mail, Docs, Drive, Calendar, Meet, Chat). Bump to `2.0.1`.
+
 ## [2.0.0] — 2026-05-27
 
 ### Changed (breaking: default AI path)
