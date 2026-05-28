@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none">
+  <rect width="16" height="16" rx="3" fill="#0f172a"/>
+  <!-- Simplified wave mark optimized for 16px legibility -->
+  <g stroke="#60a5fa" stroke-width="2" stroke-linecap="round" fill="none">
+    <path d="M2.0 5.0c2.3 1.4 4.6-1.4 6.9 0 2.3 1.4 4.6 0 6.9-.7"/>
+    <path d="M2.0 8.0c2.3 1.4 4.6-1.4 6.9 0 2.3 1.4 4.6 0 6.9-.7"/>
+    <path d="M2.0 11.0c2.3 1.4 4.6-1.4 6.9 0 2.3 1.4 4.6 0 6.9-.7"/>
+  </g>
+</svg>
