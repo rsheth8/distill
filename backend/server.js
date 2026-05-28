@@ -274,7 +274,11 @@ async function verifyToken(token) {
 }
 
 function getIp(req) {
-  return req.headers['x-forwarded-for']?.toString().split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+  return (
+    req.headers['x-forwarded-for']?.toString().split(',')[0].trim() ||
+    req.socket?.remoteAddress ||
+    'unknown'
+  );
 }
 
 function recordRateHit(map, key, limit) {
