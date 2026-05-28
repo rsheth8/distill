@@ -60,7 +60,8 @@ function connect() {
   port.onDisconnect.addListener(() => { port = null; setTimeout(connect, 600); });
 }
 connect();
-void loadPinnedIntoCache().then(() => renderPinnedAnalysesList());
+// Pinned-analyses cache is bootstrapped at the END of this file — calling it here
+// would touch PINS_STORAGE_KEY (a const declared later) inside its temporal dead zone.
 
 function wireActiveTab(tabId) {
   if (tabId == null) return;
@@ -2265,3 +2266,8 @@ function showToast(msg, type = 'error') {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { toast.className = 'toast hidden'; }, 4500);
 }
+
+// ── Deferred bootstrap ────────────────────────────────────────────────────────
+// Runs after every const/let above is initialized (avoids temporal-dead-zone on
+// PINS_STORAGE_KEY when loadPinnedIntoCache reads storage during startup).
+void loadPinnedIntoCache().then(() => renderPinnedAnalysesList());

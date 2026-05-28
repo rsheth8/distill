@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The extension version is defined in `extension/manifest.json` (Chrome Web Store uses that value).
 
+## [2.0.3] — 2026-05-28
+
+### Fixed
+
+- **Side panel no longer throws `ReferenceError: Cannot access 'PINS_STORAGE_KEY' before initialization` on load.** The pinned-analyses cache was bootstrapped at the top of `sidepanel.js`, but `loadPinnedIntoCache()` reads `PINS_STORAGE_KEY` — a `const` declared later — hitting its temporal dead zone (an unhandled promise rejection on every open). The bootstrap call now runs at the end of the file, after all declarations are initialized.
+
 ## [2.0.2] — 2026-05-28
 
 ### Changed
