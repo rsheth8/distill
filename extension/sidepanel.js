@@ -135,6 +135,7 @@ const testBackendBtn = $('testBackendBtn');
 const fairUseText      = $('fairUseText');
 const usageResetText   = $('usageResetText');
 const autoResumeToggle = $('autoResumeToggle');
+const clearAllHistoryBtn = $('clearAllHistoryBtn');
 const aiModeSelect     = $('aiModeSelect');
 const autoNowModeSelect = $('autoNowModeSelect');
 const readerModeSelect  = $('readerModeSelect');
@@ -589,6 +590,14 @@ useBackendProxyToggle?.addEventListener('change', () => {
 setupHintOpenSettingsBtn?.addEventListener('click', () => {
   setPanel('settings');
   void refreshSitePrefsUi();
+});
+
+clearAllHistoryBtn?.addEventListener('click', () => {
+  const ok = typeof confirm === 'function'
+    ? confirm('Clear all saved reading progress, summaries, highlights and check-ins for every page? This only affects this device and cannot be undone.')
+    : true;
+  if (!ok) return;
+  port?.postMessage({ type: 'CLEAR_ALL_HISTORY', tabId: currentTabId });
 });
 
 setupHintDismissBtn?.addEventListener('click', () => {
@@ -1797,6 +1806,18 @@ function handleMessage(msg) {
       show(resumeCard);
       // De-emphasize by default: show an indicator but don't auto-open.
       show(moreResumeBadge);
+      break;
+    }
+
+    case 'RESTORED':
+      showToast('Restored your progress from last time.', 'success');
+      break;
+
+    case 'ALL_HISTORY_CLEARED': {
+      const n = Number(msg.removed) || 0;
+      hide(resumeCard);
+      hide(moreResumeBadge);
+      showToast(n > 0 ? `Cleared saved progress for ${n} page${n === 1 ? '' : 's'}.` : 'No saved progress to clear.', 'success');
       break;
     }
 

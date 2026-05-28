@@ -34,6 +34,18 @@ export default [
         distillBuildChatRequestBody: 'readonly',
         distillParseChatChunk: 'readonly',
         distillClassifyChatError: 'readonly',
+        DISTILL_HISTORY_PREFIX: 'readonly',
+        DISTILL_PAGE_STATE_PREFIX: 'readonly',
+        DISTILL_PAGE_STATE_VERSION: 'readonly',
+        DISTILL_MAX_SAVED_PAGES: 'readonly',
+        DISTILL_PAGE_STATE_TTL_MS: 'readonly',
+        distillStableHash: 'readonly',
+        distillPageStateKey: 'readonly',
+        distillHistoryKey: 'readonly',
+        distillBuildPageStatePayload: 'readonly',
+        distillPagePayloadToState: 'readonly',
+        distillHistoryPayloadToState: 'readonly',
+        distillSelectPrunedKeys: 'readonly',
         distillApplyAccentCssVars: 'readonly',
         distillNormalizeSelection: 'readonly',
         distillStableStringHash: 'readonly',
@@ -107,7 +119,7 @@ export default [
     }
   },
   {
-    files: ['extension/utils/exportClip.js', 'extension/utils/accentColor.js', 'extension/utils/articleExtractor.js', 'extension/utils/geminiAdapter.js', 'extension/utils/openaiCompatAdapter.js'],
+    files: ['extension/utils/exportClip.js', 'extension/utils/accentColor.js', 'extension/utils/articleExtractor.js', 'extension/utils/geminiAdapter.js', 'extension/utils/openaiCompatAdapter.js', 'extension/utils/pageStore.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',

@@ -1,6 +1,6 @@
 'use strict';
 
-importScripts('utils/pageUrlKey.js', 'utils/backendEnv.js', 'utils/aiResultCache.js', 'utils/geminiAdapter.js', 'utils/openaiCompatAdapter.js');
+importScripts('utils/pageUrlKey.js', 'utils/backendEnv.js', 'utils/aiResultCache.js', 'utils/geminiAdapter.js', 'utils/openaiCompatAdapter.js', 'utils/pageStore.js');
 
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
 
@@ -262,12 +262,17 @@ const NOW_COOLDOWN_MS = 9000;
 const PAUSE_TO_EXPLAIN_MIN_MS = 3500;
 const PAUSE_TO_EXPLAIN_MAX_MS = 14000;
 const ESTIMATED_READING_WPM = 220;
-const HISTORY_KEY_PREFIX = 'distillHist_';
+// Persistence prefixes + retention come from utils/pageStore.js (single source of truth).
+const HISTORY_KEY_PREFIX = DISTILL_HISTORY_PREFIX;
+const PAGE_STATE_KEY_PREFIX = DISTILL_PAGE_STATE_PREFIX;
 
 let sidePanelPort = null;
 const nowAssistState = new Map();
 const summaryCadenceState = new Map();
 const pauseExplainTimers = new Map();
+// Tabs whose state was just loaded from persistent (chrome.storage.local) save-state,
+// i.e. a genuine "restored from last time" — used to show the restore notice once.
+const restoredFromStorageTabs = new Set();
 
 let readerMode = 'skim';
 chrome.storage.local.get(READER_MODE_KEY, r => {
@@ -317,20 +322,10 @@ function countWords(text) {
   return (text || '').split(/\s+/).filter(Boolean).length;
 }
 
-function stableStringHash(text) {
-  // Lightweight deterministic hash for in-session dedupe keys.
-  let h = 2166136261;
-  const input = text || '';
-  for (let i = 0; i < input.length; i++) {
-    h ^= input.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return (h >>> 0).toString(16);
-}
-
-function historyKeyForPageUrl(pageUrl) {
-  return `${HISTORY_KEY_PREFIX}${stableStringHash(pageUrl || '')}`;
-}
+// Deterministic hash + URL-keyed storage keys live in utils/pageStore.js.
+function stableStringHash(text) { return distillStableHash(text); }
+function historyKeyForPageUrl(pageUrl) { return distillHistoryKey(pageUrl); }
+function pageStateKeyForPageUrl(pageUrl) { return distillPageStateKey(pageUrl); }
 
 async function publishResume(tabId) {
   const s = tabState.get(tabId);
@@ -339,9 +334,18 @@ async function publishResume(tabId) {
     toPanel({ type: 'RESUME_DATA', tabId, item: null });
     return;
   }
-  const key = historyKeyForPageUrl(pageUrl);
-  const bag = await chrome.storage.local.get(key).catch(() => ({}));
-  toPanel({ type: 'RESUME_DATA', tabId, item: bag?.[key] || null });
+  // Prefer the newer full page snapshot (it contains the same fields and more).
+  const keyNew = pageStateKeyForPageUrl(pageUrl);
+  const bagNew = await chrome.storage.local.get(keyNew).catch(() => ({}));
+  const hitNew = bagNew?.[keyNew] || null;
+  if (hitNew) {
+    toPanel({ type: 'RESUME_DATA', tabId, item: hitNew });
+    return;
+  }
+  // Back-compat: older minimal history snapshot.
+  const keyOld = historyKeyForPageUrl(pageUrl);
+  const bagOld = await chrome.storage.local.get(keyOld).catch(() => ({}));
+  toPanel({ type: 'RESUME_DATA', tabId, item: bagOld?.[keyOld] || null });
 }
 
 function persistHistorySnapshot(tabId) {
@@ -362,13 +366,42 @@ function persistHistorySnapshot(tabId) {
   chrome.storage.local.set({ [key]: payload }).catch(() => {});
 }
 
+/**
+ * Persist a compact, URL-keyed page snapshot so reopening the panel restores state
+ * even if the content script doesn't re-emit ARTICLE_DETECTED immediately.
+ * Snapshot shape + size caps live in utils/pageStore.js.
+ */
+function persistPageState(tabId) {
+  const s = tabState.get(tabId);
+  if (!s?.pageUrl) return;
+  const key = pageStateKeyForPageUrl(s.pageUrl);
+  const payload = distillBuildPageStatePayload(s, Date.now());
+  chrome.storage.local.set({ [key]: payload }).catch(() => {});
+}
+
 async function clearHistorySnapshot(tabId) {
   const s = tabState.get(tabId);
   const pageUrl = s?.pageUrl || '';
   if (!pageUrl) return;
-  const key = historyKeyForPageUrl(pageUrl);
-  await chrome.storage.local.remove(key).catch(() => {});
+  const keyOld = historyKeyForPageUrl(pageUrl);
+  const keyNew = pageStateKeyForPageUrl(pageUrl);
+  await chrome.storage.local.remove([keyOld, keyNew]).catch(() => {});
   toPanel({ type: 'RESUME_DATA', tabId, item: null });
+}
+
+/** Remove every saved per-page snapshot (new + legacy). Returns count of pages cleared. */
+async function clearAllSavedHistory() {
+  let all;
+  try { all = await chrome.storage.local.get(null); } catch { return 0; }
+  if (!all) return 0;
+  const keys = [];
+  const hashes = new Set();
+  for (const k of Object.keys(all)) {
+    if (k.startsWith(PAGE_STATE_KEY_PREFIX)) { keys.push(k); hashes.add(k.slice(PAGE_STATE_KEY_PREFIX.length)); }
+    else if (k.startsWith(HISTORY_KEY_PREFIX)) { keys.push(k); hashes.add(k.slice(HISTORY_KEY_PREFIX.length)); }
+  }
+  if (keys.length) await chrome.storage.local.remove(keys).catch(() => {});
+  return hashes.size;
 }
 
 function clearTab(tabId) {
@@ -393,6 +426,7 @@ function clearTab(tabId) {
   if (p) clearTimeout(p);
   pauseExplainTimers.delete(tabId);
   focusModeByTab.delete(tabId);
+  restoredFromStorageTabs.delete(tabId);
   chrome.storage.session.remove(SESSION_TAB_KEY(tabId)).catch(() => {});
 }
 
@@ -419,7 +453,8 @@ function tabSnapshotPayload(tabId) {
     currentQuestion: s.currentQuestion,
     lastSummary: s.lastSummary,
     highlightHistory: s.highlightHistory || [],
-    quiz: s.quiz || defaultQuizState()
+    quiz: s.quiz || defaultQuizState(),
+    explainCache: s.explainCache || null
   };
 }
 
@@ -431,6 +466,8 @@ function persistTabSnapshot(tabId) {
     return;
   }
   chrome.storage.session.set({ [key]: { ...payload, isUpdating: false } }).catch(() => {});
+  // Also persist compact URL-keyed state so reopening the extension restores data.
+  persistPageState(tabId);
 }
 
 function schedulePersistTab(tabId) {
@@ -704,6 +741,54 @@ async function ensureTabHydrated(tabId) {
   quizNextAt.set(tabId, typeof snap.quizNextAt === 'number' ? snap.quizNextAt : QUIZ_EVERY);
 }
 
+function pagePayloadToState(payload) {
+  return distillPagePayloadToState(payload);
+}
+
+async function ensureTabHydratedFromPageState(tabId) {
+  if (tabState.has(tabId)) return true;
+
+  // Prefer existing session snapshot if present.
+  await ensureTabHydrated(tabId);
+  if (tabState.has(tabId)) return true;
+
+  let tabUrl = '';
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    tabUrl = distillPageUrlKey(tab?.url || '');
+  } catch {
+    tabUrl = '';
+  }
+  if (!tabUrl) return false;
+
+  const key = pageStateKeyForPageUrl(tabUrl);
+  const bag = await chrome.storage.local.get(key).catch(() => ({}));
+  const payload = bag?.[key] || null;
+  if (payload && payload.v === DISTILL_PAGE_STATE_VERSION) {
+    // Guard against hash collisions / wrong URL: check embedded pageUrl if present.
+    if (payload.pageUrl && payload.pageUrl !== tabUrl) return false;
+    tabState.set(tabId, pagePayloadToState({ ...payload, pageUrl: tabUrl }));
+    quizNextAt.set(tabId, QUIZ_EVERY);
+    restoredFromStorageTabs.add(tabId);
+    return true;
+  }
+
+  // Migration: no new-format snapshot — hydrate best-effort from the legacy minimal
+  // history snapshot. The next persist writes the new format automatically.
+  const oldKey = historyKeyForPageUrl(tabUrl);
+  const oldBag = await chrome.storage.local.get(oldKey).catch(() => ({}));
+  const oldPayload = oldBag?.[oldKey] || null;
+  if (oldPayload && (oldPayload.lastSummary || oldPayload.title)) {
+    if (oldPayload.pageUrl && oldPayload.pageUrl !== tabUrl) return false;
+    tabState.set(tabId, distillHistoryPayloadToState({ ...oldPayload, pageUrl: tabUrl }));
+    quizNextAt.set(tabId, QUIZ_EVERY);
+    restoredFromStorageTabs.add(tabId);
+    return true;
+  }
+
+  return false;
+}
+
 chrome.tabs.onRemoved.addListener(tabId => {
   clearTab(tabId);
 });
@@ -723,6 +808,7 @@ chrome.runtime.onConnect.addListener(port => {
     switch (msg.type) {
       case 'GET_STATE':
         void (async () => {
+          await ensureTabHydratedFromPageState(msg.tabId);
           await restoreState(msg.tabId);
           await publishSitePrefs(msg.tabId);
           toPanel({ type: 'FOCUS_SYNC', tabId: msg.tabId, on: !!focusModeByTab.get(msg.tabId) });
@@ -746,14 +832,24 @@ chrome.runtime.onConnect.addListener(port => {
         break;
       case 'GET_RESUME':
         void (async () => {
-          await ensureTabHydrated(msg.tabId);
+          await ensureTabHydratedFromPageState(msg.tabId);
           publishResume(msg.tabId);
         })();
         break;
       case 'CLEAR_RESUME':
         void (async () => {
-          await ensureTabHydrated(msg.tabId);
+          await ensureTabHydratedFromPageState(msg.tabId);
           await clearHistorySnapshot(msg.tabId);
+        })();
+        break;
+      case 'CLEAR_ALL_HISTORY':
+        void (async () => {
+          const removed = await clearAllSavedHistory();
+          toPanel({ type: 'ALL_HISTORY_CLEARED', tabId: msg.tabId, removed });
+          if (msg.tabId != null) {
+            restoredFromStorageTabs.delete(msg.tabId);
+            toPanel({ type: 'RESUME_DATA', tabId: msg.tabId, item: null });
+          }
         })();
         break;
       case 'GET_USAGE':
@@ -977,6 +1073,37 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
       case 'ARTICLE_DETECTED': {
         const pageUrl = distillPageUrlKey(msg.pageUrl || '');
         const articleText = clampText(msg.articleText || '', MAX_ARTICLE_TEXT_CHARS);
+
+        // Load any saved snapshot for this URL first (covers a service-worker restart),
+        // so re-detecting the article doesn't wipe the reader's saved progress.
+        await ensureTabHydratedFromPageState(tabId);
+        const existing = tabState.get(tabId);
+        const hasSavedProgress = !!existing && existing.pageUrl === pageUrl && (
+          !!existing.lastSummary ||
+          (Array.isArray(existing.readUnits) && existing.readUnits.length > 0) ||
+          (Array.isArray(existing.readParagraphs) && existing.readParagraphs.length > 0) ||
+          (Array.isArray(existing.highlightHistory) && existing.highlightHistory.length > 0) ||
+          (existing.quiz && existing.quiz.status !== 'idle')
+        );
+
+        if (hasSavedProgress) {
+          // Same article with saved progress → refresh live fields, keep progress, republish.
+          existing.articleText = articleText;
+          existing.totalParagraphs = msg.paragraphCount || existing.totalParagraphs || 0;
+          existing.totalWords = msg.totalWords || existing.totalWords || 0;
+          if (msg.title) existing.title = msg.title;
+          if (!summaryCadenceState.has(tabId)) summaryCadenceState.set(tabId, { lastSummaryAt: 0 });
+          if (!quizNextAt.has(tabId)) quizNextAt.set(tabId, QUIZ_EVERY);
+          persistTabSnapshot(tabId);
+          persistHistorySnapshot(tabId);
+          await restoreState(tabId); // republishes ARTICLE_DETECTED + progress + summary + quiz + highlights
+          void publishResume(tabId);
+          void publishSitePrefs(tabId);
+          break;
+        }
+
+        // Fresh article (new page or no saved progress) → reset.
+        restoredFromStorageTabs.delete(tabId);
         tabState.set(tabId, {
           articleText,
           totalParagraphs:  msg.paragraphCount,
@@ -2080,8 +2207,20 @@ async function restoreState(tabId) {
       feedback: s.quiz.feedback || '',
       paragraphsUntilNextQuiz: paragraphsUntilQuiz(tabId)
     });
+    // A check-in was in progress when the user left — re-freeze the page so the
+    // reader can't scroll past it, matching the normal quiz-start behavior.
+    chrome.tabs.sendMessage(tabId, { type: 'FREEZE_SCROLL' }).catch(() => {});
   }
   broadcastHighlightHistory(tabId);
+
+  // Show a one-time "restored from last time" notice only when state actually came
+  // from persistent storage (not a still-live in-session read).
+  if (restoredFromStorageTabs.has(tabId)) {
+    restoredFromStorageTabs.delete(tabId);
+    if (s.lastSummary || (s.quiz && s.quiz.status !== 'idle') || (s.highlightHistory && s.highlightHistory.length)) {
+      toPanel({ type: 'RESTORED', tabId });
+    }
+  }
 }
 
 // ── Claude API streaming ──────────────────────────────────────────────────────
@@ -2848,8 +2987,40 @@ function normalizeNumber(value) {
 
 const DEFAULT_PREFS_KEY = 'distillDefaultPrefsApplied';
 
+/**
+ * Retention/pruning: keep at most DISTILL_MAX_SAVED_PAGES saved pages, each for
+ * DISTILL_PAGE_STATE_TTL_MS. Evicts expired + oldest-beyond-cap snapshots, removing
+ * both the new (distillPageState_) and legacy (distillHist_) key for each page hash.
+ */
+async function prunePageStates() {
+  let all;
+  try { all = await chrome.storage.local.get(null); } catch { return; }
+  if (!all) return;
+  const byHash = new Map();
+  for (const [k, v] of Object.entries(all)) {
+    let hash = null;
+    if (k.startsWith(PAGE_STATE_KEY_PREFIX)) hash = k.slice(PAGE_STATE_KEY_PREFIX.length);
+    else if (k.startsWith(HISTORY_KEY_PREFIX)) hash = k.slice(HISTORY_KEY_PREFIX.length);
+    else continue;
+    const updatedAt = v && typeof v.updatedAt === 'number' ? v.updatedAt : 0;
+    const cur = byHash.get(hash);
+    if (!cur || updatedAt > cur.updatedAt) byHash.set(hash, { hash, updatedAt });
+  }
+  if (!byHash.size) return;
+  const removeHashes = distillSelectPrunedKeys([...byHash.values()], {
+    maxPages: DISTILL_MAX_SAVED_PAGES,
+    ttlMs: DISTILL_PAGE_STATE_TTL_MS,
+    now: Date.now()
+  });
+  if (!removeHashes.length) return;
+  const keys = [];
+  for (const h of removeHashes) keys.push(`${PAGE_STATE_KEY_PREFIX}${h}`, `${HISTORY_KEY_PREFIX}${h}`);
+  await chrome.storage.local.remove(keys).catch(() => {});
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   chrome.alarms.create('distillFlushOffline', { periodInMinutes: 3 }).catch(() => {});
+  chrome.alarms.create('distillPrunePages', { periodInMinutes: 360 }).catch(() => {});
   void chrome.storage.local.get([USE_BACKEND_PROXY_KEY, AI_PROVIDER_KEY, 'backendTarget', DEFAULT_PREFS_KEY], bag => {
     const patch = {};
     if (!bag[DEFAULT_PREFS_KEY]) {
@@ -2865,8 +3036,12 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm.name === 'distillFlushOffline') void tryFlushOfflineQueue();
+  else if (alarm.name === 'distillPrunePages') void prunePageStates();
 });
+// Ensure the prune alarm exists even on SW restart (onInstalled only fires on install/update).
+chrome.alarms.create('distillPrunePages', { periodInMinutes: 360 }).catch(() => {});
 void tryFlushOfflineQueue();
+void prunePageStates();
 
 void useBackendProxy().then(on => {
   if (on) void ensureBackendToken();

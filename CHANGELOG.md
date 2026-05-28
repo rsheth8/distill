@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented here. The extension version is defined in `extension/manifest.json` (Chrome Web Store uses that value).
 
+## [2.3.0] — 2026-05-28
+
+### Added
+
+- **Resume now survives page reloads, not just panel reopens.** `ARTICLE_DETECTED` re-detection no longer wipes saved progress: if a saved snapshot exists for the same URL it's merged (live article text refreshed, progress/summary/highlights/quiz kept) and republished, instead of resetting to a blank state.
+- **Retention + pruning for saved page state.** At most `DISTILL_MAX_SAVED_PAGES` (60) pages are kept, each for 45 days; expired and oldest-beyond-cap snapshots are evicted (new + legacy keys) on a 6h alarm and at startup. Per-snapshot size caps already applied.
+- **Legacy→new migration.** When only the old minimal `distillHist_` snapshot exists, full tab state is hydrated best-effort from it (then re-saved in the new format).
+- **Quiz freeze re-applies on restore.** Reopening with an in-progress check-in re-sends `FREEZE_SCROLL` so the page stays gated until answered.
+- **Resume UX:** a one-time "Restored your progress from last time" toast (only when state actually came from persistent storage), a **Settings → Clear all saved history** control, and a fix so the resume card shows the correct read-paragraph count (`readCount` now in the snapshot).
+
+### Changed
+
+- Pure persistence logic extracted to **`extension/utils/pageStore.js`** (hash, keys, payload build incl. caps, payload↔state, legacy migration, prune selector) — unit-tested (`tests/unit/pageStore.test.mjs`, 12 tests, 100% line coverage). `background.js` now wraps these.
+
 ## [2.2.0] — 2026-05-28
 
 ### Changed
