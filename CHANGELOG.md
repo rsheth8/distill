@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here. The extension version is defined in `extension/manifest.json` (Chrome Web Store uses that value).
 
+## [2.0.4] — 2026-05-28
+
+### Changed
+
+- **Free-tier 429s are now handled gracefully instead of surfaced as errors.** Distill's reading companion fires several short calls while you scroll (progressive summaries + tips), which could burst past Gemini's free per-minute limit. Two mitigations in `streamGemini`:
+  - **Throttle:** the start of Gemini calls is serialized with a minimum gap so bursts get spaced out and can't exceed the per-minute limit.
+  - **Auto-retry on 429:** rate-limited requests transparently wait out the server's `retry-after` (capped at 30s, up to 2 attempts) and then succeed, so a background summary just appears a little later rather than showing a "free-tier limit reached" error. The error is only shown if retries are exhausted. Aborts during the wait are respected.
+
 ## [2.0.3] — 2026-05-28
 
 ### Fixed

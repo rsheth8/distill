@@ -2352,13 +2352,41 @@ async function streamClaude({ apiKey, signal, systemPrompt, messages, maxTokens 
 
 // ── Gemini API streaming (direct, user's own free key) ────────────────────────
 
+// Serialize the START of Gemini calls with a minimum gap so a burst (progressive
+// summaries + "now" tips while scrolling) can't blow past the free-tier per-minute
+// limit. Calls still run to completion concurrently; only their kickoff is spaced.
+const GEMINI_MIN_GAP_MS = 1500;
+const GEMINI_RATELIMIT_MAX_WAIT_MS = 30_000; // cap auto-wait so the SW isn't parked too long
+let geminiGateChain = Promise.resolve();
+let geminiLastStartedAt = 0;
+function geminiThrottle() {
+  const run = geminiGateChain.then(async () => {
+    const wait = geminiLastStartedAt + GEMINI_MIN_GAP_MS - Date.now();
+    if (wait > 0) await delay(wait);
+    geminiLastStartedAt = Date.now();
+  });
+  geminiGateChain = run.catch(() => {});
+  return run;
+}
+
+function abortedError() {
+  const e = new Error('Aborted');
+  e.name = 'AbortError';
+  return e;
+}
+
 async function streamGemini({ apiKey, signal, systemPrompt, messages, maxTokens = 256, onChunk, onDone, onError }) {
   const body = distillBuildGeminiRequestBody({ systemPrompt, messages, maxTokens, temperature: 0.5 });
   const url = `${GEMINI_API_BASE}/models/${GEMINI_MODEL}:streamGenerateContent?alt=sse`;
 
+  await geminiThrottle();
+  if (signal?.aborted) { onError(abortedError()); return; }
+
   let response;
   let attempt = 0;
-  // Retry once with backoff on a transient (5xx) overload, before any bytes stream.
+  // Auto-recover before any bytes stream: retry transient 5xx overloads, and
+  // transparently wait out free-tier 429 rate limits using the server's retry-after
+  // (so background summaries just appear a little later instead of erroring).
   for (;;) {
     try {
       response = await fetch(url, {
@@ -2377,6 +2405,16 @@ async function streamGemini({ apiKey, signal, systemPrompt, messages, maxTokens 
     if (info.retryable && response.status >= 500 && attempt < 1) {
       attempt++;
       await delay(800);
+      if (signal?.aborted) { onError(abortedError()); return; }
+      continue;
+    }
+
+    if (info.code === 'GEMINI_RATE_LIMIT' && attempt < 2) {
+      const sec = distillParseGeminiRetrySeconds(errBody) || parseRetryAfterSeconds(response, {}) || 0;
+      const waitMs = Math.min(Math.max(sec, 3) * 1000, GEMINI_RATELIMIT_MAX_WAIT_MS);
+      attempt++;
+      await delay(waitMs);
+      if (signal?.aborted) { onError(abortedError()); return; }
       continue;
     }
 
