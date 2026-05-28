@@ -135,9 +135,9 @@ const AI_PROVIDER_KEY = 'aiProvider';
 const GEMINI_API_KEY_STORAGE = 'geminiApiKey';
 const ANTHROPIC_API_KEY_STORAGE = 'anthropicApiKey';
 const DEFAULT_AI_PROVIDER = 'gemini';
-// flash-lite has ~2x the free-tier RPM of flash and is faster — better suited to
-// Distill's many short reading-companion calls (summaries, tips, analysis).
-const GEMINI_MODEL = 'gemini-2.0-flash-lite';
+// gemini-2.0-flash is the broadly-available free-tier model. (flash-lite was tried
+// but offers no clear free-tier advantage and varies by account eligibility.)
+const GEMINI_MODEL = 'gemini-2.0-flash';
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));

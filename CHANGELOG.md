@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here. The extension version is defined in `extension/manifest.json` (Chrome Web Store uses that value).
 
+## [2.0.5] — 2026-05-28
+
+### Fixed
+
+- **Distinguish "no free-tier quota" / "daily quota exhausted" from a transient per-minute limit.** Gemini returns HTTP 429 for all three, but a project with `limit: 0` (no free-tier eligibility — needs billing, or account/region not eligible) or a used-up daily quota will *never* succeed on retry. Distill was treating these as transient: it waited ~30s and then failed with a misleading "retry after Ns" message, which made the extension appear broken. `distillClassifyGeminiError` now returns `GEMINI_NO_FREE_QUOTA` / `GEMINI_DAILY_QUOTA` (non-retryable, with clear guidance to enable billing or switch provider) vs. `GEMINI_RATE_LIMIT` (per-minute, retried). Verified against the live API.
+- **Reverted default model to `gemini-2.0-flash`** (from `gemini-2.0-flash-lite`). flash-lite offered no reliable free-tier advantage and varies by account eligibility.
+- **Backend tests are now hermetic w.r.t. a local `backend/.env`.** `http.integration` neutralizes `GEMINI_API_KEY` as well as `ANTHROPIC_API_KEY`, so a developer's real `.env` (loaded by dotenv in `server.js`) can no longer leak a key and flip the `aiReady`/`anthropicKeyConfigured` config flags during tests.
+
 ## [2.0.4] — 2026-05-28
 
 ### Changed

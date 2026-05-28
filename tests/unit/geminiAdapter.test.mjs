@@ -118,10 +118,22 @@ describe('distillClassifyGeminiError', () => {
   it('maps 403 to a permissions hint', () => {
     expect(distillClassifyGeminiError(403, { error: { message: 'permission denied' } }).code).toBe('GEMINI_FORBIDDEN');
   });
-  it('marks 429 retryable rate limit', () => {
-    const r = distillClassifyGeminiError(429, { error: { message: 'Resource has been exhausted' } });
+  it('marks a transient per-minute 429 as retryable', () => {
+    const r = distillClassifyGeminiError(429, { error: { message: 'Resource has been exhausted (per minute).' } });
     expect(r.code).toBe('GEMINI_RATE_LIMIT');
     expect(r.retryable).toBe(true);
+  });
+  it('detects a "limit: 0" no-free-quota account (not retryable)', () => {
+    const r = distillClassifyGeminiError(429, { error: { message: 'Quota exceeded ... limit: 0, model: gemini-2.0-flash' } });
+    expect(r.code).toBe('GEMINI_NO_FREE_QUOTA');
+    expect(r.retryable).toBe(false);
+    expect(r.message).toMatch(/no free-tier quota/i);
+  });
+  it('detects daily-quota exhaustion via quotaId (not retryable)', () => {
+    const body = { error: { message: 'Quota exceeded', details: [{ '@type': 'type.googleapis.com/google.rpc.QuotaFailure', violations: [{ quotaId: 'GenerateRequestsPerDayPerProjectPerModel-FreeTier' }] }] } };
+    const r = distillClassifyGeminiError(429, body);
+    expect(r.code).toBe('GEMINI_DAILY_QUOTA');
+    expect(r.retryable).toBe(false);
   });
   it('marks 5xx as retryable overload', () => {
     expect(distillClassifyGeminiError(503, null)).toMatchObject({ code: 'GEMINI_OVERLOADED', retryable: true });

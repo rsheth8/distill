@@ -139,7 +139,31 @@ function distillClassifyGeminiError(status, body) {
     return { code: 'GEMINI_FORBIDDEN', message: 'This key can’t access the Gemini API. Enable the Generative Language API for it, or create a new key at aistudio.google.com/apikey.', retryable: false };
   }
   if (status === 429) {
-    return { code: 'GEMINI_RATE_LIMIT', message: 'Gemini’s free-tier limit was reached.', retryable: true };
+    const violations =
+      (body && body.error && Array.isArray(body.error.details)
+        ? body.error.details.find(d => d && typeof d['@type'] === 'string' && d['@type'].includes('QuotaFailure'))
+        : null)?.violations || [];
+    const quotaIds = violations.map(v => (v && v.quotaId) || '').join(' ');
+
+    // "limit: 0" means this project/account has NO free-tier allowance at all
+    // (billing required, or region/account not eligible). Retrying never helps.
+    if (/limit:\s*0\b/.test(apiMsg)) {
+      return {
+        code: 'GEMINI_NO_FREE_QUOTA',
+        retryable: false,
+        message: 'This Gemini key has no free-tier quota (limit 0). The Google Cloud project likely needs billing enabled, or your account/region isn’t eligible for the free tier. In Settings you can switch to Anthropic, or enable billing for this key.'
+      };
+    }
+    // Daily quota exhausted — resets in hours, not seconds; don't busy-retry.
+    if (/PerDay/i.test(quotaIds) || /per[- ]?day/i.test(apiMsg)) {
+      return {
+        code: 'GEMINI_DAILY_QUOTA',
+        retryable: false,
+        message: 'Your Gemini free daily limit is used up (resets about once every 24h). Try again later, or switch provider / use Ultra-lean mode in Settings.'
+      };
+    }
+    // Genuine transient per-minute limit — safe to wait out and retry.
+    return { code: 'GEMINI_RATE_LIMIT', message: 'Gemini’s per-minute free limit was reached.', retryable: true };
   }
   if (status === 404) {
     return { code: 'GEMINI_MODEL', message: 'This Gemini model isn’t available for your key right now. Try again later.', retryable: false };

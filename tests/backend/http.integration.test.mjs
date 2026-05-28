@@ -26,7 +26,10 @@ beforeAll(() => {
   process.env.KILL_SWITCH_GUEST_AUTH = '0';
   process.env.DAILY_CREDITS = '5000';
   process.env.CORS_ORIGIN = '*';
+  // Neutralize BOTH provider keys so a developer's local backend/.env (loaded by
+  // dotenv in server.js) can't leak a real key and flip the aiReady/config flags.
   process.env.ANTHROPIC_API_KEY = '';
+  process.env.GEMINI_API_KEY = '';
   process.env.PORT = '59999';
   process.env.ENABLE_ADMIN_ROUTES = '0';
 
