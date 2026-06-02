@@ -9,9 +9,10 @@ developer-operated backend in the default build.
 
 - [x] Contact email set to `rahilsheth05@gmail.com` in `docs/PRIVACY.md` and `docs/privacy.html`.
 - [ ] Host `docs/privacy.html` at a public URL (e.g. GitHub Pages) → use as the **Privacy policy URL**.
-- [ ] Confirm `extension/manifest.json` `version` is bumped (currently `2.0.0`) and matches `CHANGELOG.md`.
-- [ ] Zip the **contents of `extension/`** (so `manifest.json` is at the zip root) — do **not** zip the repo root.
-  - `cd extension && zip -r ../distill-<version>.zip . -x '*.DS_Store'`
+- [ ] Confirm `extension/manifest.json` `version` is bumped and matches `CHANGELOG.md` (currently **2.4.0**).
+- [ ] Build the store zip from the repo root (BYOK-only; strips hosted-backend UI):
+  - `npm run pack` → `dist/distill-<version>.zip`
+  - Or manually zip **`extension/`** only if you do not need the pack script's `buildConfig` rewrite.
 - [ ] Verify icons are PNG (16/32/48/128) — done in `extension/icons/`.
 - [ ] Create store assets (see below).
 - [ ] Fill the Privacy practices / data-usage form (answers below).
@@ -36,20 +37,20 @@ developer-operated backend in the default build.
 > summary of what you've read so far, offers optional comprehension check-ins, explains
 > highlighted passages, and shows reading-time and focus affordances.
 >
-> Distill is free and private by design: it uses **your own** AI key (a free Google
-> Gemini key works great — no credit card required), and your article text goes straight
-> from your browser to the AI provider. There is no Distill server in the middle, no
-> account, and no tracking.
+> Distill is free and private by design: it uses **your own** AI key (a free **Groq**
+> or **Google Gemini** key works — no credit card on those tiers), and your article
+> text goes straight from your browser to the AI provider. There is no Distill server
+> in the middle, no account, and no tracking.
 >
-> Getting started takes about a minute: open the side panel, click "Get a free Gemini
-> key", paste it in, and read.
+> Getting started takes about a minute: open the side panel, get a free API key
+> (Groq by default), paste it in, and read.
 >
 > Features:
 > • Progressive "so far" summaries that never spoil what's ahead
 > • One-tap "explain this page" and highlight analysis
 > • Optional comprehension check-ins
 > • Reading time, focus mode, and per-site preferences
-> • Bring your own key: Google Gemini (free tier) or Anthropic Claude
+> • Bring your own key: Groq (free), Gemini (free where eligible), OpenAI, or Anthropic
 
 ## Permission justifications
 
@@ -90,8 +91,8 @@ download or `eval` external scripts.
 
 ## Notes for reviewers (paste into the review notes field)
 
-> Distill requires an AI API key supplied by the user (free Google Gemini works). To test:
-> open the side panel on any article, expand the onboarding card or Settings, paste a
-> Gemini API key (from https://aistudio.google.com/apikey), click Connect/Test key, then
-> use "Summary"/"Explain page". The extension contacts only the chosen AI provider's API
-> with the user's key; there is no developer backend in this build.
+> Distill requires an AI API key supplied by the user (free Groq or Gemini works). To test:
+> open the side panel on any article, complete onboarding or open Settings, paste a
+> Groq key (https://console.groq.com/keys) or Gemini key (https://aistudio.google.com/apikey),
+> click Connect/Test key, then use Summary or Explain page. The extension contacts only
+> the chosen AI provider with the user's key; the Web Store build has no developer backend.

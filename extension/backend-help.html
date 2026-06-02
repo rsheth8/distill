@@ -37,7 +37,9 @@ npm install --prefix backend
 npm start --prefix backend</pre>
 
     <p class="hint">
-      Make sure <code>ANTHROPIC_API_KEY</code> is set in <code>backend/.env</code>. The backend listens on <code>http://localhost:8787</code>.
+      Set <code>BACKEND_SECRET</code> and at least one LLM key in <code>backend/.env</code>
+      (e.g. <code>GEMINI_API_KEY</code> — see <code>backend/.env.example</code>).
+      The backend listens on <code>http://localhost:8787</code>.
     </p>
   </body>
 </html>

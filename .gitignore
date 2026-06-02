@@ -1,9 +1,12 @@
 .DS_Store
 
-# Local secrets / env
+# Local secrets / env (keep *.example templates in git)
 backend/.env
 .env
-.env.*
+.env.local
+.env.*.local
+!.env.example
+!**/.env.example
 
 # Local backend state (never commit runtime DB or CI temp files)
 backend/data/state.json

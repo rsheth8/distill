@@ -1,6 +1,8 @@
-# Distill Backend (MVP)
+# Distill Backend (optional)
 
-Project overview, repo layout, and local quick start: **[`../README.md`](../README.md)**.
+Hosted API for **shared-quota** mode (guest JWT, SSE streaming, daily credits, rate limits). **Not required** for the default BYOK extension build (`npm run pack` ships without backend UI).
+
+Project overview and extension quick start: **[`../README.md`](../README.md)**.
 
 Implements the required public-launch endpoints (full reference: **[`../docs/api.md`](../docs/api.md)**):
 

@@ -1,6 +1,6 @@
 # Supabase SQL queries (usage dashboard)
 
-Runnable in **Supabase SQL Editor** or **Metabase** (native query). See **[`../../docs/USAGE_DASHBOARD.md`](../../docs/USAGE_DASHBOARD.md)** for setup.
+Runnable in **Supabase SQL Editor** or **Metabase** (native query). Requires the `distill_user_state` table from [`../migrations/`](../migrations/). Setup guide: **[`../../docs/USAGE_DASHBOARD.md`](../../docs/USAGE_DASHBOARD.md)**.
 
 | File | Purpose |
 |------|---------|
