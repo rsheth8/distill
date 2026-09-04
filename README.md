@@ -1,5 +1,10 @@
 # Distill
 
+<p align="center">
+  <img src="docs/brand/logo.png" width="168" alt="Distill">
+</p>
+
+
 Chrome side panel that summarizes long articles as you scroll, explains highlights, and uses **your** API key — no Distill server in the middle unless you opt in.
 
 | | |
@@ -165,3 +170,10 @@ The backend listens on `http://localhost:8787` by default (`curl http://localhos
 - **Offline resilience.** `background.js` maintains an offline job queue (`OFFLINE_QUEUE_KEY`) that dedupes and retries AI tasks (like "explain page") if they fail while the backend or network is unreachable, flushing them once connectivity returns.
 - **Per-site preferences.** Users can force "backend-only" mode for specific origins (`SITE_PREFS_KEY`), useful for sites where they don't want their own key used.
 - **Content script exclusions.** The content script deliberately does not run on sensitive Google properties (Gmail, Docs, Drive, Calendar, Meet, Chat) or AI console pages, to avoid interfering with those apps or extracting irrelevant/sensitive content.
+
+## Contributing
+
+PRs and issues welcome. How to run tests, env vars, and the expected layout: [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Don't commit `.env`, API keys, or personal recordings.
+
