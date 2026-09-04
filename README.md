@@ -1,6 +1,13 @@
 # Distill
 
-A Chrome extension that turns long articles into progressive AI summaries, highlight explanations, and reading-time tools — using an AI key you supply yourself, so your reading stays between your browser and your chosen AI provider.
+Chrome side panel that summarizes long articles as you scroll, explains highlights, and uses **your** API key — no Distill server in the middle unless you opt in.
+
+| | |
+| --- | --- |
+| **Author** | [Rahil Sheth](https://github.com/rsheth8) |
+| **Repo** | [rsheth8/distill](https://github.com/rsheth8/distill) |
+| **Stack** | Chrome Extension Manifest V3 (vanilla JS), optional Node/Express backend |
+| **Status** | Load-unpacked / BYOK. Packaged Web Store build is BYOK-only; hosted backend is off by default. |
 
 ## What this is
 
