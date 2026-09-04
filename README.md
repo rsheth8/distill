@@ -1,18 +1,25 @@
-# Distill
-
 <p align="center">
-  <img src="docs/brand/logo.png" width="168" alt="Distill">
+  <img src="docs/brand/logo.png" width="128" alt="Distill">
 </p>
 
+<h1 align="center">Distill</h1>
 
-Chrome side panel that summarizes long articles as you scroll, explains highlights, and uses **your** API key — no Distill server in the middle unless you opt in.
+<p align="center">
+  A side panel that reads with you. Your key. Your provider. No middleman.
+</p>
 
-| | |
-| --- | --- |
-| **Author** | [Rahil Sheth](https://github.com/rsheth8) |
-| **Repo** | [rsheth8/distill](https://github.com/rsheth8/distill) |
-| **Stack** | Chrome Extension Manifest V3 (vanilla JS), optional Node/Express backend |
-| **Status** | Load-unpacked / BYOK. Packaged Web Store build is BYOK-only; hosted backend is off by default. |
+<p align="center">
+  <a href="https://github.com/rsheth8/distill">Source</a>&nbsp;·&nbsp;<a href="CONTRIBUTING.md">Run locally</a>
+</p>
+
+<p align="center">
+  <img alt="Chrome" src="https://img.shields.io/badge/Chrome-MV3-4285F4?style=flat-square&logo=googlechrome&logoColor=white">
+  <img alt="BYOK" src="https://img.shields.io/badge/AI-bring%20your%20own%20key-111111?style=flat-square">
+</p>
+
+<p align="center"><sub>Load unpacked. The Web Store pack is BYOK-only.</sub></p>
+
+---
 
 ## What this is
 
