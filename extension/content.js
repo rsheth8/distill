@@ -225,6 +225,23 @@
     return (text || '').trim().split(/\s+/).filter(Boolean).length;
   }
 
+  /** Paper section headings (h2) in page order; filled when a paper is detected. */
+  let sectionHeads = [];
+
+  /** Heading of the last section that starts before el, e.g. "Methods". */
+  function sectionOf(el) {
+    let heading = null;
+    for (const h of sectionHeads) {
+      if (!el || !(h.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING)) break;
+      heading = h;
+    }
+    return heading ? distillCleanHeading(distillNodeText(heading)).slice(0, 120) : '';
+  }
+
+  function sendActiveParagraph(idx) {
+    safeSend({ type: 'ACTIVE_PARAGRAPH', text: getParagraphUnitText(idx), section: sectionOf(paragraphs[idx]) });
+  }
+
   function getParagraphUnitText(startIdx) {
     if (startIdx < 0 || startIdx >= paragraphs.length) return '';
     const first = paragraphs[startIdx]?.innerText?.trim() || '';
@@ -310,7 +327,7 @@
       next.classList.remove('air-read', 'air-dim');
       next.classList.add('air-active');
       if (focusMode) setFocusMode(true);
-      safeSend({ type: 'ACTIVE_PARAGRAPH', text: getParagraphUnitText(wordParaIdx) });
+      sendActiveParagraph(wordParaIdx);
       wordParaSpans = wrapWords(next);
       wordIdx       = 0;
       if (!wordParaSpans.length) { advanceWord(); return; }
@@ -797,6 +814,7 @@
     paragraphs = Array.from(
       articleEl.querySelectorAll('h1, h2, h3, h4, p, li')
     ).filter(el => el.innerText.trim().length >= MIN_PARA_LEN);
+    if (paper) sectionHeads = Array.from(articleEl.querySelectorAll('h2'));
 
     const titleEl = articleEl.querySelector('h1') || document.querySelector('h1');
     const title   = (paper?.title || titleEl?.innerText.trim() || document.title || '').slice(0, 140);
@@ -821,7 +839,7 @@
       if (paragraphs.length > 0) {
         activeParagraphEl = paragraphs[0];
         paragraphs[0].classList.add('air-active');
-        safeSend({ type: 'ACTIVE_PARAGRAPH', text: getParagraphUnitText(0) });
+        sendActiveParagraph(0);
       }
       initialDone = true;
     }, 300);
@@ -873,7 +891,7 @@
         best.classList.remove('air-read', 'air-dim');
         best.classList.add('air-active');
         const idx = paragraphs.indexOf(best);
-        safeSend({ type: 'ACTIVE_PARAGRAPH', text: getParagraphUnitText(idx) });
+        sendActiveParagraph(idx);
       }
     }
   }

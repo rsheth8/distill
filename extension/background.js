@@ -1,6 +1,6 @@
 'use strict';
 
-importScripts('utils/buildConfig.js', 'utils/pageUrlKey.js', 'utils/backendEnv.js', 'utils/aiResultCache.js', 'utils/geminiAdapter.js', 'utils/openaiCompatAdapter.js', 'utils/pageStore.js', 'utils/paperExtractor.js');
+importScripts('utils/buildConfig.js', 'utils/pageUrlKey.js', 'utils/backendEnv.js', 'utils/aiResultCache.js', 'utils/geminiAdapter.js', 'utils/openaiCompatAdapter.js', 'utils/pageStore.js', 'utils/paperExtractor.js', 'utils/prompts.js');
 
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
 
@@ -543,6 +543,7 @@ function tailReadUnits(s, count = 3, maxChars = MAX_CONTEXT_CHARS) {
 }
 
 function firstParagraph(s) {
+  if (s?.paper?.abstract) return s.paper.abstract;
   if (!s?.articleText) return '';
   const chunks = s.articleText.split(/\n\s*\n/).map(t => t.trim()).filter(Boolean);
   return chunks[0] || '';
@@ -1182,6 +1183,8 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
       case 'ACTIVE_PARAGRAPH': {
         const para = (msg.text || '').trim();
         if (para) lastActiveParagraphByTab.set(tabId, para);
+        const st = tabState.get(tabId);
+        if (st && msg.section) st.section = { heading: msg.section, kind: distillSectionKind(msg.section) };
         scheduleMaybeAutoNow(tabId, para);
         void schedulePauseToExplain(tabId, para);
         break;
@@ -1419,17 +1422,10 @@ async function streamNowReading(tabId, paragraphText, opts = {}) {
       noAuthMessage: 'No API key set — click ⚙ to add your Anthropic API key.',
       context: {
         title: s.title || '',
-        recent: recentContext || '(start of article)'
+        recent: recentContext || '',
+        section: s.section
       },
       input: { paragraph: clampedParagraph },
-      systemPrompt: 'You are a reading companion. Give one crisp sentence that helps the reader keep momentum.',
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: `Recent context:\n\n${recentContext || '(start of article)'}` },
-          { type: 'text', text: `Current paragraph:\n\n"${clampedParagraph}"\n\nIn ONE plain sentence (max 22 words), say what this means and why it matters.` }
-        ]
-      }],
       onChunk: chunk => {
         nowText += chunk;
         toPanel({ type: 'NOW_CHUNK', chunk, tabId });
@@ -1504,25 +1500,11 @@ async function updateSummary(tabId) {
         priorGist: priorGist || '',
         recent: recent || '',
         fresh: freshText || '',
+        prevSummary: s.lastSummary || '',
+        section: s.section,
         readCount
       },
       input: { readSoFar: readText, freshRead: freshText },
-      systemPrompt: 'You are a reading companion. Summarize only what the reader has read so far — never hint at what comes next.',
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: `Article title: ${s.title || '(untitled)'}` },
-          { type: 'text', text: `Opening paragraph:\n\n${opener || '(not available)'}` },
-          !isFirstSummary ? { type: 'text', text: `Previous summary:\n\n${s.lastSummary}` } : null,
-          { type: 'text', text: `Most recent read context:\n\n${recent || '(none yet)'}` },
-          isFirstSummary
-            ? { type: 'text', text: `Read so far (${readCount} paragraph(s)):\n\n${readText}` }
-            : { type: 'text', text: `Newly read section since last update:\n\n${freshText || '(no significant change)'}` },
-          isFirstSummary
-            ? { type: 'text', text: 'Write only what was read. Format exactly: one line "The gist: ..." plus up to 3 short bullets. No headings. No markdown.' }
-            : { type: 'text', text: 'Continue the summary with 1-3 NEW bullets for the newly read section. Keep previous details intact, avoid repeated points, and do not add headings.' }
-        ].filter(Boolean)
-      }],
       onChunk: chunk => { summary += chunk; toPanel({ type: 'SUMMARY_CHUNK', chunk, tabId }); },
       onDone:  ()    => {
         const merged = isFirstSummary
@@ -1574,16 +1556,8 @@ async function generateQuestion(tabId) {
       task: 'quiz_question',
       s,
       noAuthMessage: 'No API key set — click ⚙ to add your Anthropic API key.',
-      context: { title: s.title || '', recent: recentText },
+      context: { title: s.title || '', recent: recentText, section: s.section },
       input: {},
-      systemPrompt: 'You generate single, focused comprehension questions to test reading understanding.',
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: `The reader just finished:\n\n${recentText}` },
-          { type: 'text', text: 'Ask ONE short, specific comprehension question about this section only. Output only the question.' }
-        ]
-      }],
       onChunk: chunk => { question += chunk; toPanel({ type: 'QUIZ_CHUNK', chunk, tabId }); },
       onDone:  ()    => {
         if (s) {
@@ -1645,14 +1619,6 @@ async function evaluateAnswer(tabId, question, answer) {
       noAuthMessage: 'No API key set — click ⚙ to add your Anthropic API key.',
       context: { title: s.title || '', recent },
       input: { question, answer: safeAnswer },
-      systemPrompt: 'You give brief, encouraging feedback on reading comprehension answers. Be warm and specific.',
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: `Recent section:\n\n${recent}` },
-          { type: 'text', text: `Question: ${question}\nReader answer: "${safeAnswer}"\n\nGive 2-3 supportive sentences: correctness + what was right/missed.` }
-        ]
-      }],
       onChunk: chunk => {
         feedbackText += chunk;
         if (s?.quiz) s.quiz.feedback = feedbackText;
@@ -1711,14 +1677,6 @@ async function generateSkippedReview(tabId, question) {
       noAuthMessage: '',
       context: { title: s.title || '', recent: tailReadUnits(s, 3, MAX_CONTEXT_CHARS) },
       input: { question, answer: 'Skipped' },
-      systemPrompt: 'You provide concise reading-comprehension coaching.',
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: `Recent section:\n\n${tailReadUnits(s, 3, MAX_CONTEXT_CHARS)}` },
-          { type: 'text', text: `Question: ${question}\n\nThe reader skipped this check-in.\nProvide a short model answer and one key takeaway in 2-3 sentences.` }
-        ]
-      }],
       onChunk: chunk => { feedbackText += chunk; },
       onDone: () => {
         pushQuizHistoryItem(s, {
@@ -1775,14 +1733,6 @@ async function runExplainStream(tabId, pageText, opts = {}) {
       noAuthMessage: 'No API key set — click ⚙ to add your Anthropic API key.',
       context: {},
       input: { pageText },
-      systemPrompt: 'You explain web pages in plain, friendly language.',
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: `Page content:\n\n${pageText}`, cache_control: { type: 'ephemeral' } },
-          { type: 'text', text: 'Explain this web page in plain, friendly language. Cover what kind of page it is, what it\'s about (2–3 sentences), and who it\'s for. Under 120 words. No bullet points.' }
-        ]
-      }],
       onChunk: chunk => {
         explainText += chunk;
         toPanel({ type: 'EXPLAIN_CHUNK', chunk, tabId });
@@ -1917,19 +1867,8 @@ async function runAnalyzeStream(tabId, s, ctx, rawSelection, opts = {}) {
       task: 'analysis',
       s,
       noAuthMessage: 'No API key set.',
-      context: { title: s.title || '', opener, priorGist, recent },
+      context: { title: s.title || '', opener, priorGist, recent, section: s.section },
       input: { selection: selectedText },
-      systemPrompt: 'You add context and depth to highlighted text.',
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: `Article title: ${s.title || '(untitled)'}` },
-          { type: 'text', text: `Opening paragraph:\n\n${opener || '(not available)'}` },
-          priorGist ? { type: 'text', text: `Article gist so far:\n${priorGist}` } : null,
-          { type: 'text', text: `Recent reading context:\n\n${recent}` },
-          { type: 'text', text: `Highlighted:\n\n"${selectedText}"\n\nExplain in context in 3-5 conversational sentences.` }
-        ].filter(Boolean)
-      }],
       onChunk: chunk => {
         analysisText += chunk;
         toPanel({ type: 'ANALYSIS_CHUNK', chunk, tabId });
@@ -2262,8 +2201,6 @@ async function streamTask({
   noAuthMessage = 'No API key set.',
   context = {},
   input = {},
-  systemPrompt,
-  messages,
   onChunk,
   onDone,
   onError
@@ -2278,13 +2215,16 @@ async function streamTask({
       noAuthMessage,
       context,
       input,
-      systemPrompt,
-      messages,
       onChunk,
       onDone,
       onError
     }));
   }
+  const { system: systemPrompt, blocks, cacheFirst } = distillBuildPrompt(task, context, input);
+  const messages = [{
+    role: 'user',
+    content: blocks.map((text, i) => ({ type: 'text', text, ...(cacheFirst && i === 0 ? { cache_control: { type: 'ephemeral' } } : {}) }))
+  }];
   const aiMode = await getAiMode();
   const taskMaxTokens = maxTokensForTask(task, aiMode);
   const globalUseBackend = await useBackendProxy();
