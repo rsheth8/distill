@@ -80,7 +80,7 @@ describe('distillExtractPaper — citation meta tags', () => {
   it('builds a paper from meta tags and flags preprint hosts', () => {
     const paper = distillExtractPaper(parse(META_HTML), 'https://www.biorxiv.org/content/10.1101/2024.01.01.123456v1');
     expect(paper).toMatchObject({
-      source: 'generic',
+      source: 'biorxiv',
       isPreprint: true,
       title: 'A Study of Things',
       authors: ['Jane Doe', 'John Roe'],
@@ -99,6 +99,67 @@ describe('distillExtractPaper — citation meta tags', () => {
   });
 });
 
+const META_HEAD = `<head><meta name="citation_title" content="Paper"><meta name="citation_author" content="A. Author"></head>`;
+
+describe('distillExtractPaper — journal bodies', () => {
+  it('PubMed Central: walks the article body, labels figures from their heading', () => {
+    const html = `<html>${META_HEAD}<body>
+      <section class="front-matter"><h3>A. Author</h3></section>
+      <section class="body main-article-body">
+        <section class="abstract"><h2>Abstract</h2><p>We found a virus.</p></section>
+        <section><h2>Main</h2><p>Story.</p>
+          <figure><h3>Fig. 1. Genome.</h3><figcaption><p>a, Reads.</p></figcaption></figure>
+        </section>
+        <section><h2>Methods</h2><h3>Sampling</h3><p>Bats were sampled.</p></section>
+        <section><h2>Competing interests</h2><p>None declared.</p></section>
+        <section><h2>Footnotes</h2><p>Note.</p></section>
+        <section class="ref-list"><h2>References</h2><ul><li>Ref one.</li></ul></section>
+      </section></body></html>`;
+    const paper = distillExtractPaper(parse(html), 'https://pmc.ncbi.nlm.nih.gov/articles/PMC1/');
+    expect(paper.source).toBe('pmc');
+    expect(paper.isPreprint).toBe(false);
+    expect(paper.abstract).toBe('We found a virus.');
+    expect(paper.sections).toEqual([
+      { heading: 'Main', kind: 'other', text: 'Story.' },
+      { heading: 'Methods', kind: 'methods', text: 'Sampling\n\nBats were sampled.' },
+      { heading: 'Competing interests', kind: 'other', text: 'None declared.' }
+    ]);
+    expect(paper.figures).toEqual([{ caption: 'Fig. 1. Genome. a, Reads.' }]);
+  });
+
+  it('bioRxiv: h4 subsections fold in, fig-caption boxes become figures', () => {
+    const html = `<html>${META_HEAD}<body><div class="article fulltext-view">
+      <div class="section abstract"><h2>Abstract</h2><p>Short.</p></div>
+      <div class="section"><h2>Results</h2><h4>Part one</h4><p>Found it.</p>
+        <div class="fig"><div class="fig-caption"><p>Fig. 1. Tree.</p></div></div></div>
+      <div class="section ack"><h2>ACKNOWLEDGMENTS</h2><p>Thanks.</p></div>
+    </div><h2>Citation Manager Formats</h2></body></html>`;
+    const paper = distillExtractPaper(parse(html), 'https://www.medrxiv.org/content/10.1101/x.full');
+    expect(paper.source).toBe('biorxiv');
+    expect(paper.isPreprint).toBe(true);
+    expect(paper.sections).toEqual([{ heading: 'Results', kind: 'results', text: 'Part one\n\nFound it.' }]);
+    expect(paper.figures).toEqual([{ caption: 'Fig. 1. Tree.' }]);
+  });
+
+  it('generic journal (PLOS-like): picks .article-body, skips the figures carousel and nav', () => {
+    const html = `<html>${META_HEAD}<body><nav><h2>Menu</h2><p>Home</p></nav>
+      <article><div class="article-body">
+        <h2>Figures</h2><div class="figure"><p class="figcaption">Fig 1. Curve.</p></div>
+        <h2>Abstract</h2><p>Model of spread.</p>
+        <h2>1. Introduction</h2><p>Outbreak.</p><ul><li>Point one</li></ul>
+        <h2>Conclusion</h2><p>Act early.</p>
+      </div></article></body></html>`;
+    const paper = distillExtractPaper(parse(html), 'https://journals.plos.org/plosone/article?id=1');
+    expect(paper.source).toBe('generic');
+    expect(paper.abstract).toBe('Model of spread.');
+    expect(paper.sections.map(s => [s.heading, s.kind, s.text])).toEqual([
+      ['Introduction', 'intro', 'Outbreak.\n\nPoint one'],
+      ['Conclusion', 'discussion', 'Act early.']
+    ]);
+    expect(paper.figures).toEqual([{ caption: 'Fig 1. Curve.' }]);
+  });
+});
+
 describe('distillSectionKind', () => {
   it.each([
     ['Introduction', 'intro'],
@@ -110,6 +171,8 @@ describe('distillSectionKind', () => {
     ['Discussion', 'discussion'],
     ['Conclusions and Future Work', 'discussion'],
     ['Limitations', 'discussion'],
+    ['Concluding remarks', 'discussion'],
+    ['Main', 'other'],
     ['Related Work', 'other']
   ])('%s → %s', (heading, kind) => {
     expect(distillSectionKind(heading)).toBe(kind);
