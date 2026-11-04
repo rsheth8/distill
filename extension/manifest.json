@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Distill",
   "version": "2.4.0",
-  "description": "Read long articles better: progressive summaries, highlight analysis, and reading time — powered by your own free AI key.",
+  "description": "Understand research papers without the jargon: plain-language summaries, explanations and check-ins as you read, in HTML or PDF.",
   "permissions": [
     "storage",
     "activeTab",
@@ -74,7 +74,7 @@
         "default": "Alt+Shift+E",
         "mac": "Alt+Shift+E"
       },
-      "description": "Explain this page"
+      "description": "Explain this paper"
     },
     "analyze_selection": {
       "suggested_key": {

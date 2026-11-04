@@ -92,7 +92,7 @@
     <div id="setupHintCard" class="setup-hint-card hidden" role="status">
       <div class="setup-hint-body">
         <p class="setup-hint-title">Welcome to Distill 👋</p>
-        <p class="setup-hint-text">Distill uses your own <strong>free</strong> AI key — no account, no cost. Two quick steps:</p>
+        <p class="setup-hint-text">Distill explains research papers in plain language as you read. It uses your own <strong>free</strong> AI key — no account, no cost. Two quick steps:</p>
         <ol class="onboard-steps">
           <li><a id="onboardGetKeyLink" href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">Get a free Groq key →</a><br /><span id="onboardSubstep" class="onboard-substep">Groq Console · no credit card</span></li>
           <li>Paste it below and connect.</li>
@@ -197,7 +197,7 @@
         </div>
 
         <div class="actions-row-bottom">
-          <button id="explainBtnMain" type="button" class="action-btn action-icon" title="Explain current page" aria-pressed="false">
+          <button id="explainBtnMain" type="button" class="action-btn action-icon" title="Explain this paper in plain language" aria-pressed="false">
             <span class="action-ico">◌</span>
             <span class="action-label">Explain</span>
           </button>
@@ -266,7 +266,7 @@
             <span id="summaryStatus" class="status-badge"></span>
           </div>
         </div>
-        <div id="summaryText" class="body-text muted">Scroll through the article — your summary builds here.</div>
+        <div id="summaryText" class="body-text muted">Scroll through the paper — your plain-language summary builds here.</div>
       </section>
 
       <!-- Explain (secondary) -->
@@ -376,7 +376,7 @@
         <div class="settings-row privacy-settings-block">
           <label>Privacy &amp; data</label>
           <p class="hint privacy-note-line"><strong>Your key stays on this device.</strong> It’s saved in Chrome local storage and never sent to Distill’s servers.</p>
-          <p class="hint privacy-note-line"><strong>Article text goes straight to your AI provider.</strong> When you ask for a summary, explanation, or analysis, the relevant text is sent over HTTPS from your browser directly to Google (Gemini) or Anthropic using your key — Distill has no server in the middle.</p>
+          <p class="hint privacy-note-line"><strong>Paper text goes straight to your AI provider.</strong> When you ask for a summary, explanation, or analysis, the relevant text is sent over HTTPS from your browser directly to your chosen provider (Groq, Gemini, OpenAI or Anthropic) using your key — Distill has no server in the middle.</p>
           <p class="hint privacy-note-line"><strong>Gemini free-tier note.</strong> Google may use content sent on the free tier to improve its products. For sensitive documents, use a paid key or Anthropic instead.</p>
         </div>
         <details id="advancedBackendDetails" class="settings-advanced details-block">
