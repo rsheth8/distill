@@ -120,7 +120,7 @@ export default [
     }
   },
   {
-    files: ['extension/utils/exportClip.js', 'extension/utils/accentColor.js', 'extension/utils/articleExtractor.js', 'extension/utils/geminiAdapter.js', 'extension/utils/openaiCompatAdapter.js', 'extension/utils/pageStore.js', 'extension/utils/buildConfig.js'],
+    files: ['extension/utils/exportClip.js', 'extension/utils/accentColor.js', 'extension/utils/articleExtractor.js', 'extension/utils/paperExtractor.js', 'extension/utils/geminiAdapter.js', 'extension/utils/openaiCompatAdapter.js', 'extension/utils/pageStore.js', 'extension/utils/buildConfig.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',
@@ -148,6 +148,7 @@ export default [
     files: [
       'scripts/smoke.mjs',
       'scripts/check-api-doc.mjs',
+      'scripts/pack-extension.mjs',
       'tests/unit/**/*.test.mjs',
       'tests/backend/**/*.test.mjs',
       'vitest.config.mjs',
