@@ -1,7 +1,8 @@
 (function () {
   'use strict';
 
-  if (window.location.protocol === 'chrome-extension:') return;
+  // Extension pages are skipped, except Distill's PDF reader, which hands over its paper.
+  if (window.location.protocol === 'chrome-extension:' && !globalThis.distillReaderPaper) return;
   if (window.__aiReaderActive) return;
   window.__aiReaderActive = true;
 
@@ -758,7 +759,7 @@
   } catch (_) {}
 
   let paper = null;
-  try { paper = distillExtractPaper(document, location.href); } catch (_) {}
+  try { paper = globalThis.distillReaderPaper || distillExtractPaper(document, location.href); } catch (_) {}
   // The article finder narrows tracking to the paper body; body is the fallback.
   const articleEl = paper ? (extractArticle() || document.body) : null;
   const readerUrl = pdf => `${chrome.runtime.getURL('reader.html')}?src=${encodeURIComponent(pdf)}`;
