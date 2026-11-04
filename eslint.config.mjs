@@ -150,6 +150,7 @@ export default [
     files: [
       'scripts/smoke.mjs',
       'scripts/check-api-doc.mjs',
+      'scripts/pack-extension.mjs',
       'tests/unit/**/*.test.mjs',
       'tests/backend/**/*.test.mjs',
       'vitest.config.mjs',
