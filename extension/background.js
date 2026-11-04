@@ -406,8 +406,12 @@ async function clearAllSavedHistory() {
   return hashes.size;
 }
 
+// ponytail: in memory only, so a service-worker restart forgets PDF tabs until they reload.
+const pdfTabs = new Map(); // tabId → reader.html URL for a PDF open in Chrome's viewer
+
 function clearTab(tabId) {
   tabState.delete(tabId);
+  pdfTabs.delete(tabId);
   quizNextAt.delete(tabId);
   const t = persistTimers.get(tabId);
   if (t) clearTimeout(t);
@@ -441,6 +445,7 @@ function tabSnapshotPayload(tabId) {
     quizNextAt: quizNextAt.get(tabId) ?? QUIZ_EVERY,
     articleText: s.articleText,
     paper: s.paper || null,
+    fullTextUrl: s.fullTextUrl || '',
     totalParagraphs: s.totalParagraphs,
     totalWords: s.totalWords,
     wordsRead: s.wordsRead,
@@ -491,6 +496,7 @@ function snapshotToState(snap) {
   return {
     articleText: snap.articleText,
     paper: snap.paper || null,
+    fullTextUrl: snap.fullTextUrl || '',
     totalParagraphs: snap.totalParagraphs,
     totalWords: snap.totalWords,
     wordsRead: snap.wordsRead,
@@ -1080,6 +1086,7 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
       // falls through
       case 'ARTICLE_DETECTED': {
         const paper = msg.type === 'PAPER_DETECTED' ? msg.paper : null;
+        const fullTextUrl = typeof msg.fullTextUrl === 'string' ? msg.fullTextUrl : '';
         const pageUrl = distillPageUrlKey(msg.pageUrl || '');
         const articleText = clampText(msg.articleText || '', MAX_ARTICLE_TEXT_CHARS);
 
@@ -1099,6 +1106,7 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
           // Same article with saved progress → refresh live fields, keep progress, republish.
           existing.articleText = articleText;
           existing.paper = paper;
+          existing.fullTextUrl = fullTextUrl;
           existing.totalParagraphs = msg.paragraphCount || existing.totalParagraphs || 0;
           existing.totalWords = msg.totalWords || existing.totalWords || 0;
           if (msg.title) existing.title = msg.title;
@@ -1117,6 +1125,7 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
         tabState.set(tabId, {
           articleText,
           paper,
+          fullTextUrl,
           totalParagraphs:  msg.paragraphCount,
           totalWords:       msg.totalWords || 0,
           wordsRead:        0,
@@ -1143,6 +1152,7 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
           paragraphCount: msg.paragraphCount,
           title: msg.title || '',
           pageUrl,
+          fullTextUrl,
           tabId,
           paragraphsUntilNextQuiz: paragraphsUntilQuiz(tabId)
         });
@@ -1152,6 +1162,12 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
         void publishSitePrefs(tabId);
         break;
       }
+
+      case 'PDF_DETECTED':
+        clearTab(tabId);
+        pdfTabs.set(tabId, msg.readerUrl);
+        toPanel({ type: 'PDF_DETECTED', tabId, readerUrl: msg.readerUrl });
+        break;
 
       case 'NO_ARTICLE':
         clearTab(tabId);
@@ -2183,6 +2199,7 @@ async function restoreState(tabId) {
   await ensureTabHydrated(tabId);
   const s = tabState.get(tabId);
   if (!s) {
+    if (pdfTabs.has(tabId)) toPanel({ type: 'PDF_DETECTED', tabId, readerUrl: pdfTabs.get(tabId) });
     broadcastHighlightHistory(tabId);
     return;
   }
@@ -2190,6 +2207,7 @@ async function restoreState(tabId) {
     type: 'ARTICLE_DETECTED',
     paragraphCount: s.totalParagraphs,
     title: s.title,
+    fullTextUrl: s.fullTextUrl || '',
     tabId,
     paragraphsUntilNextQuiz: paragraphsUntilQuiz(tabId)
   });

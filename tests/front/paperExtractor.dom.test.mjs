@@ -90,6 +90,12 @@ describe('distillExtractPaper — citation meta tags', () => {
     });
   });
 
+  it('arXiv abstract pages give the abstract only, not the page\'s link menus', () => {
+    const html = META_HTML.replace('<p>Body</p>', '<div class="extra-services"><h2>Access Paper:</h2><ul><li>View PDF</li></ul></div>');
+    const paper = distillExtractPaper(parse(html), 'https://arxiv.org/abs/2310.06825');
+    expect(paper).toMatchObject({ source: 'arxiv', isPreprint: true, abstract: 'We studied things.', sections: [], figures: [] });
+  });
+
   it('is not a preprint on a journal host', () => {
     expect(distillExtractPaper(parse(META_HTML), 'https://www.nature.com/articles/x').isPreprint).toBe(false);
   });

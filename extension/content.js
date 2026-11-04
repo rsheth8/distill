@@ -782,7 +782,11 @@
   try { paper = distillExtractPaper(document, location.href); } catch (_) {}
   // ponytail: paragraph tracking still uses the old article finder; Part 2 drops non-paper pages.
   const articleEl = extractArticle() || (paper ? document.body : null);
-  if (!paper && (!articleEl || articleEl.innerText.trim().length < 500)) {
+  const readerUrl = pdf => `${chrome.runtime.getURL('reader.html')}?src=${encodeURIComponent(pdf)}`;
+  if (document.contentType === 'application/pdf') {
+    // Chrome's PDF viewer can't be read from here; the panel offers Distill's own reader instead.
+    safeSend({ type: 'PDF_DETECTED', pageUrl: location.href, readerUrl: readerUrl(location.href) });
+  } else if (!paper && (!articleEl || articleEl.innerText.trim().length < 500)) {
     if (isLikelyResultPage(pageUrlNorm)) {
       safeSend({ type: 'NO_ARTICLE_SERP', pageUrl: pageUrlNorm });
     } else {
@@ -800,7 +804,14 @@
 
     const detected = { paragraphCount: paragraphs.length, title, totalWords, pageUrl: pageUrlNorm };
     safeSend(paper
-      ? { type: 'PAPER_DETECTED', paper, ...detected }
+      ? {
+        type: 'PAPER_DETECTED',
+        paper,
+        // Abstract-only page (e.g. arXiv /abs/): point at the HTML version, else the PDF in Distill's reader.
+        fullTextUrl: paper.sections.length ? ''
+          : document.querySelector('#latexml-download-link')?.href || (paper.pdfUrl ? readerUrl(paper.pdfUrl) : ''),
+        ...detected
+      }
       : { type: 'ARTICLE_DETECTED', articleText, ...detected });
     injectStyles();
     paragraphs.forEach((el, i) => { el.dataset.airId = `p-${i}`; });

@@ -512,6 +512,20 @@ header {
 }
 .btn-explain-page:hover { background: var(--bg-elevated); border-color: var(--accent); }
 
+.full-text-link {
+  display: block;
+  margin-top: 3px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  text-align: left;
+}
+.full-text-link:hover { text-decoration: underline; }
+
 /* ── Main content ────────────────────────────────────────────────────────────── */
 
 #mainContent {

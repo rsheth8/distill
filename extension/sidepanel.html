@@ -84,6 +84,7 @@
     <!-- Article title strip -->
     <div id="articleTitleBar" class="title-bar hidden">
       <span id="articleTitle" class="article-title"></span>
+      <button id="fullTextLink" class="full-text-link hidden" type="button">Only the abstract is on this page. Open the full paper →</button>
     </div>
 
     <div id="viewRead" class="panel-view">
@@ -124,6 +125,14 @@
       <p>No article detected on this page.</p>
       <p class="hint">But I can still explain what this page is about.</p>
       <button id="explainBtnNoArticle" class="btn-explain-page">Explain this page →</button>
+    </div>
+
+    <!-- PDF open in Chrome's viewer -->
+    <div id="pdfCard" class="state-msg hidden">
+      <span class="state-icon">📄</span>
+      <p>This paper is a PDF.</p>
+      <p class="hint">Chrome's PDF viewer can't be read by extensions. Open it in Distill's reader to get help with it.</p>
+      <button id="openInReaderBtn" class="btn-explain-page" type="button">Open in Distill →</button>
     </div>
 
     <!-- Waiting for user to start reading -->

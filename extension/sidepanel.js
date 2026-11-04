@@ -241,6 +241,13 @@ const timeLabel        = $('timeLabel');
 const usageLabel       = $('usageLabel');
 const articleTitleBar  = $('articleTitleBar');
 const articleTitle     = $('articleTitle');
+const fullTextLink     = $('fullTextLink');
+const pdfCard          = $('pdfCard');
+let fullTextUrl = '';
+let pdfReaderUrl = '';
+const openInTab = url => { if (url && currentTabId != null) chrome.tabs.update(currentTabId, { url }); };
+fullTextLink.addEventListener('click', () => openInTab(fullTextUrl));
+$('openInReaderBtn').addEventListener('click', () => openInTab(pdfReaderUrl));
 const nowSection       = $('nowSection');
 const nowText          = $('nowText');
 const nowStatus        = $('nowStatus');
@@ -1303,6 +1310,8 @@ function handleMessage(msg) {
       renderRecentCheckins();
       hide(articleTitleBar);
       articleTitle.textContent = '';
+      hide(fullTextLink);
+      hide(pdfCard);
       summaryText.innerHTML = '';
       summaryBuffer = '';
       hide(copyBtn);
@@ -1327,8 +1336,10 @@ function handleMessage(msg) {
       break;
 
     case 'ARTICLE_DETECTED':
-      show(mainContent); hide(waiting); hide(noArticle);
+      show(mainContent); hide(waiting); hide(noArticle); hide(pdfCard);
       if (msg.title) { articleTitle.textContent = msg.title; show(articleTitleBar); }
+      fullTextUrl = msg.fullTextUrl || '';
+      fullTextLink.classList.toggle('hidden', !fullTextUrl);
       if (msg.pageUrl) explainPageKey = distillPageUrlKey(msg.pageUrl);
       if (typeof msg.paragraphsUntilNextQuiz === 'number') {
         paragraphsUntilNextQuiz = msg.paragraphsUntilNextQuiz;
@@ -1336,6 +1347,9 @@ function handleMessage(msg) {
       port?.postMessage({ type: 'GET_USAGE', tabId: currentTabId });
       break;
 
+    case 'PDF_DETECTED':
+      pdfReaderUrl = msg.readerUrl || '';
+    // falls through
     case 'NO_ARTICLE':
       hideNowHintChip();
       resumeScrollAfterQuiz = false;
@@ -1348,7 +1362,8 @@ function handleMessage(msg) {
       setActionActive(explainBtnMain, false);
       hide(highlightSection);
       setActionActive(analyzeActionBtn, false);
-      show(noArticle); hide(waiting); hide(mainContent);
+      hide(waiting); hide(mainContent);
+      if (msg.type === 'PDF_DETECTED') { show(pdfCard); hide(noArticle); } else { show(noArticle); hide(pdfCard); }
       break;
 
     case 'NO_ARTICLE_SERP':

@@ -6,8 +6,10 @@ const DISTILL_PREPRINT_HOST_RE = /(^|\.)(arxiv|biorxiv|medrxiv)\.org$/;
 const DISTILL_SKIP_SECTION_RE = /^(references|bibliography|acknowledg|footnotes|supplementary|supporting information|extended data|associated data|online content|author contributions|figures$)/i;
 
 // Where the article body lives and which elements are figure captions, per site.
-// Sites not listed use the generic rule; `roots` are tried in order.
+// Sites not listed use the generic rule; `roots` are tried in order, and no roots means no body.
 const DISTILL_SITE_RULES = [
+  // arXiv /abs/ pages carry only the abstract (full HTML papers go through distillExtractArxiv).
+  { source: 'arxiv', host: /(^|\.)arxiv\.org$/, roots: [], captions: 'figcaption' },
   { source: 'pmc', host: /(^|\.)ncbi\.nlm\.nih\.gov$/, roots: ['section.body.main-article-body'], captions: 'figure figcaption' },
   { source: 'biorxiv', host: /(^|\.)(biorxiv|medrxiv)\.org$/, roots: ['.article.fulltext-view'], captions: '.fig-caption' }
 ];
@@ -132,10 +134,10 @@ function distillExtractJournal(doc, host) {
   const meta = distillPaperMeta(doc);
   if (!meta.title) return null;
   const rule = DISTILL_SITE_RULES.find(r => r.host.test(host)) || DISTILL_GENERIC_RULE;
-  const root = rule.roots.map(s => doc.querySelector(s)).find(Boolean) || doc.body;
-  const walked = distillWalkSections(root, rule.captions);
+  const root = rule.roots.length ? rule.roots.map(s => doc.querySelector(s)).find(Boolean) || doc.body : null;
+  const walked = root ? distillWalkSections(root, rule.captions) : [];
   const abs = walked.find(s => /^abstract$/i.test(s.heading));
-  const captions = Array.from(root.querySelectorAll(rule.captions)).map(c => {
+  const captions = Array.from(root?.querySelectorAll(rule.captions) || []).map(c => {
     // PMC puts the "Fig. 1." label in a heading beside the caption, not inside it.
     const label = c.closest('figure')?.querySelector('h3, h4');
     const text = distillNodeText(c);
