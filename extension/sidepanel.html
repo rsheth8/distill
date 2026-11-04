@@ -96,7 +96,7 @@
           <li><a id="onboardGetKeyLink" href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">Get a free Groq key →</a><br /><span id="onboardSubstep" class="onboard-substep">Groq Console · no credit card</span></li>
           <li>Paste it below and connect.</li>
         </ol>
-        <p class="hint onboard-switch">Prefer another provider? Change it in Settings (Gemini, OpenAI, Anthropic).</p>
+        <p class="hint onboard-switch">Prefer another provider? Change it in Settings (Gemini, OpenAI, Anthropic, or a free local model via Ollama / LM Studio).</p>
         <input id="onboardKeyInput" type="password" placeholder="Paste your Groq API key (gsk_…)" autocomplete="off" spellcheck="false" />
         <p id="onboardStatusLine" class="hint key-status-line" role="status"></p>
       </div>
@@ -352,12 +352,24 @@
             <option value="openai">OpenAI (your key)</option>
             <option value="gemini">Google Gemini (free tier)</option>
             <option value="anthropic">Anthropic Claude (your key)</option>
+            <option value="local">Local model — Ollama / LM Studio (no key)</option>
           </select>
           <p class="hint get-key-hint">
             <a id="getKeyLink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free Gemini key →</a>
             <span id="getKeyNote">No credit card required.</span>
           </p>
           <input id="apiKeyInput" type="password" placeholder="Paste your Gemini API key (AIza…)" autocomplete="off" spellcheck="false" />
+          <div id="localFields" class="hidden">
+            <label class="settings-sub" for="localBaseUrlInput">Server address</label>
+            <input id="localBaseUrlInput" type="url" placeholder="http://localhost:11434" autocomplete="off" spellcheck="false" />
+            <p class="hint">Ollama: <code>http://localhost:11434</code> · LM Studio: <code>http://localhost:1234</code></p>
+            <label class="settings-sub" for="localModelInput">Model</label>
+            <input id="localModelInput" type="text" placeholder="qwen3:4b" autocomplete="off" spellcheck="false" />
+            <p class="hint">Setup: install Ollama, run <code>ollama pull qwen3:4b</code>, then allow Distill (macOS command below; restart Ollama after):</p>
+            <code id="localOriginsCmd" class="local-cmd"></code>
+            <button id="copyLocalCmdBtn" type="button" class="btn-copy">Copy command</button>
+            <p class="hint">Windows/Linux: set <code>OLLAMA_ORIGINS</code> to the same value. LM Studio: turn on CORS in the Developer tab.</p>
+          </div>
           <div class="settings-key-actions">
             <button id="saveKeyBtn" type="button" class="btn-primary">Save &amp; connect</button>
             <button id="validateKeyBtn" type="button" class="btn-copy">Test key</button>
@@ -369,6 +381,7 @@
           <label>Privacy &amp; data</label>
           <p class="hint privacy-note-line"><strong>Your key stays on this device.</strong> It’s saved in Chrome local storage and never sent to Distill’s servers.</p>
           <p class="hint privacy-note-line"><strong>Article text goes straight to your AI provider.</strong> When you ask for a summary, explanation, or analysis, the relevant text is sent over HTTPS from your browser directly to Google (Gemini) or Anthropic using your key — Distill has no server in the middle.</p>
+          <p class="hint privacy-note-line"><strong>Local model = fully private.</strong> With Ollama / LM Studio, article text stays on your computer.</p>
           <p class="hint privacy-note-line"><strong>Gemini free-tier note.</strong> Google may use content sent on the free tier to improve its products. For sensitive documents, use a paid key or Anthropic instead.</p>
         </div>
         <details id="advancedBackendDetails" class="settings-advanced details-block">

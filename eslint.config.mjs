@@ -34,6 +34,8 @@ export default [
         distillBuildChatRequestBody: 'readonly',
         distillParseChatChunk: 'readonly',
         distillClassifyChatError: 'readonly',
+        distillMakeThinkFilter: 'readonly',
+        distillClassifyLocalError: 'readonly',
         DISTILL_HISTORY_PREFIX: 'readonly',
         DISTILL_PAGE_STATE_PREFIX: 'readonly',
         DISTILL_PAGE_STATE_VERSION: 'readonly',
@@ -148,6 +150,7 @@ export default [
     files: [
       'scripts/smoke.mjs',
       'scripts/check-api-doc.mjs',
+      'scripts/pack-extension.mjs',
       'tests/unit/**/*.test.mjs',
       'tests/backend/**/*.test.mjs',
       'vitest.config.mjs',

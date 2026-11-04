@@ -1771,3 +1771,15 @@ html[data-theme="dark"] {
     font-size: 9px;
   }
 }
+
+.local-cmd {
+  display: block;
+  margin: 4px 0 6px;
+  padding: 6px 8px;
+  background: var(--bg);
+  border: 1px solid var(--border-mid);
+  border-radius: 6px;
+  font-size: 10.5px;
+  word-break: break-all;
+  user-select: all;
+}
