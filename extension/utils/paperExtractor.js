@@ -168,6 +168,12 @@ function distillExtractPaper(doc, url) {
   return distillExtractJournal(doc, host);
 }
 
+/** Plain text of a paper, paragraphs split by blank lines — feeds features that still take `articleText`. */
+function distillPaperText(paper) {
+  return [paper.title, ...(paper.abstract ? ['Abstract', paper.abstract] : []),
+    ...paper.sections.flatMap(s => [s.heading, s.text])].filter(Boolean).join('\n\n');
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { distillExtractPaper, distillSectionKind };
+  module.exports = { distillExtractPaper, distillSectionKind, distillPaperText };
 }

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 const require = createRequire(import.meta.url);
-const { distillExtractPaper, distillSectionKind } = require(
+const { distillExtractPaper, distillSectionKind, distillPaperText } = require(
   join(dirname(fileURLToPath(import.meta.url)), '../../extension/utils/paperExtractor.js')
 );
 
@@ -176,5 +176,18 @@ describe('distillSectionKind', () => {
     ['Related Work', 'other']
   ])('%s → %s', (heading, kind) => {
     expect(distillSectionKind(heading)).toBe(kind);
+  });
+});
+
+describe('distillPaperText', () => {
+  it('flattens title, abstract and sections into paragraph-separated text', () => {
+    const paper = distillExtractPaper(parse(ARXIV_HTML), 'https://arxiv.org/html/2310.06825v1');
+    expect(distillPaperText(paper).split('\n\n').slice(0, 6)).toEqual([
+      'Tiny Model', 'Abstract', 'We build a tiny model.', 'Introduction', 'Models are big.', 'Architectural details'
+    ]);
+  });
+
+  it('skips a missing abstract', () => {
+    expect(distillPaperText({ title: 'T', abstract: '', sections: [{ heading: 'H', text: 'x' }] })).toBe('T\n\nH\n\nx');
   });
 });

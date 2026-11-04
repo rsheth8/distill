@@ -778,24 +778,30 @@
     chrome.runtime.sendMessage({ type: 'TAB_NAVIGATING', pageUrl: pageUrlNorm }, () => { void chrome.runtime.lastError; });
   } catch (_) {}
 
-  const articleEl = extractArticle();
-  if (!articleEl || articleEl.innerText.trim().length < 500) {
+  let paper = null;
+  try { paper = distillExtractPaper(document, location.href); } catch (_) {}
+  // ponytail: paragraph tracking still uses the old article finder; Part 2 drops non-paper pages.
+  const articleEl = extractArticle() || (paper ? document.body : null);
+  if (!paper && (!articleEl || articleEl.innerText.trim().length < 500)) {
     if (isLikelyResultPage(pageUrlNorm)) {
       safeSend({ type: 'NO_ARTICLE_SERP', pageUrl: pageUrlNorm });
     } else {
       safeSend({ type: 'NO_ARTICLE', pageUrl: pageUrlNorm });
     }
   } else {
-    const articleText = articleEl.innerText.trim();
+    const articleText = paper ? distillPaperText(paper) : articleEl.innerText.trim();
     paragraphs = Array.from(
       articleEl.querySelectorAll('h1, h2, h3, h4, p, li')
     ).filter(el => el.innerText.trim().length >= MIN_PARA_LEN);
 
     const titleEl = articleEl.querySelector('h1') || document.querySelector('h1');
-    const title   = (titleEl?.innerText.trim() || document.title || '').slice(0, 140);
+    const title   = (paper?.title || titleEl?.innerText.trim() || document.title || '').slice(0, 140);
     const totalWords = articleText.split(/\s+/).filter(Boolean).length;
 
-    safeSend({ type: 'ARTICLE_DETECTED', articleText, paragraphCount: paragraphs.length, title, totalWords, pageUrl: pageUrlNorm });
+    const detected = { paragraphCount: paragraphs.length, title, totalWords, pageUrl: pageUrlNorm };
+    safeSend(paper
+      ? { type: 'PAPER_DETECTED', paper, ...detected }
+      : { type: 'ARTICLE_DETECTED', articleText, ...detected });
     injectStyles();
     paragraphs.forEach((el, i) => { el.dataset.airId = `p-${i}`; });
 

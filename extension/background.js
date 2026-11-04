@@ -1,6 +1,6 @@
 'use strict';
 
-importScripts('utils/buildConfig.js', 'utils/pageUrlKey.js', 'utils/backendEnv.js', 'utils/aiResultCache.js', 'utils/geminiAdapter.js', 'utils/openaiCompatAdapter.js', 'utils/pageStore.js');
+importScripts('utils/buildConfig.js', 'utils/pageUrlKey.js', 'utils/backendEnv.js', 'utils/aiResultCache.js', 'utils/geminiAdapter.js', 'utils/openaiCompatAdapter.js', 'utils/pageStore.js', 'utils/paperExtractor.js');
 
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
 
@@ -440,6 +440,7 @@ function tabSnapshotPayload(tabId) {
     pageUrl: s.pageUrl || '',
     quizNextAt: quizNextAt.get(tabId) ?? QUIZ_EVERY,
     articleText: s.articleText,
+    paper: s.paper || null,
     totalParagraphs: s.totalParagraphs,
     totalWords: s.totalWords,
     wordsRead: s.wordsRead,
@@ -489,6 +490,7 @@ function snapshotToState(snap) {
   const quiz = snap.quiz || defaultQuizState();
   return {
     articleText: snap.articleText,
+    paper: snap.paper || null,
     totalParagraphs: snap.totalParagraphs,
     totalWords: snap.totalWords,
     wordsRead: snap.wordsRead,
@@ -1072,7 +1074,12 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
     await ensureTabHydrated(tabId);
 
     switch (msg.type) {
+      case 'PAPER_DETECTED':
+        // Until Part 3 reads the paper directly, old features get its text as articleText.
+        msg.articleText = msg.paper ? distillPaperText(msg.paper) : '';
+      // falls through
       case 'ARTICLE_DETECTED': {
+        const paper = msg.type === 'PAPER_DETECTED' ? msg.paper : null;
         const pageUrl = distillPageUrlKey(msg.pageUrl || '');
         const articleText = clampText(msg.articleText || '', MAX_ARTICLE_TEXT_CHARS);
 
@@ -1091,6 +1098,7 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
         if (hasSavedProgress) {
           // Same article with saved progress → refresh live fields, keep progress, republish.
           existing.articleText = articleText;
+          existing.paper = paper;
           existing.totalParagraphs = msg.paragraphCount || existing.totalParagraphs || 0;
           existing.totalWords = msg.totalWords || existing.totalWords || 0;
           if (msg.title) existing.title = msg.title;
@@ -1108,6 +1116,7 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
         restoredFromStorageTabs.delete(tabId);
         tabState.set(tabId, {
           articleText,
+          paper,
           totalParagraphs:  msg.paragraphCount,
           totalWords:       msg.totalWords || 0,
           wordsRead:        0,

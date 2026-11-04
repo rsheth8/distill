@@ -18,6 +18,7 @@ export default [
       globals: {
         ...extGlobals,
         distillPageUrlKey: 'readonly',
+        distillPaperText: 'readonly',
         distillResolveBackendBaseUrl: 'readonly',
         distillFormatExportCaptured: 'readonly',
         distillBuildExplainExportMarkdown: 'readonly',
@@ -71,7 +72,9 @@ export default [
         ...globals.browser,
         chrome: 'readonly',
         browser: 'readonly',
-        extractArticle: 'readonly'
+        extractArticle: 'readonly',
+        distillExtractPaper: 'readonly',
+        distillPaperText: 'readonly'
       }
     },
     rules: {
