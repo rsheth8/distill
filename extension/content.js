@@ -460,9 +460,6 @@
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     switch (msg.type) {
-      case 'GET_PAGE_TEXT':
-        sendResponse({ text: document.body.innerText.trim().slice(0, 12000) });
-        break;
       case 'ACCENT_CHANGED':
         applyArticleAccent(msg.accentId);
         break;
@@ -756,81 +753,41 @@
     }
   })();
 
-  function isLikelyResultPage(urlString) {
-    try {
-      const u = new URL(urlString);
-      const host = (u.hostname || '').toLowerCase();
-      const path = (u.pathname || '').toLowerCase();
-      const q = (u.searchParams.get('q') || '').trim();
-
-      // Google Search / News / Discover-ish result pages are usually not "articles"
-      // and should be handled via "Explain this page" instead of NO_ARTICLE dead-end.
-      const isGoogle =
-        host === 'www.google.com' ||
-        host.endsWith('.google.com') ||
-        host === 'news.google.com';
-
-      if (!isGoogle) return false;
-
-      // Common Google Search SERPs.
-      if (path === '/search' || path.startsWith('/search/')) return true;
-      if (path === '/news' || path.startsWith('/news/')) return true;
-
-      // Google News result/topic pages.
-      if (host === 'news.google.com') {
-        if (path.startsWith('/search')) return true;
-        if (path.startsWith('/topics')) return true;
-        if (path.startsWith('/topstories')) return true;
-      }
-
-      // Fallback heuristic: "q=" present on a google host.
-      if (q && q.length >= 2) return true;
-      return false;
-    } catch {
-      return false;
-    }
-  }
-
   try {
     chrome.runtime.sendMessage({ type: 'TAB_NAVIGATING', pageUrl: pageUrlNorm }, () => { void chrome.runtime.lastError; });
   } catch (_) {}
 
   let paper = null;
   try { paper = distillExtractPaper(document, location.href); } catch (_) {}
-  // ponytail: paragraph tracking still uses the old article finder; Part 2 drops non-paper pages.
-  const articleEl = extractArticle() || (paper ? document.body : null);
+  // The article finder narrows tracking to the paper body; body is the fallback.
+  const articleEl = paper ? (extractArticle() || document.body) : null;
   const readerUrl = pdf => `${chrome.runtime.getURL('reader.html')}?src=${encodeURIComponent(pdf)}`;
   if (document.contentType === 'application/pdf') {
     // Chrome's PDF viewer can't be read from here; the panel offers Distill's own reader instead.
     safeSend({ type: 'PDF_DETECTED', pageUrl: location.href, readerUrl: readerUrl(location.href) });
-  } else if (!paper && (!articleEl || articleEl.innerText.trim().length < 500)) {
-    if (isLikelyResultPage(pageUrlNorm)) {
-      safeSend({ type: 'NO_ARTICLE_SERP', pageUrl: pageUrlNorm });
-    } else {
-      safeSend({ type: 'NO_ARTICLE', pageUrl: pageUrlNorm });
-    }
+  } else if (!paper) {
+    safeSend({ type: 'NO_ARTICLE', pageUrl: pageUrlNorm });
   } else {
-    const articleText = paper ? distillPaperText(paper) : articleEl.innerText.trim();
     paragraphs = Array.from(
       articleEl.querySelectorAll('h1, h2, h3, h4, p, li')
     ).filter(el => el.innerText.trim().length >= MIN_PARA_LEN);
-    if (paper) sectionHeads = Array.from(articleEl.querySelectorAll('h2'));
+    sectionHeads = Array.from(articleEl.querySelectorAll('h2'));
 
     const titleEl = articleEl.querySelector('h1') || document.querySelector('h1');
-    const title   = (paper?.title || titleEl?.innerText.trim() || document.title || '').slice(0, 140);
-    const totalWords = articleText.split(/\s+/).filter(Boolean).length;
+    const title   = (paper.title || titleEl?.innerText.trim() || document.title || '').slice(0, 140);
+    const totalWords = distillPaperText(paper).split(/\s+/).filter(Boolean).length;
 
-    const detected = { paragraphCount: paragraphs.length, title, totalWords, pageUrl: pageUrlNorm };
-    safeSend(paper
-      ? {
-        type: 'PAPER_DETECTED',
-        paper,
-        // Abstract-only page (e.g. arXiv /abs/): point at the HTML version, else the PDF in Distill's reader.
-        fullTextUrl: paper.sections.length ? ''
-          : document.querySelector('#latexml-download-link')?.href || (paper.pdfUrl ? readerUrl(paper.pdfUrl) : ''),
-        ...detected
-      }
-      : { type: 'ARTICLE_DETECTED', articleText, ...detected });
+    safeSend({
+      type: 'PAPER_DETECTED',
+      paper,
+      // Abstract-only page (e.g. arXiv /abs/): point at the HTML version, else the PDF in Distill's reader.
+      fullTextUrl: paper.sections.length ? ''
+        : document.querySelector('#latexml-download-link')?.href || (paper.pdfUrl ? readerUrl(paper.pdfUrl) : ''),
+      paragraphCount: paragraphs.length,
+      title,
+      totalWords,
+      pageUrl: pageUrlNorm
+    });
     injectStyles();
     paragraphs.forEach((el, i) => { el.dataset.airId = `p-${i}`; });
 

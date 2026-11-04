@@ -1081,12 +1081,10 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
     await ensureTabHydrated(tabId);
 
     switch (msg.type) {
-      case 'PAPER_DETECTED':
-        // Until Part 3 reads the paper directly, old features get its text as articleText.
-        msg.articleText = msg.paper ? distillPaperText(msg.paper) : '';
-      // falls through
-      case 'ARTICLE_DETECTED': {
-        const paper = msg.type === 'PAPER_DETECTED' ? msg.paper : null;
+      case 'PAPER_DETECTED': {
+        const paper = msg.paper || null;
+        // Until Part 3 reads the paper directly, older features read its text as articleText.
+        msg.articleText = paper ? distillPaperText(paper) : '';
         const fullTextUrl = typeof msg.fullTextUrl === 'string' ? msg.fullTextUrl : '';
         const pageUrl = distillPageUrlKey(msg.pageUrl || '');
         const articleText = clampText(msg.articleText || '', MAX_ARTICLE_TEXT_CHARS);
@@ -1173,11 +1171,6 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
       case 'NO_ARTICLE':
         clearTab(tabId);
         toPanel({ type: 'NO_ARTICLE', tabId });
-        break;
-
-      case 'NO_ARTICLE_SERP':
-        clearTab(tabId);
-        toPanel({ type: 'NO_ARTICLE_SERP', tabId });
         break;
 
       case 'ACTIVE_PARAGRAPH': {
@@ -1759,66 +1752,15 @@ function replayCachedExplain(tabId, s, cache) {
 }
 
 async function explainPage(tabId, opts = {}) {
-  const force = opts.force === true;
-  let tabUrl = '';
-  try {
-    const tab = await chrome.tabs.get(tabId);
-    tabUrl = tab?.url || '';
-  } catch {
-    tabUrl = '';
-  }
-
-  // Some pages are not scriptable by extensions (Chrome internal pages, Web Store, etc.).
-  // Give a clear error instead of the generic "Could not read page content."
-  if (!tabUrl) {
-    toPanel({ type: 'ERROR', code: 'TAB_URL_UNKNOWN', message: 'Could not read this tab’s URL.', tabId });
+  const s = tabState.get(tabId);
+  if (!s?.paper) {
+    toPanel({ type: 'ERROR', code: 'NOT_A_PAPER', message: 'Open a research paper to get an overview.', tabId });
     return;
   }
-  const u = tabUrl.toLowerCase();
-  if (
-    u.startsWith('chrome://') ||
-    u.startsWith('edge://') ||
-    u.startsWith('about:') ||
-    u.startsWith('chrome-extension://') ||
-    u.startsWith('moz-extension://') ||
-    u.startsWith('safari-extension://') ||
-    u.startsWith('devtools://') ||
-    u.startsWith('view-source:') ||
-    u.includes('chrome.google.com/webstore')
-  ) {
-    toPanel({
-      type: 'ERROR',
-      code: 'PAGE_UNSUPPORTED',
-      message: 'Chrome does not allow extensions to read content on this kind of page. Try an http(s) article/page instead.',
-      tabId
-    });
-    return;
-  }
-
-  let pageText = '';
-  try {
-    const [result] = await chrome.scripting.executeScript({
-      target: { tabId },
-      func: maxChars => document.body.innerText.trim().slice(0, maxChars),
-      args: [MAX_PAGE_EXPLAIN_CHARS]
-    });
-    pageText = result.result || '';
-  } catch {
-    toPanel({
-      type: 'ERROR',
-      code: 'PAGE_READ_FAILED',
-      message: 'Could not read page content. This can happen on restricted pages, PDFs, or pages that block script injection.',
-      tabId
-    });
-    return;
-  }
-
-  if (!pageText) { toPanel({ type: 'ERROR', code: 'NO_READABLE_TEXT', message: 'No readable content found.', tabId }); return; }
-
-  const s = tabState.get(tabId) || {};
-  const pageUrlKey = distillPageUrlKey(tabUrl);
+  const pageText = clampText(s.articleText || '', MAX_PAGE_EXPLAIN_CHARS);
+  const pageUrlKey = distillPageUrlKey(s.pageUrl || '');
   const contentHash = distillExplainContentHash(pageText);
-  if (!force && s.explainCache?.text && s.explainCache.pageUrl === pageUrlKey && s.explainCache.contentHash === contentHash) {
+  if (!opts.force && s.explainCache?.text && s.explainCache.pageUrl === pageUrlKey && s.explainCache.contentHash === contentHash) {
     replayCachedExplain(tabId, s, s.explainCache);
     return;
   }

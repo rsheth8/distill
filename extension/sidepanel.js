@@ -967,7 +967,6 @@ function requestNowTip({ force = false } = {}) {
   port?.postMessage({ type: 'REQUEST_NOW_TIP', tabId: currentTabId, force: !!force });
 }
 
-$('explainBtnNoArticle').addEventListener('click', () => enterExplainMode({ fetch: true, force: false }));
 $('explainBtnMain').addEventListener('click', toggleExplainPanel);
 
 explainCloseBtn?.addEventListener('click', exitExplainMode);
@@ -1364,15 +1363,6 @@ function handleMessage(msg) {
       setActionActive(analyzeActionBtn, false);
       hide(waiting); hide(mainContent);
       if (msg.type === 'PDF_DETECTED') { show(pdfCard); hide(noArticle); } else { show(noArticle); hide(pdfCard); }
-      break;
-
-    case 'NO_ARTICLE_SERP':
-      hideNowHintChip();
-      resumeScrollAfterQuiz = false;
-      dismissQuiz();
-      hide(backendDownCard);
-      // Result pages usually aren’t extractable articles; automatically explain instead.
-      enterExplainMode({ fetch: true, force: false });
       break;
 
     case 'PROGRESS_UPDATE': {
