@@ -38,6 +38,42 @@ async function renderPage(pdf, num, slot, scale) {
   await new pdfjs.TextLayer({ textContentSource: page.streamTextContent(), container: textDiv, viewport }).render();
 }
 
+/** Every page's text items, in the shape utils/pdfPaper.js reads. */
+async function pdfTextPages(pdf) {
+  const pages = [];
+  for (let n = 1; n <= pdf.numPages; n++) {
+    const page = await pdf.getPage(n);
+    const viewport = page.getViewport({ scale: 1 });
+    const { items } = await page.getTextContent();
+    pages.push({
+      width: viewport.width,
+      height: viewport.height,
+      items: items.filter(it => it.str !== undefined).map(it => {
+        const [x, y] = viewport.convertToViewportPoint(it.transform[4], it.transform[5]);
+        const [, b, c, d] = it.transform;
+        return { str: it.str, x, y, w: it.width, size: Math.hypot(c, d), font: it.fontName, rot: Math.abs(b) > 1e-3 || Math.abs(c) > 1e-3 };
+      })
+    });
+  }
+  return pages;
+}
+
+/** Build the paper object and hand it to the extension, like content.js does for HTML papers. */
+async function announcePaper(pdf, info) {
+  const paper = distillPdfPaper(await pdfTextPages(pdf), { url: src, info: info || {} });
+  if (paper.title) document.title = paper.title;
+  const text = distillPaperText(paper);
+  if (!globalThis.chrome?.runtime?.id) return; // opened outside the extension (local testing)
+  chrome.runtime.sendMessage({
+    type: 'PAPER_DETECTED',
+    paper,
+    paragraphCount: paper.sections.reduce((n, s) => n + s.text.split('\n\n').length, 0),
+    title: (paper.title || document.title).slice(0, 140),
+    totalWords: text.split(/\s+/).filter(Boolean).length,
+    pageUrl: src
+  }, () => { void chrome.runtime.lastError; });
+}
+
 async function open() {
   if (!src) return showStatus('No PDF to open.');
   document.title = decodeURIComponent(src.split(/[?#]/)[0].split('/').pop() || 'Paper');
@@ -86,6 +122,7 @@ async function open() {
     observer.observe(slot);
   }
   showStatus('');
+  announcePaper(pdf, meta?.info).catch(err => console.warn('Distill: could not read paper text', err));
 }
 
 open();

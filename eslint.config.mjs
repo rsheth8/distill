@@ -65,7 +65,19 @@ export default [
   },
   {
     files: ['extension/reader.js'],
-    languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: globals.browser }
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: { ...globals.browser, chrome: 'readonly', distillPdfPaper: 'readonly', distillPaperText: 'readonly' }
+    }
+  },
+  {
+    files: ['extension/utils/pdfPaper.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script',
+      globals: { ...globals.browser, module: 'writable', distillSectionKind: 'readonly', DISTILL_SKIP_SECTION_RE: 'readonly', DISTILL_PREPRINT_HOST_RE: 'readonly' }
+    }
   },
   {
     files: ['extension/content.js'],

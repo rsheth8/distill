@@ -175,5 +175,5 @@ function distillPaperText(paper) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { distillExtractPaper, distillSectionKind, distillPaperText };
+  module.exports = { distillExtractPaper, distillSectionKind, distillPaperText, DISTILL_SKIP_SECTION_RE, DISTILL_PREPRINT_HOST_RE };
 }
