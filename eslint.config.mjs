@@ -34,6 +34,8 @@ export default [
         distillBuildChatRequestBody: 'readonly',
         distillParseChatChunk: 'readonly',
         distillClassifyChatError: 'readonly',
+        distillMakeThinkFilter: 'readonly',
+        distillClassifyLocalError: 'readonly',
         DISTILL_HISTORY_PREFIX: 'readonly',
         DISTILL_PAGE_STATE_PREFIX: 'readonly',
         DISTILL_PAGE_STATE_VERSION: 'readonly',
