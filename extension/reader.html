@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Distill reader</title>
+  <style>
+    @font-face { font-family: 'Distill UI'; font-weight: 500; src: url('assets/fonts/Manrope-500.ttf') format('truetype'); }
+    :root { color-scheme: light dark; --bg: #e8e6e1; --fg: #2b2a27; --muted: #6b6860; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #1f1e1c; --fg: #ece9e2; --muted: #a29e94; } }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 500 14px 'Distill UI', system-ui, sans-serif; }
+    #status { max-width: 36rem; margin: 20vh auto; padding: 0 16px; text-align: center; color: var(--muted); line-height: 1.5; }
+    #pages { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 16px; }
+    .page { position: relative; background: #fff; box-shadow: 0 1px 4px rgb(0 0 0 / 0.25); --scale-round-x: 1px; --scale-round-y: 1px; }
+    .page canvas { display: block; }
+
+    /* Selectable text over the canvas — trimmed from pdf.js web/pdf_viewer.css. */
+    .textLayer { position: absolute; inset: 0; overflow: clip; line-height: 1; text-align: initial;
+      -webkit-text-size-adjust: none; forced-color-adjust: none; transform-origin: 0 0; z-index: 0;
+      --min-font-size: 1; --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+      --min-font-size-inv: calc(1 / var(--min-font-size)); }
+    .textLayer :is(span, br) { color: transparent; position: absolute; white-space: pre; cursor: text; transform-origin: 0% 0%; }
+    .textLayer > :not(.markedContent), .textLayer .markedContent span:not(.markedContent) {
+      z-index: 1; --font-height: 0; font-size: calc(var(--text-scale-factor) * var(--font-height));
+      --scale-x: 1; --rotate: 0deg; transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv)); }
+    .textLayer .markedContent { display: contents; }
+    .textLayer ::selection { background: rgb(0 90 255 / 0.25); }
+    .textLayer br::selection { background: transparent; }
+    .textLayer .endOfContent { display: block; position: absolute; inset: 100% 0 0; z-index: 0; cursor: default; user-select: none; }
+    .textLayer.selecting .endOfContent { top: 0; }
+  </style>
+  <script type="module" src="reader.js"></script>
+</head>
+<body>
+  <p id="status">Opening paper…</p>
+  <main id="pages" aria-label="Paper pages"></main>
+</body>
+</html>

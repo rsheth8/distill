@@ -2,12 +2,13 @@
   "name": "distill-extension",
   "private": true,
   "scripts": {
-    "lint": "eslint extension/background.js extension/content.js extension/sidepanel.js extension/utils/pageUrlKey.js extension/utils/backendEnv.js extension/utils/aiResultCache.js extension/utils/exportClip.js extension/utils/accentColor.js extension/utils/articleExtractor.js extension/utils/paperExtractor.js extension/utils/geminiAdapter.js extension/utils/openaiCompatAdapter.js extension/utils/pageStore.js extension/utils/buildConfig.js backend/server.js backend/lib/stateStore.js backend/scripts/check-remote.mjs scripts/smoke.mjs scripts/pack-extension.mjs tests/**/*.mjs vitest.config.mjs",
+    "lint": "eslint extension/background.js extension/content.js extension/reader.js extension/sidepanel.js extension/utils/pageUrlKey.js extension/utils/backendEnv.js extension/utils/aiResultCache.js extension/utils/exportClip.js extension/utils/accentColor.js extension/utils/articleExtractor.js extension/utils/paperExtractor.js extension/utils/geminiAdapter.js extension/utils/openaiCompatAdapter.js extension/utils/pageStore.js extension/utils/buildConfig.js backend/server.js backend/lib/stateStore.js backend/scripts/check-remote.mjs scripts/smoke.mjs scripts/pack-extension.mjs tests/**/*.mjs vitest.config.mjs",
     "smoke": "node scripts/smoke.mjs && node scripts/check-api-doc.mjs",
     "unit": "vitest run",
     "coverage": "vitest run --coverage",
     "test": "npm run lint && npm run smoke && npm run coverage",
     "pack": "node scripts/pack-extension.mjs",
+    "vendor:pdfjs": "rm -rf extension/vendor/pdfjs && mkdir -p extension/vendor/pdfjs/wasm && cd node_modules/pdfjs-dist && cp LICENSE build/pdf.min.mjs build/pdf.worker.min.mjs ../../extension/vendor/pdfjs/ && cp -R standard_fonts iccs ../../extension/vendor/pdfjs/ && cp wasm/openjpeg.wasm wasm/jbig2.wasm wasm/qcms_bg.wasm wasm/LICENSE_* ../../extension/vendor/pdfjs/wasm/",
     "deploy:backend": "npm run deploy --prefix backend",
     "deploy:backend:staging": "npm run deploy:staging --prefix backend",
     "check:backend-remote": "npm run remote:check --prefix backend",
@@ -19,6 +20,7 @@
     "eslint": "^9.27.0",
     "globals": "^16.0.0",
     "happy-dom": "^17.4.4",
+    "pdfjs-dist": "6.4.299",
     "supertest": "^7.1.0",
     "vitest": "^3.1.4"
   }

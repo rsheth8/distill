@@ -64,6 +64,10 @@ export default [
     }
   },
   {
+    files: ['extension/reader.js'],
+    languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: globals.browser }
+  },
+  {
     files: ['extension/content.js'],
     languageOptions: {
       ecmaVersion: 2022,
