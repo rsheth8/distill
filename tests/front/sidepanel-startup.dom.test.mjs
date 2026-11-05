@@ -140,4 +140,12 @@ describe('side panel', () => {
     expect(document.getElementById('analysisText').textContent).toBe('The completed explanation.');
     expect(document.getElementById('analysisPending').textContent).not.toContain('stale');
   });
+  it('stopping automatic help leaves an explicitly requested explanation active',async()=>{
+    await boot();
+    onPortMessage({type:'ANALYSIS_START',tabId:TAB,requestId:'explicit',selection:'Selected source.'});
+    onPortMessage({type:'ERROR',tabId:TAB,origin:'automatic',task:'summary',code:'CANCELLED',message:'Automatic help stopped.'});
+    onPortMessage({type:'ANALYSIS_CHUNK',tabId:TAB,requestId:'explicit',chunk:'The explicit answer.'});
+    onPortMessage({type:'ANALYSIS_DONE',tabId:TAB,requestId:'explicit'});
+    expect(document.getElementById('analysisText').textContent).toBe('The explicit answer.');
+  });
 });

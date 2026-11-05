@@ -1281,13 +1281,13 @@ async function updateSummary(tabId) {
       },
       onError: err   => {
         s.isUpdating = false;
-        toPanel({ type: 'ERROR', code: err.code, message: err.message, tabId });
+        toPanel({ type: 'ERROR', origin:'automatic', task:'summary', code: err.code, message: err.message, tabId });
         schedulePersistTab(tabId);
       }
     });
   } catch (e) {
     s.isUpdating = false;
-    toPanel({ type: 'ERROR', code: e.code, message: e.message, tabId });
+    toPanel({ type: 'ERROR', origin:'automatic', task:'summary', code: e.code, message: e.message, tabId });
     schedulePersistTab(tabId);
   }
 }
@@ -1338,7 +1338,7 @@ async function generateQuestion(tabId) {
           s.quiz = { ...defaultQuizState(), history };
           schedulePersistTab(tabId);
         }
-        toPanel({ type: 'ERROR', code: err.code, message: err.message, tabId });
+        toPanel({ type: 'ERROR', origin:'automatic', task:'quiz_question', code: err.code, message: err.message, tabId });
       }
     });
   } catch (e) {
@@ -1347,7 +1347,7 @@ async function generateQuestion(tabId) {
       s.quiz = { ...defaultQuizState(), history };
       schedulePersistTab(tabId);
     }
-    toPanel({ type: 'ERROR', code: e.code, message: e.message, tabId });
+    toPanel({ type: 'ERROR', origin:'automatic', task:'quiz_question', code: e.code, message: e.message, tabId });
   }
 }
 
@@ -1462,6 +1462,7 @@ async function runAnalyzeStream(tabId, s, ctx, rawSelection, opts = {}) {
     if (tabState.get(tabId)===s) toPanel({type:'ERROR',code:'CANCELLED',message:'Explanation stopped. Your previous result is kept.',tabId,requestId});
   },{once:true});
   const allowEnqueue = opts.allowEnqueue !== false;
+  lastAiRetryByTab.set(tabId,()=>runAnalyzeStream(tabId,s,ctx,rawSelection,opts));
   const selectedText = clampText(rawSelection, MAX_SELECTION_CHARS);
   const opener = ctx.opener || '';
   const priorGist = ctx.priorGist || '';
@@ -1499,6 +1500,7 @@ async function runAnalyzeStream(tabId, s, ctx, rawSelection, opts = {}) {
     await streamTask({
       tabId,
       task: 'analysis',
+      retry:false,
       signal:ctrl.signal,
       s,
       noAuthMessage: 'No API key set.',

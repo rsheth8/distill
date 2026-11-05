@@ -1313,6 +1313,13 @@ function handleMessage(msg) {
     }
 
     case 'ERROR':
+      if (msg.origin==='automatic') {
+        if(msg.task==='summary'){
+          setThinking('summary',false);summarySection.classList.remove('summary-section-streaming');
+          summaryText.classList.remove('summary-text-streaming');setStatus('summaryStatus',msg.message||'Automatic help stopped.',msg.code==='CANCELLED'?'':'error');
+        } else if(msg.task==='quiz_question'){setThinking('quiz',false);dismissQuiz();}
+        break;
+      }
       if (msg.requestId && pendingAnalysis && pendingAnalysis.requestId !== msg.requestId) break;
       pendingAnalysis=null;$('analysisPending').textContent='';hide($('analysisPending'));
       clearThinking();

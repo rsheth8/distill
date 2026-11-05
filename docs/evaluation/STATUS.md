@@ -2,6 +2,15 @@
 
 Updated: November 5, 2026 (America/Chicago). Engineering continuation committed locally; release gates NOT met. Nothing merged, pushed or published.
 
+
+## November 5: dependable-reading milestone
+
+Local implementation and delivered Downloads/Distill build now start quiet, remove quiz scroll traps, connect the exact validated model, retain previous explanations, and provide source Return independent of playback. `npm test`: 319 tests/34 files plus lint/smoke/coverage pass; package/ZIP checks pass. Browser fixtures: 35 checks pass, including 60-second zero-automatic-inference reading, offline saved results and source focus/return. Native side panel and paragraph-level highlights/returns on three real PDFs were exercised. Narrow performance samples are recorded separately.
+
+**Direct Ollama setup now succeeds for the delivered Downloads path** in a fresh profile without a relay or server changes. Missing-model and unreachable-server errors were verified. The separate packaged-path origin remains blocked; do not conflate extension identities. LM Studio/browser-model live inference, human fidelity adjudication, listening quality, participant usefulness and broader performance/alignment gates remain unvalidated.
+
+Independent review was partial because review services became unavailable; its reported retry bug was reproduced and fixed. No clean independent-review or release-readiness claim. See `DEPENDABLE_READING_QA.md` and `evidence/dependable-reading.json`. Existing research edits were preserved; no push/merge/publish.
+
 ## Git and preservation
 
 - Work is in `claude/app-ui-ux-upgrade-8add1c`, in the requested worktree.

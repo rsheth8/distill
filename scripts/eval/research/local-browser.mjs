@@ -27,8 +27,12 @@ try {
  await page.fill('#localBaseUrlInput','http://localhost:11434');
  await page.fill('#localModelInput','qwen2.5:7b');
  await page.click('#validateKeyBtn');
- await page.waitForFunction(()=>!document.querySelector('#validateKeyBtn').disabled && document.querySelector('#keyStatusLine').textContent.includes('OLLAMA_ORIGINS'),{},{timeout:35000});
+ await page.waitForFunction(()=>!document.querySelector('#validateKeyBtn').disabled && (/OLLAMA_ORIGINS|Test passed/.test(document.querySelector('#keyStatusLine').textContent)),{},{timeout:35000});
  evidence.freshSettingsResult=await page.locator('#keyStatusLine').innerText();
+ if(evidence.freshSettingsResult.includes('Test passed')){
+  await page.click('#saveKeyBtn');await page.waitForFunction(()=>document.querySelector('#viewSettings').classList.contains('hidden'));
+  evidence.savedConnection=await worker.evaluate(async()=>{const r=await chrome.storage.local.get(['aiProvider','localBaseUrl','localModel']);return r;});
+ }
  evidence.chromeBuiltIn=await page.evaluate(async()=>({apiPresent:typeof LanguageModel!=='undefined',availability:typeof LanguageModel==='undefined'?'api-absent':await LanguageModel.availability({expectedInputs:[{type:'text',languages:['en']}],expectedOutputs:[{type:'text',languages:['en']}]})}));
  evidence.network = await worker.evaluate(() => globalThis.__readinessRequests);
  await fs.writeFile(`${out}/results.json`,JSON.stringify(evidence,null,2));
