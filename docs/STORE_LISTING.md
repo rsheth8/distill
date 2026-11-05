@@ -57,6 +57,7 @@ developer-operated backend in the default build.
 > • Reading level: Simple, Everyday or Closer to the paper
 > • Ask the paper: questions answered from the paper itself, naming the sections used
 > • Optional comprehension check-ins
+> • A map of the paper's sections that shows where you are, and jumps to any section
 > • A reading view for PDF papers, plus reading time and focus mode
 > • Bring your own key: Groq (free), Gemini (free where eligible), OpenAI, or Anthropic
 

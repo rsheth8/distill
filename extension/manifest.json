@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Distill",
-  "version": "2.4.0",
+  "version": "3.0.0",
   "description": "Understand research papers without the jargon: plain-language summaries, explanations and check-ins as you read, in HTML or PDF.",
   "permissions": [
     "storage",

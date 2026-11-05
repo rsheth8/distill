@@ -1,5 +1,7 @@
 'use strict';
 
+const SAMPLE_PAPER_URL = 'https://arxiv.org/html/1706.03762';
+
 // ── Accent presets ────────────────────────────────────────────────────────────
 
 const ACCENTS = [
@@ -139,7 +141,6 @@ const noArticle        = $('noArticle');
 const waiting          = $('waiting');
 const mainContent      = $('mainContent');
 const setupHintCard = $('setupHintCard');
-const setupHintOpenSettingsBtn = $('setupHintOpenSettingsBtn');
 const setupHintDismissBtn = $('setupHintDismissBtn');
 
 /** Used to show a one-time-style banner when AI cannot run yet. */
@@ -335,6 +336,7 @@ function setBackendStatus(kind, text) {
 
 function syncSetupHintCard() {
   if (!setupHintCard) return;
+  if (!$('onboardDone').classList.contains('hidden')) return show(setupHintCard);
   const useBackend = useBackendProxyToggle ? useBackendProxyToggle.checked !== false : true;
   const cloudReady = useBackend && cachedBackendAiReady;
   const aiReady = cloudReady || cachedHasApiKey;
@@ -593,9 +595,13 @@ useBackendProxyToggle?.addEventListener('change', () => {
   });
 });
 
-setupHintOpenSettingsBtn?.addEventListener('click', () => {
+$('onboardLocalBtn').addEventListener('click', () => {
+  aiProviderSelect.value = 'local';
+  aiProviderSelect.dispatchEvent(new Event('change'));
   setPanel('settings');
-  void refreshSitePrefsUi();
+});
+$('onboardSampleBtn').addEventListener('click', () => {
+  chrome.tabs.create({ url: SAMPLE_PAPER_URL });
 });
 
 clearAllHistoryBtn?.addEventListener('click', () => {
@@ -1332,9 +1338,10 @@ function handleMessage(msg) {
           chrome.storage.local.set({ [PROVIDER_STORAGE[currentProvider]]: key, aiProvider: currentProvider }, () => {
             cachedHasApiKey = true;
             if (apiKeyInput) apiKeyInput.value = key;
-            setKeyStatus(onboardStatusLine, 'ok', msg.message || 'Connected!');
-            syncSetupHintCard();
-            showToast('Connected! AI is ready.', 'success');
+            for (const el of [setupHintCard.querySelector('.onboard-row'), $('onboardLocalBtn'), $('onboardGetKeyLink'), $('onboardSubstep'), onboardStatusLine]) hide(el);
+            show($('onboardDone'));
+            cachedSetupHintDismissed = true;
+            chrome.storage.local.set({ distillSetupHintDismissed: true });
           });
         } else {
           setKeyStatus(onboardStatusLine, 'err', msg.message || 'That key didn’t work.');

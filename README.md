@@ -29,7 +29,8 @@ Distill is a browser side panel that helps people outside academia read research
 - Explanations of any sentence you select, with the jargon spelled out.
 - A plain-language overview of the whole paper, with a trust check on the study behind it.
 - Short check-in questions to make sure the main ideas landed.
-- A clean reading view for PDFs, plus reading time and a focus mode that dims everything but the current paragraph.
+- A paper card with the title, authors and trust tags, and a sticky map of the paper's sections: see which part you're in, and jump to any section.
+- A clean reading view for PDFs, plus reading time and a focus mode.
 
 Distill only works on research papers. Other pages get a short "not a paper" message.
 

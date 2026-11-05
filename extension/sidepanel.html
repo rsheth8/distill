@@ -124,19 +124,22 @@
     <!-- First-run / missing AI credentials (dismissible) -->
     <div id="setupHintCard" class="setup-hint-card hidden" role="status">
       <div class="setup-hint-body">
-        <p class="setup-hint-title">Welcome to Distill</p>
-        <p class="setup-hint-text">Distill explains research papers in plain language as you read. It uses your own <strong>free</strong> AI key — no account, no cost. Two quick steps:</p>
-        <ol class="onboard-steps">
-          <li><a id="onboardGetKeyLink" href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">Get a free Groq key →</a><br /><span id="onboardSubstep" class="onboard-substep">Groq Console · no credit card</span></li>
-          <li>Paste it below and connect.</li>
-        </ol>
-        <p class="hint onboard-switch">Prefer another provider? Change it in Settings (Gemini, OpenAI, Anthropic, or a free local model via Ollama / LM Studio).</p>
-        <input id="onboardKeyInput" type="password" placeholder="Paste your Groq API key (gsk_…)" autocomplete="off" spellcheck="false" />
+        <p class="setup-hint-title">Read research papers in plain language</p>
+        <p class="setup-hint-text">Distill uses your own free AI key. No account, no cost.</p>
+        <a id="onboardGetKeyLink" class="onboard-key-link" href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">Get a free Groq key</a>
+        <span id="onboardSubstep" class="onboard-substep">Groq Console · no credit card</span>
+        <div class="onboard-row">
+          <input id="onboardKeyInput" type="password" placeholder="gsk_…" aria-label="Your Groq API key" autocomplete="off" spellcheck="false" />
+          <button id="onboardConnectBtn" type="button" class="btn-primary">Connect</button>
+        </div>
         <p id="onboardStatusLine" class="hint key-status-line" role="status"></p>
+        <button id="onboardLocalBtn" type="button" class="paper-link-btn">Prefer fully private? Run a model on your computer</button>
+        <div id="onboardDone" class="onboard-done hidden">
+          <p>Connected.</p>
+          <button id="onboardSampleBtn" type="button" class="btn-primary">Try it on a sample paper</button>
+        </div>
       </div>
       <div class="setup-hint-actions">
-        <button id="onboardConnectBtn" type="button" class="btn-primary">Connect</button>
-        <button id="setupHintOpenSettingsBtn" type="button" class="btn-copy">More options</button>
         <button id="setupHintDismissBtn" type="button" class="btn-copy">Dismiss</button>
       </div>
     </div>
@@ -273,6 +276,8 @@
 
     <div id="viewSettings" class="panel-view hidden">
       <div id="settingsPanel" class="settings-panel">
+        <section class="settings-group">
+          <h2 class="settings-group-title">Connection</h2>
         <div class="settings-row settings-ai-row">
           <label for="aiProviderSelect">AI key</label>
           <p class="hint settings-intro">Distill runs on your own <strong>free</strong> AI key — no account, no cost, nothing sent to our servers. Connect a key once.</p>
@@ -306,13 +311,54 @@
           </div>
           <p id="keyStatusLine" class="hint key-status-line" role="status"></p>
         </div>
+        <div class="settings-row">
+          <label>Usage</label>
+          <p id="fairUseText" class="usage-help-text">
+            You use your own provider’s free quota — Distill adds no limits of its own.
+          </p>
+          <p id="usageResetText" class="usage-help-subtext">
+            <a id="quotaDashLink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Check your Gemini usage →</a>
+          </p>
+        </div>
+        </section>
+        <section class="settings-group">
+          <h2 class="settings-group-title">Appearance</h2>
+        <div class="settings-row">
+          <label>Accent Color</label>
+          <div id="accentSwatches" class="accent-swatches"></div>
+        </div>
+        <div id="sitePrefsSection" class="settings-row hidden">
+          <label id="sitePrefsLabel">This site</label>
+          <p id="sitePrefsHint" class="hint">Defaults for <strong id="sitePrefsHostname"></strong> apply whenever you open Distill here.</p>
+          <label class="settings-sub" for="siteFontScale">Panel size</label>
+          <div class="site-prefs-row">
+            <input type="range" id="siteFontScale" min="85" max="135" value="100" step="5" />
+            <span id="siteFontScaleLabel" class="site-prefs-value">100%</span>
+          </div>
+          <label class="settings-sub" for="siteThemeSelect">Panel theme</label>
+          <select id="siteThemeSelect">
+            <option value="system">Match system</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </div>
+        </section>
+        <section class="settings-group">
+          <h2 class="settings-group-title">Privacy and data</h2>
         <div class="settings-row privacy-settings-block">
-          <label>Privacy &amp; data</label>
           <p class="hint privacy-note-line"><strong>Your key stays on this device.</strong> It’s saved in Chrome local storage and never sent to Distill’s servers.</p>
           <p class="hint privacy-note-line"><strong>Paper text goes straight to your AI provider.</strong> When you ask for a summary, explanation, or analysis, the relevant text is sent over HTTPS from your browser directly to your chosen provider (Groq, Gemini, OpenAI or Anthropic) using your key — Distill has no server in the middle.</p>
           <p class="hint privacy-note-line"><strong>Local model = fully private.</strong> With Ollama / LM Studio, paper text stays on your computer.</p>
           <p class="hint privacy-note-line"><strong>Gemini free-tier note.</strong> Google may use content sent on the free tier to improve its products. For sensitive documents, use a paid key or Anthropic instead.</p>
         </div>
+        <div class="settings-row">
+          <label>Saved reading history</label>
+          <p class="hint">Distill saves your progress, summaries, highlights and check-ins per page on this device so you can resume. Nothing leaves your browser. Recent pages are kept; old ones are pruned automatically.</p>
+          <button id="clearAllHistoryBtn" type="button" class="btn-copy">Clear all saved history</button>
+        </div>
+        </section>
+        <section class="settings-group">
+          <h2 class="settings-group-title">Advanced</h2>
         <details id="advancedBackendDetails" class="settings-advanced details-block">
           <summary class="settings-advanced-summary">Advanced — hosted backend (optional)</summary>
           <div class="settings-row">
@@ -337,33 +383,6 @@
           </div>
         </details>
         <div class="settings-row">
-          <label>Usage</label>
-          <p id="fairUseText" class="usage-help-text">
-            You use your own provider’s free quota — Distill adds no limits of its own.
-          </p>
-          <p id="usageResetText" class="usage-help-subtext">
-            <a id="quotaDashLink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Check your Gemini usage →</a>
-          </p>
-        </div>
-        <div class="settings-row">
-          <label>Saved reading history</label>
-          <p class="hint">Distill saves your progress, summaries, highlights and check-ins per page on this device so you can resume. Nothing leaves your browser. Recent pages are kept; old ones are pruned automatically.</p>
-          <button id="clearAllHistoryBtn" type="button" class="btn-copy">Clear all saved history</button>
-        </div>
-        <div id="sitePrefsSection" class="settings-row hidden">
-          <label id="sitePrefsLabel">This site</label>
-          <p id="sitePrefsHint" class="hint">Defaults for <strong id="sitePrefsHostname"></strong> apply whenever you open Distill here.</p>
-          <label class="settings-sub" for="siteFontScale">Panel size</label>
-          <div class="site-prefs-row">
-            <input type="range" id="siteFontScale" min="85" max="135" value="100" step="5" />
-            <span id="siteFontScaleLabel" class="site-prefs-value">100%</span>
-          </div>
-          <label class="settings-sub" for="siteThemeSelect">Panel theme</label>
-          <select id="siteThemeSelect">
-            <option value="system">Match system</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
           <label class="toggle-row site-backend-toggle">
             <input id="siteBackendOnlyToggle" type="checkbox" />
             <span>Always use backend for this site (no direct API fallback)</span>
@@ -374,10 +393,7 @@
           <label>Keyboard shortcuts</label>
           <p class="hint">Open <code>chrome://extensions/shortcuts</code> to customize. Chrome allows up to four extension shortcuts; defaults are Alt+Shift+R (reader), F (focus), and A (analyze). Use the panel for highlight navigation.</p>
         </div>
-        <div class="settings-row">
-          <label>Accent Color</label>
-          <div id="accentSwatches" class="accent-swatches"></div>
-        </div>
+        </section>
       </div>
     </div>
 
