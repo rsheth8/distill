@@ -214,3 +214,34 @@ describe('distillSectionMap', () => {
     expect(help.distillSectionMap([null, { kind: 'intro' }], 'x')).toEqual([]);
   });
 });
+
+describe('distillByline', () => {
+  const by = (authors, source) => help.distillByline({ authors, source });
+
+  it('names one author, two authors, or the first of three or more', () => {
+    expect(by([], 'generic')).toBe('');
+    expect(by(['Ada Lovelace'], 'generic')).toBe('Ada Lovelace');
+    expect(by(['A', 'B'], 'generic')).toBe('A and B');
+    expect(by(['A', 'B', 'C'], 'generic')).toBe('A et al.');
+    expect(by(['A', 'B', 'C', 'D'], 'generic')).toBe('A et al.');
+  });
+
+  it('names the known sources and joins with a middle dot', () => {
+    expect(by(['A'], 'arxiv')).toBe('A · arXiv');
+    expect(by(['A', 'B'], 'pmc')).toBe('A and B · PubMed Central');
+    expect(by(['A', 'B', 'C'], 'biorxiv')).toBe('A et al. · bioRxiv');
+    expect(by([], 'arxiv')).toBe('arXiv');
+  });
+
+  it('says nothing for generic, pdf or unknown sources', () => {
+    expect(by(['A'], 'pdf')).toBe('A');
+    expect(by([], 'pdf')).toBe('');
+    expect(by([], 'nature')).toBe('');
+    expect(by([], undefined)).toBe('');
+  });
+
+  it('survives a missing paper or missing authors', () => {
+    expect(help.distillByline(null)).toBe('');
+    expect(help.distillByline({ source: 'arxiv' })).toBe('arXiv');
+  });
+});

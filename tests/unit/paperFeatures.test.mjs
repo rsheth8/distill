@@ -155,6 +155,25 @@ describe('paperFeatures', () => {
   });
 });
 
+describe('paper state for the panel', () => {
+  beforeEach(load);
+
+  it('publishes the section list (heading, kind, size) and the byline', () => {
+    ctx.tabState.set(1, {
+      paper: {
+        authors: ['A', 'B', 'C'], source: 'arxiv',
+        sections: [{ heading: 'Intro', kind: 'intro', text: 'abcd' }, { heading: 'Odd', text: '' }]
+      }
+    });
+    ctx.publishPaperHelp(1);
+    expect(sent.at(-1)).toMatchObject({
+      type: 'PAPER_HELP_STATE',
+      byline: 'A et al. · arXiv',
+      sections: [{ heading: 'Intro', kind: 'intro', chars: 4 }, { heading: 'Odd', kind: 'other', chars: 0 }]
+    });
+  });
+});
+
 describe('section guides', () => {
   const paper = { title: 'P', sections: [{ heading: 'Methods', kind: 'methods', text: 'We trained it.' }] };
   const guideText = 'It trains the model.\nTERMS:\nbackprop — how it learns';

@@ -252,6 +252,7 @@ const backendRetryBtn  = $('backendRetryBtn');
 const progressLabel    = $('progressLabel');
 const timeLabel        = $('timeLabel');
 const paperCard        = $('paperCard');
+const paperWhere       = $('paperWhere'); // the card's sticky last row; shown and hidden with it
 const articleTitle     = $('articleTitle');
 const fullTextLink     = $('fullTextLink');
 const pdfCard          = $('pdfCard');
@@ -916,7 +917,7 @@ function handleMessage(msg) {
       highlightHistoryForPage = [];
       analysisBuffer = '';
       analysisForSelection = '';
-      hide(paperCard);
+      hide(paperCard); hide(paperWhere);
       articleTitle.textContent = '';
       hide(fullTextLink);
       hide(pdfCard);
@@ -933,7 +934,7 @@ function handleMessage(msg) {
 
     case 'ARTICLE_DETECTED':
       show(mainContent); hide(waiting); hide(noArticle); hide(pdfCard);
-      if (msg.title) { articleTitle.textContent = msg.title; show(paperCard); }
+      if (msg.title) { articleTitle.textContent = msg.title; show(paperCard); show(paperWhere); }
       fullTextUrl = msg.fullTextUrl || '';
       fullTextLink.classList.toggle('hidden', !fullTextUrl);
       if (typeof msg.paragraphsUntilNextQuiz === 'number') {
@@ -951,7 +952,7 @@ function handleMessage(msg) {
       hide(highlightPrompt);
       clearSuggestions();
       hide(highlightSection);
-      hide(waiting); hide(mainContent); hide(paperCard); // the card holds the progress line, which mainContent used to hide
+      hide(waiting); hide(mainContent); hide(paperCard); hide(paperWhere); // the card holds the progress line, which mainContent used to hide
       if (msg.type === 'PDF_DETECTED') { show(pdfCard); hide(noArticle); } else { show(noArticle); hide(pdfCard); }
       break;
 

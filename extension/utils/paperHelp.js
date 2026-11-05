@@ -43,6 +43,18 @@ function distillTrustFacts(paper) {
   return facts;
 }
 
+const DISTILL_SOURCE_NAMES = { arxiv: 'arXiv', pmc: 'PubMed Central', biorxiv: 'bioRxiv' };
+
+/** "A and B · arXiv" for the paper card; empty parts (no authors, generic/pdf/unknown source) are left out. */
+function distillByline(paper) {
+  const authors = Array.isArray(paper?.authors) ? paper.authors : [];
+  let who = '';
+  if (authors.length >= 3) who = `${authors[0]} et al.`;
+  else who = authors.join(' and ');
+  const where = DISTILL_SOURCE_NAMES[paper?.source] || '';
+  return [who, where].filter(Boolean).join(' · ');
+}
+
 /**
  * Split "LABEL: text" output. `lead` is whatever comes before the first label.
  * Labels must start a line; case, **bold** and missing labels are fine; safe on a half-streamed reply.
@@ -171,5 +183,5 @@ function distillSectionMap(sections, currentHeading) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { distillPaperExcerpt, distillTrustFacts, distillParseLabelled, distillParseTerms, distillFindSection, distillMergeGlossary, distillPickSections, distillSectionMap };
+  module.exports = { distillPaperExcerpt, distillTrustFacts, distillParseLabelled, distillParseTerms, distillFindSection, distillMergeGlossary, distillPickSections, distillSectionMap, distillByline };
 }

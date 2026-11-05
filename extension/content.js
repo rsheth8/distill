@@ -227,10 +227,15 @@
     return heading ? distillCleanHeading(distillNodeText(heading)).slice(0, 120) : '';
   }
 
+  /** Does this heading element read as `want` (already trimmed and lower-cased)? */
+  function headingIs(h, want) {
+    return distillCleanHeading(distillNodeText(h)).slice(0, 120).toLowerCase() === want;
+  }
+
   /** The tracked paragraphs between this section's h2 and the next one. */
   function sectionParagraphs(heading) {
     const want = String(heading || '').trim().toLowerCase();
-    const i = sectionHeads.findIndex(h => distillCleanHeading(distillNodeText(h)).slice(0, 120).toLowerCase() === want);
+    const i = sectionHeads.findIndex(h => headingIs(h, want));
     if (i === -1) return [];
     const start = sectionHeads[i];
     const end = sectionHeads[i + 1];
@@ -414,7 +419,9 @@
         break;
       case 'SCROLL_TO_SECTION': {
         const want = String(msg.heading || '').trim().toLowerCase().slice(0, 120);
-        const head = sectionHeads.find(h => distillCleanHeading(distillNodeText(h)).slice(0, 120).toLowerCase() === want);
+        // The paper's sections are h2s; a heading the extractor took from a deeper level is found in the article.
+        const head = sectionHeads.find(h => headingIs(h, want)) ||
+          [...(articleEl || document.body).querySelectorAll('h1, h2, h3, h4')].find(h => headingIs(h, want));
         head?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         break;
       }
