@@ -35,7 +35,7 @@ function distillSectionBlock(section) {
 }
 
 /**
- * @returns {{ system: string, blocks: string[], cacheFirst?: boolean }}
+ * @returns {{ system: string, blocks: string[] }}
  *   blocks are the user message's text parts, in order.
  */
 function distillBuildPrompt(task, context = {}, input = {}) {
@@ -45,7 +45,7 @@ function distillBuildPrompt(task, context = {}, input = {}) {
   const recent = distillPromptClamp(c.recent, 3200);
   const section = distillSectionBlock(c.section);
   const sys = extra => `${distillPersona(c.level)} ${extra}`;
-  const out = (system, blocks, extra) => ({ system, blocks: blocks.filter(Boolean), ...extra });
+  const out = (system, blocks) => ({ system, blocks: blocks.filter(Boolean) });
 
   switch (task) {
     case 'now':
@@ -108,13 +108,6 @@ function distillBuildPrompt(task, context = {}, input = {}) {
           'Explain any jargon in it.'
       ]);
     }
-
-    case 'explain_page':
-      return out(sys('Give them a plain-language overview of the paper.'), [
-        `Paper text:\n\n${distillPromptClamp(i.pageText, 7000)}`,
-        'Explain this paper to someone outside the field: what question it asks, what the researchers did, ' +
-          'what they found, and why it might matter. Under 120 words. No bullet points.'
-      ], { cacheFirst: true });
 
     default:
       throw new Error(`No prompt for task '${task}'`);

@@ -23,8 +23,6 @@ export default [
         distillBuildPrompt: 'readonly',
         distillResolveBackendBaseUrl: 'readonly',
         distillFormatExportCaptured: 'readonly',
-        distillBuildExplainExportMarkdown: 'readonly',
-        distillBuildExplainExportPlain: 'readonly',
         distillBuildAnalysisExportMarkdown: 'readonly',
         distillBuildAnalysisExportPlain: 'readonly',
         distillBuildPinnedAnalysisMarkdown: 'readonly',
@@ -52,8 +50,6 @@ export default [
         DISTILL_INCLUDE_BACKEND: 'readonly',
         distillApplyAccentCssVars: 'readonly',
         distillNormalizeSelection: 'readonly',
-        distillStableStringHash: 'readonly',
-        distillExplainContentHash: 'readonly',
         distillFindCachedHighlight: 'readonly',
         importScripts: 'readonly'
       }
@@ -184,8 +180,7 @@ export default [
         ...globals.node,
         ...globals.vitest,
         distillNormalizeSelection: 'readonly',
-        distillFindCachedHighlight: 'readonly',
-        distillExplainContentHash: 'readonly'
+        distillFindCachedHighlight: 'readonly'
       }
     },
     rules: {

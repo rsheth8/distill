@@ -57,8 +57,7 @@ describe('distillBuildPageStatePayload', () => {
       lastSummary: 'x'.repeat(9000),
       lastSummaryUnitCount: 12,
       highlightHistory: new Array(20).fill({ id: 1 }),
-      quiz: { status: 'question', question: 'Q', answer: '', feedback: '', history: new Array(9).fill({ q: 'h' }) },
-      explainCache: { pageUrl: 'https://x.test/a', contentHash: 'abc', text: 'y'.repeat(9000) }
+      quiz: { status: 'question', question: 'Q', answer: '', feedback: '', history: new Array(9).fill({ q: 'h' }) }
     };
     const p = distillBuildPageStatePayload(state, 111);
     expect(p.v).toBe(DISTILL_PAGE_STATE_VERSION);
@@ -70,24 +69,21 @@ describe('distillBuildPageStatePayload', () => {
     expect(p.highlightHistory.length).toBe(8);
     expect(p.quiz.history.length).toBe(3);
     expect(p.quiz.status).toBe('question');
-    expect(p.explainCache.text.length).toBe(3500);
   });
   it('tolerates empty state', () => {
     const p = distillBuildPageStatePayload({}, 1);
     expect(p.readUnits).toEqual([]);
     expect(p.readCount).toBe(0);
     expect(p.quiz.status).toBe('idle');
-    expect(p.explainCache).toBeNull();
   });
 });
 
 describe('round-trip: payload -> state', () => {
-  it('restores summary, units, quiz, highlights, explain', () => {
+  it('restores summary, units, quiz, highlights', () => {
     const payload = distillBuildPageStatePayload({
       pageUrl: 'https://x.test/a', title: 'T', totalParagraphs: 10, readParagraphs: ['a', 'b'],
       readUnits: ['a', 'b'], lastSummary: 'sum', highlightHistory: [{ id: 1 }],
-      quiz: { status: 'question', question: 'Q', answer: 'A', feedback: '', history: [{ q: 'h' }] },
-      explainCache: { pageUrl: 'https://x.test/a', contentHash: 'c1', text: 'exp' }
+      quiz: { status: 'question', question: 'Q', answer: 'A', feedback: '', history: [{ q: 'h' }] }
     }, 5);
     const s = distillPagePayloadToState(payload);
     expect(s.lastSummary).toBe('sum');
@@ -96,7 +92,6 @@ describe('round-trip: payload -> state', () => {
     expect(s.quiz.status).toBe('question');
     expect(s.quiz.answer).toBe('A');
     expect(s.highlightHistory).toEqual([{ id: 1 }]);
-    expect(s.explainCache).toEqual({ pageUrl: 'https://x.test/a', contentHash: 'c1', text: 'exp' });
     expect(s.articleText).toBe(''); // not persisted
   });
 });

@@ -24,7 +24,6 @@ const DISTILL_CAP_READ_UNITS = 24;
 const DISTILL_CAP_SUMMARY_CHARS = 5000;
 const DISTILL_CAP_HIGHLIGHTS = 8;
 const DISTILL_CAP_QUIZ_HISTORY = 3;
-const DISTILL_CAP_EXPLAIN_CHARS = 3500;
 
 /** Lightweight deterministic FNV-1a hash → hex. */
 function distillStableHash(text) {
@@ -79,14 +78,7 @@ function distillBuildPageStatePayload(s, now) {
           feedback: q.feedback || '',
           history: distillClampList(q.history || [], DISTILL_CAP_QUIZ_HISTORY)
         }
-      : distillDefaultQuiz(),
-    explainCache: src.explainCache && typeof src.explainCache === 'object'
-      ? {
-          pageUrl: src.explainCache.pageUrl || '',
-          contentHash: src.explainCache.contentHash || '',
-          text: distillClampString(src.explainCache.text || '', DISTILL_CAP_EXPLAIN_CHARS)
-        }
-      : null
+      : distillDefaultQuiz()
   };
 }
 
@@ -120,8 +112,7 @@ function distillPagePayloadToState(payload) {
       answer: quiz.answer || '',
       feedback: quiz.feedback || '',
       history: Array.isArray(quiz.history) ? quiz.history : []
-    },
-    explainCache: (payload && payload.explainCache) || null
+    }
   };
 }
 
@@ -147,8 +138,7 @@ function distillHistoryPayloadToState(payload) {
     lastSummary,
     highlightHistory: [],
     pageUrl: (payload && payload.pageUrl) || '',
-    quiz: distillDefaultQuiz(),
-    explainCache: null
+    quiz: distillDefaultQuiz()
   };
 }
 

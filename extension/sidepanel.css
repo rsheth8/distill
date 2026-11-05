@@ -1134,7 +1134,7 @@ header {
   color: var(--text-pri);
 }
 
-/* Action "on" state — toolbar toggles (Focus, Learn, Scroll, Explain, Analyze, History) */
+/* Action "on" state — toolbar toggles (Focus, Learn, Scroll, Analyze, History) */
 .action-btn.action-active {
   background: var(--accent-a12);
   border-color: var(--accent);
@@ -1304,7 +1304,6 @@ header {
 
 /* Distilled outputs should feel editorial and calm */
 #summaryText,
-#explainText,
 #analysisText,
 #nowText {
   font-family: var(--font-text);
@@ -1565,13 +1564,6 @@ header {
   transition: opacity 0.22s ease;
 }
 .now-text.fading { opacity: 0; }
-
-/* ── Explain section ─────────────────────────────────────────────────────────── */
-
-.explain-section {
-  background: var(--bg-surface);
-  border-left: 2px solid var(--border-mid);
-}
 
 /* ── Resume card ─────────────────────────────────────────────────────────────── */
 

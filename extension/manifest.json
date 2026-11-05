@@ -69,13 +69,6 @@
       },
       "description": "Toggle focus mode on the page"
     },
-    "explain_page": {
-      "suggested_key": {
-        "default": "Alt+Shift+E",
-        "mac": "Alt+Shift+E"
-      },
-      "description": "Explain this paper"
-    },
     "analyze_selection": {
       "suggested_key": {
         "default": "Alt+Shift+A",

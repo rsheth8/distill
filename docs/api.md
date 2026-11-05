@@ -295,7 +295,6 @@ Aligned with `extension/background.js` `streamTask` and `TASK_COSTS` in `server.
 | `quiz_feedback` | 7 | `recent` | `question`, `answer` |
 | `quiz_skipped_review` | 6 | `recent` | `question` |
 | `analysis` | 12 | `title`, `opener`, `priorGist`, `recent` | `selection` |
-| `explain_page` | 8 | — | `pageText` |
 
 **Cost modes**
 

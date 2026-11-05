@@ -108,10 +108,6 @@ chrome.commands.onCommand.addListener(command => {
       await openSidePanelForTab(tabId);
       await ensureTabHydrated(tabId);
 
-      if (command === 'explain_page') {
-        explainPage(tabId);
-        return;
-      }
       if (command === 'analyze_selection') {
         analyzeSelection(tabId);
         return;
@@ -218,7 +214,6 @@ const DEFAULT_AI_MODE = 'balanced';
 const MAX_READ_SO_FAR_CHARS = 12000;
 const MAX_CONTEXT_CHARS = 3200;
 const MAX_SELECTION_CHARS = 900;
-const MAX_PAGE_EXPLAIN_CHARS = 7000;
 // Full article text is only used for lightweight UI/heuristics; keep it bounded so
 // snapshots + memory stay stable on enormous pages.
 const MAX_ARTICLE_TEXT_CHARS = 240_000;
@@ -235,7 +230,6 @@ const AI_TUNING = {
       quiz_question: 90,
       quiz_feedback: 180,
       quiz_skipped_review: 170,
-      explain_page: 180,
       analysis: 260
     }
   },
@@ -246,7 +240,6 @@ const AI_TUNING = {
       quiz_question: 70,
       quiz_feedback: 130,
       quiz_skipped_review: 120,
-      explain_page: 130,
       analysis: 180
     }
   }
@@ -461,8 +454,7 @@ function tabSnapshotPayload(tabId) {
     currentQuestion: s.currentQuestion,
     lastSummary: s.lastSummary,
     highlightHistory: s.highlightHistory || [],
-    quiz: s.quiz || defaultQuizState(),
-    explainCache: s.explainCache || null
+    quiz: s.quiz || defaultQuizState()
   };
 }
 
@@ -975,12 +967,6 @@ chrome.runtime.onConnect.addListener(port => {
         void (async () => {
           await ensureTabHydrated(msg.tabId);
           analyzeSelection(msg.tabId, { force: !!msg.force });
-        })();
-        break;
-      case 'EXPLAIN_PAGE':
-        void (async () => {
-          await ensureTabHydrated(msg.tabId);
-          explainPage(msg.tabId, { force: !!msg.force });
         })();
         break;
       case 'REQUEST_NOW_TIP':
@@ -1694,85 +1680,6 @@ async function generateSkippedReview(tabId, question) {
   }
 }
 
-// ── Explain this page ─────────────────────────────────────────────────────────
-
-async function runExplainStream(tabId, pageText, opts = {}) {
-  const allowEnqueue = opts.allowEnqueue !== false;
-  const s = tabState.get(tabId) || { pageUrl: '', title: '', totalParagraphs: 0 };
-  let completed = false;
-  let explainText = '';
-  const pageUrlKey = distillPageUrlKey(s.pageUrl || '');
-  const contentHash = distillExplainContentHash(pageText);
-  toPanel({ type: 'EXPLAIN_START', tabId });
-  const handleErr = err => {
-    if (allowEnqueue && isBackendUnreachableError(err)) {
-      void enqueueOfflineJob({
-        task: 'explain_page',
-        tabId,
-        payload: {
-          pageText: clampText(pageText, MAX_PAGE_EXPLAIN_CHARS),
-          pageUrl: s.pageUrl || ''
-        }
-      });
-      toPanel({
-        type: 'TOAST',
-        tabId,
-        message: 'Explain queued — will run when the backend is back.',
-        variant: 'success'
-      });
-    }
-    toPanel({ type: 'ERROR', code: err?.code, message: err?.message || String(err), tabId });
-  };
-  try {
-    await streamTask({
-      tabId,
-      task: 'explain_page',
-      s,
-      noAuthMessage: 'No API key set — click ⚙ to add your Anthropic API key.',
-      context: {},
-      input: { pageText },
-      onChunk: chunk => {
-        explainText += chunk;
-        toPanel({ type: 'EXPLAIN_CHUNK', chunk, tabId });
-      },
-      onDone:  ()    => {
-        completed = true;
-        const text = explainText.trim();
-        if (text) {
-          s.explainCache = { pageUrl: pageUrlKey, contentHash, text };
-          schedulePersistTab(tabId);
-        }
-        toPanel({ type: 'EXPLAIN_DONE', tabId });
-      },
-      onError: handleErr
-    });
-  } catch (e) {
-    handleErr(e);
-  }
-  return completed;
-}
-
-function replayCachedExplain(tabId, s, cache) {
-  toPanel({ type: 'EXPLAIN_CACHED', tabId, text: cache.text, fromCache: true });
-}
-
-async function explainPage(tabId, opts = {}) {
-  const s = tabState.get(tabId);
-  if (!s?.paper) {
-    toPanel({ type: 'ERROR', code: 'NOT_A_PAPER', message: 'Open a research paper to get an overview.', tabId });
-    return;
-  }
-  const pageText = clampText(s.articleText || '', MAX_PAGE_EXPLAIN_CHARS);
-  const pageUrlKey = distillPageUrlKey(s.pageUrl || '');
-  const contentHash = distillExplainContentHash(pageText);
-  if (!opts.force && s.explainCache?.text && s.explainCache.pageUrl === pageUrlKey && s.explainCache.contentHash === contentHash) {
-    replayCachedExplain(tabId, s, s.explainCache);
-    return;
-  }
-
-  await runExplainStream(tabId, pageText, { allowEnqueue: true });
-}
-
 // ── Highlight analysis ────────────────────────────────────────────────────────
 
 async function runAnalyzeStream(tabId, s, ctx, rawSelection, opts = {}) {
@@ -1917,17 +1824,7 @@ async function tryFlushOfflineQueue() {
   try {
   for (const job of q) {
     try {
-      if (job.task === 'explain_page' && job.payload?.pageText) {
-        try {
-          await chrome.tabs.get(job.tabId);
-        } catch {
-          processed++;
-          continue;
-        }
-        const ok = await runExplainStream(job.tabId, job.payload.pageText, { allowEnqueue: false });
-        if (ok) processed++;
-        else kept.push(job);
-      } else if (job.task === 'analysis' && job.payload?.selectedText) {
+      if (job.task === 'analysis' && job.payload?.selectedText) {
         try {
           await chrome.tabs.get(job.tabId);
         } catch {
@@ -2168,11 +2065,8 @@ async function streamTask({
       onError
     }));
   }
-  const { system: systemPrompt, blocks, cacheFirst } = distillBuildPrompt(task, context, input);
-  const messages = [{
-    role: 'user',
-    content: blocks.map((text, i) => ({ type: 'text', text, ...(cacheFirst && i === 0 ? { cache_control: { type: 'ephemeral' } } : {}) }))
-  }];
+  const { system: systemPrompt, blocks } = distillBuildPrompt(task, context, input);
+  const messages = [{ role: 'user', content: blocks.map(text => ({ type: 'text', text })) }];
   const aiMode = await getAiMode();
   const taskMaxTokens = maxTokensForTask(task, aiMode);
   const globalUseBackend = await useBackendProxy();

@@ -13,8 +13,7 @@ describe('distillBuildPrompt', () => {
     quiz_question: [{ recent: 'R' }, {}, ['R', 'ONE short question']],
     quiz_feedback: [{ recent: 'R' }, { question: 'Q?', answer: 'A' }, ['R', 'Q?', '"A"']],
     quiz_skipped_review: [{ recent: 'R' }, { question: 'Q?' }, ['R', 'Q?', 'model answer']],
-    analysis: [{ title: 'T', opener: 'ABS', priorGist: 'G', recent: 'R' }, { selection: 'SEL' }, ['T', 'ABS', 'G', 'R', '"SEL"']],
-    explain_page: [{}, { pageText: 'PAGE' }, ['PAGE']]
+    analysis: [{ title: 'T', opener: 'ABS', priorGist: 'G', recent: 'R' }, { selection: 'SEL' }, ['T', 'ABS', 'G', 'R', '"SEL"']]
   };
 
   for (const [task, [context, input, wanted]] of Object.entries(tasks)) {
@@ -24,6 +23,10 @@ describe('distillBuildPrompt', () => {
       for (const w of wanted) expect(text(p)).toContain(w);
     });
   }
+
+  it('explain_page is gone (the overview replaces it)', () => {
+    expect(() => distillBuildPrompt('explain_page', {}, { pageText: 'x' })).toThrow(/explain_page/);
+  });
 
   it('continues an existing summary with only the fresh text', () => {
     const t = text(distillBuildPrompt('summary', { prevSummary: 'OLD' }, { readSoFar: 'ALL', freshRead: 'NEW' }));

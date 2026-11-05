@@ -70,7 +70,6 @@ function wireActiveTab(tabId) {
     try {
       const u = t?.url || '';
       currentBrowserTabUrl = (u.startsWith('http://') || u.startsWith('https://')) ? distillPageUrlKey(u) : '';
-      if (currentBrowserTabUrl) explainPageKey = currentBrowserTabUrl;
     } catch {
       currentBrowserTabUrl = '';
     }
@@ -265,12 +264,6 @@ const resumeMeta       = $('resumeMeta');
 const resumeText       = $('resumeText');
 const resumeClearBtn   = $('resumeClearBtn');
 const copyBtn          = $('copyBtn');
-const explainSection   = $('explainSection');
-const explainText      = $('explainText');
-const explainStatus    = $('explainStatus');
-const explainCloseBtn  = $('explainCloseBtn');
-const exportExplainMdBtn = $('exportExplainMdBtn');
-const exportExplainTxtBtn = $('exportExplainTxtBtn');
 const highlightSection = $('highlightSection');
 const selectedPreview  = $('selectedPreview');
 const analyzeBtn       = $('analyzeBtn');
@@ -285,8 +278,6 @@ let lastSelectedText = '';
 const recentCheckinsSection = $('recentCheckinsSection');
 const recentCheckinsList = $('recentCheckinsList');
 const toast            = $('toast');
-const explainBtnMain   = $('explainBtnMain');
-const explainRefreshBtn = $('explainRefreshBtn');
 const historyDetails   = $('historyDetails');
 const moreResumeBadge  = $('moreResumeBadge');
 const highlightPrompt  = $('highlightPrompt');
@@ -869,75 +860,6 @@ copyNotesPlainBtn?.addEventListener('click', () => {
   port?.postMessage({ type: 'GET_NOTES', tabId: currentTabId, format: 'plain' });
 });
 
-// ── Explain this page ─────────────────────────────────────────────────────────
-
-let explainPageKey = '';
-
-function currentExplainPageKey() {
-  return explainPageKey || currentBrowserTabUrl || highlightPageMeta.pageUrl || '';
-}
-
-function explainPanelVisible() {
-  return explainSection && !explainSection.classList.contains('hidden');
-}
-
-function renderExplainFromBuffer() {
-  explainText.textContent = explainBuffer;
-  setExplainExportEnabled(!!explainBuffer.trim());
-}
-
-function requestExplain({ force = false } = {}) {
-  hideNowHintChip();
-  hide(noArticle);
-  hide(waiting);
-  show(mainContent);
-  show(explainSection);
-  setActionActive(explainBtnMain, true);
-  clearSuggestions();
-
-  const key = currentExplainPageKey();
-  if (!force && explainBuffer.trim() && explainPageKey && explainPageKey === key) {
-    renderExplainFromBuffer();
-    setStatus('explainStatus', '', '');
-    return;
-  }
-
-  explainBuffer = '';
-  explainText.textContent = '';
-  setExplainExportEnabled(false);
-  setStatus('explainStatus', '⟳ Reading page...', 'updating');
-  port?.postMessage({ type: 'EXPLAIN_PAGE', tabId: currentTabId, force: !!force });
-}
-
-function collapseExplainPanel() {
-  hide(explainSection);
-  setStatus('explainStatus', '', '');
-  setActionActive(explainBtnMain, false);
-}
-
-function exitExplainMode() {
-  collapseExplainPanel();
-}
-
-function enterExplainMode({ fetch = true, force = false } = {}) {
-  setActionActive(explainBtnMain, true);
-  if (fetch) requestExplain({ force });
-  else if (explainBuffer.trim()) {
-    show(explainSection);
-    renderExplainFromBuffer();
-  } else {
-    requestExplain({ force: false });
-  }
-}
-
-function toggleExplainPanel() {
-  if (explainPanelVisible()) {
-    collapseExplainPanel();
-    return;
-  }
-  enterExplainMode({ fetch: true, force: false });
-}
-
 function hideNowHintChip() {
   if (!nowHintChip) return;
   if (nowHintChipTimer) {
@@ -967,29 +889,6 @@ function requestNowTip({ force = false } = {}) {
   port?.postMessage({ type: 'REQUEST_NOW_TIP', tabId: currentTabId, force: !!force });
 }
 
-$('explainBtnMain').addEventListener('click', toggleExplainPanel);
-
-explainCloseBtn?.addEventListener('click', exitExplainMode);
-explainRefreshBtn?.addEventListener('click', () => requestExplain({ force: true }));
-
-function buildExplainExportMarkdown() {
-  const capturedAt = distillFormatExportCaptured();
-  return distillBuildExplainExportMarkdown({
-    title: (articleTitle?.textContent || '').trim(),
-    body: (explainBuffer || '').trim(),
-    capturedAt
-  });
-}
-
-function buildExplainExportPlain() {
-  const capturedAt = distillFormatExportCaptured();
-  return distillBuildExplainExportPlain({
-    title: (articleTitle?.textContent || '').trim(),
-    body: (explainBuffer || '').trim(),
-    capturedAt
-  });
-}
-
 function buildAnalysisExportMarkdown() {
   const capturedAt = distillFormatExportCaptured();
   return distillBuildAnalysisExportMarkdown({
@@ -1010,27 +909,10 @@ function buildAnalysisExportPlain() {
   });
 }
 
-function setExplainExportEnabled(on) {
-  if (exportExplainMdBtn) exportExplainMdBtn.disabled = !on;
-  if (exportExplainTxtBtn) exportExplainTxtBtn.disabled = !on;
-}
-
 function setAnalysisExportEnabled(on) {
   if (exportAnalysisMdBtn) exportAnalysisMdBtn.disabled = !on;
   if (exportAnalysisTxtBtn) exportAnalysisTxtBtn.disabled = !on;
 }
-
-exportExplainMdBtn?.addEventListener('click', () => {
-  const t = buildExplainExportMarkdown();
-  if (!t) return;
-  navigator.clipboard.writeText(t).then(() => showToast('Explanation copied (Markdown)', 'success'));
-});
-
-exportExplainTxtBtn?.addEventListener('click', () => {
-  const t = buildExplainExportPlain();
-  if (!t) return;
-  navigator.clipboard.writeText(t).then(() => showToast('Explanation copied (plain text)', 'success'));
-});
 
 exportAnalysisMdBtn?.addEventListener('click', () => {
   const t = buildAnalysisExportMarkdown();
@@ -1269,7 +1151,6 @@ highlightNoteSaveBtn?.addEventListener('click', () => {
 let nowBuffer      = '';
 let summaryBuffer  = '';
 let analysisBuffer = '';
-let explainBuffer  = '';
 let summaryRenderScheduled = false;
 let summaryLastRenderAt = 0;
 const SUMMARY_RENDER_MIN_INTERVAL_MS = 120;
@@ -1301,8 +1182,6 @@ function handleMessage(msg) {
       recentCheckins = [];
       highlightHistoryForPage = [];
       highlightPageMeta = { pageUrl: '', title: '' };
-      explainBuffer = '';
-      explainPageKey = '';
       analysisBuffer = '';
       analysisForSelection = '';
       renderPageAnalysesList();
@@ -1326,8 +1205,6 @@ function handleMessage(msg) {
       hide(highlightPrompt);
       hide(checkinsPrompt);
       clearSuggestions();
-      hide(explainSection);
-      setActionActive(explainBtnMain, false);
       hide(highlightSection);
       setActionActive(analyzeActionBtn, false);
       // No full-screen waiting page: keep main UI visible.
@@ -1339,7 +1216,6 @@ function handleMessage(msg) {
       if (msg.title) { articleTitle.textContent = msg.title; show(articleTitleBar); }
       fullTextUrl = msg.fullTextUrl || '';
       fullTextLink.classList.toggle('hidden', !fullTextUrl);
-      if (msg.pageUrl) explainPageKey = distillPageUrlKey(msg.pageUrl);
       if (typeof msg.paragraphsUntilNextQuiz === 'number') {
         paragraphsUntilNextQuiz = msg.paragraphsUntilNextQuiz;
       }
@@ -1357,8 +1233,6 @@ function handleMessage(msg) {
       hide(highlightPrompt);
       hide(checkinsPrompt);
       clearSuggestions();
-      hide(explainSection);
-      setActionActive(explainBtnMain, false);
       hide(highlightSection);
       setActionActive(analyzeActionBtn, false);
       hide(waiting); hide(mainContent);
@@ -1441,39 +1315,6 @@ function handleMessage(msg) {
         show(copyNotesBtn);
         show(copyNotesPlainBtn);
       }
-      break;
-
-    // ── Explain page ──
-    case 'EXPLAIN_START':
-      explainBuffer = '';
-      explainText.textContent = '';
-      setExplainExportEnabled(false);
-      show(explainSection);
-      setActionActive(explainBtnMain, true);
-      setStatus('explainStatus', '⟳ Reading page...', 'updating');
-      break;
-
-    case 'EXPLAIN_CHUNK':
-      explainBuffer += msg.chunk;
-      explainText.textContent = explainBuffer;
-      setExplainExportEnabled(!!explainBuffer.trim());
-      break;
-
-    case 'EXPLAIN_CACHED':
-      explainBuffer = (msg.text || '').trim();
-      explainPageKey = currentExplainPageKey();
-      explainText.textContent = explainBuffer;
-      show(explainSection);
-      setActionActive(explainBtnMain, true);
-      setStatus('explainStatus', '', '');
-      setExplainExportEnabled(!!explainBuffer);
-      if (msg.fromCache) showToast('Showing saved explanation.', 'success');
-      break;
-
-    case 'EXPLAIN_DONE':
-      explainPageKey = currentExplainPageKey();
-      setStatus('explainStatus', '', '');
-      setExplainExportEnabled(!!explainBuffer.trim());
       break;
 
     // ── Selection ──
@@ -1845,7 +1686,6 @@ function handleMessage(msg) {
 
     case 'HIGHLIGHT_HISTORY_UPDATE':
       highlightPageMeta = { pageUrl: msg.pageUrl || '', title: msg.title || '' };
-      if (msg.pageUrl) explainPageKey = distillPageUrlKey(msg.pageUrl);
       highlightHistoryForPage = Array.isArray(msg.items) ? msg.items : [];
       renderPageAnalysesList();
       break;

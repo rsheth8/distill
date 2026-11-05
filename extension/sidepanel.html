@@ -197,10 +197,6 @@
         </div>
 
         <div class="actions-row-bottom">
-          <button id="explainBtnMain" type="button" class="action-btn action-icon" title="Explain this paper in plain language" aria-pressed="false">
-            <span class="action-ico">◌</span>
-            <span class="action-label">Explain</span>
-          </button>
           <button id="analyzeActionBtn" type="button" class="action-btn action-icon" title="Analyze selected text" aria-pressed="false">
             <span class="action-ico">✦</span>
             <span class="action-label">Analyze</span>
@@ -267,21 +263,6 @@
           </div>
         </div>
         <div id="summaryText" class="body-text muted">Scroll through the paper — your plain-language summary builds here.</div>
-      </section>
-
-      <!-- Explain (secondary) -->
-      <section id="explainSection" class="section explain-section hidden">
-        <div class="section-header">
-          <span class="section-title">Explain</span>
-          <div class="header-actions">
-            <span id="explainStatus" class="status-badge"></span>
-            <button id="exportExplainMdBtn" type="button" class="btn-copy btn-export-mini" disabled title="Copy explanation as Markdown">MD</button>
-            <button id="exportExplainTxtBtn" type="button" class="btn-copy btn-export-mini" disabled title="Copy explanation as plain text">Txt</button>
-            <button id="explainRefreshBtn" type="button" class="btn-copy" title="Generate a new explanation">Refresh</button>
-            <button id="explainCloseBtn" class="btn-copy" title="Turn off explain mode">Close</button>
-          </div>
-        </div>
-        <div id="explainText" class="body-text"></div>
       </section>
 
       <!-- Highlight (secondary) -->
@@ -469,7 +450,7 @@
         </div>
         <div class="settings-row">
           <label>Keyboard shortcuts</label>
-          <p class="hint">Open <code>chrome://extensions/shortcuts</code> to customize. Chrome allows up to four extension shortcuts; defaults are Alt+Shift+R (reader), F (focus), E (explain), and A (analyze). Use the panel for highlight navigation.</p>
+          <p class="hint">Open <code>chrome://extensions/shortcuts</code> to customize. Chrome allows up to four extension shortcuts; defaults are Alt+Shift+R (reader), F (focus), and A (analyze). Use the panel for highlight navigation.</p>
         </div>
         <div class="settings-row">
           <label>Accent Color</label>
