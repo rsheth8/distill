@@ -1,0 +1,5 @@
+{
+  "description": "Synthetic pdf.js text-extraction result for a raster-only/scanned page. No OCR or vision output is provided.",
+  "pages": [{"width": 612, "height": 792, "items": []}],
+  "expected": "No readable text; show Original PDF and do not request an AI overview."
+}
