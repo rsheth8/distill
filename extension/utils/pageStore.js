@@ -71,7 +71,7 @@ function distillPaperHelpFields(src) {
     guides[heading] = {
       level: g.level || 'everyday',
       text: distillClampString(g.text, DISTILL_CAP_GUIDE_CHARS),
-      terms: distillClampList(g.terms, 12)
+      terms: distillClampList(g.terms.filter(t => t && typeof t.term === 'string' && typeof t.definition === 'string'), 12)
     };
   }
   const glossary = (Array.isArray(s.glossary) ? s.glossary : [])
@@ -81,7 +81,7 @@ function distillPaperHelpFields(src) {
     .slice(-DISTILL_CAP_ASK_THREAD);
   const o = s.overview;
   return {
-    overview: o && typeof o === 'object' ? { level: o.level || 'everyday', text: distillClampString(o.text, DISTILL_CAP_OVERVIEW_CHARS) } : null,
+    overview: o && typeof o.text === 'string' && o.text ? { level: o.level || 'everyday', text: distillClampString(o.text, DISTILL_CAP_OVERVIEW_CHARS) } : null,
     guides,
     glossary: distillClampList(glossary, DISTILL_CAP_GLOSSARY),
     askThread: askThread.map(e => ({ q: distillClampString(e.q, 500), a: distillClampString(e.a, DISTILL_CAP_ASK_CHARS) }))

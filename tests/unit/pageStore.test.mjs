@@ -179,13 +179,16 @@ describe('paper help fields', () => {
       v: 1,
       glossary: [{ term: 'ok', definition: 'd', section: 's' }, { term: 5, definition: 'd' }, null, { term: 't' }],
       guides: {
-        Good: { level: 'everyday', text: 'g', terms: [] },
+        Good: { level: 'everyday', text: 'g', terms: [{ term: 'a', definition: 'b' }, null, { term: 1 }] },
         NoText: { level: 'everyday', text: 7, terms: [] },
         BadTerms: { level: 'everyday', text: 'g', terms: 'x' },
         Null: null
       },
-      askThread: [{ q: 'kept', a: 'A' }, { q: 3, a: 'x' }, null]
+      askThread: [{ q: 'kept', a: 'A' }, { q: 3, a: 'x' }, null],
+      overview: { level: 'simple', text: 42 }
     });
+    expect(s.overview).toBeNull();
+    expect(s.guides.Good.terms).toEqual([{ term: 'a', definition: 'b' }]);
     expect(s.glossary).toEqual([{ term: 'ok', definition: 'd', section: 's' }]);
     expect(Object.keys(s.guides)).toEqual(['Good']);
     expect(s.askThread).toEqual([{ q: 'kept', a: 'A' }]);
