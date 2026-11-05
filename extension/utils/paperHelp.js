@@ -182,6 +182,25 @@ function distillSectionMap(sections, currentHeading) {
   }));
 }
 
+/** Stable key for a summary bullet (case, spacing and a leading bullet mark ignored). */
+function distillBulletKey(bullet) {
+  return String(bullet || '').replace(/^\s*[-*•]\s*/, '').replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 200);
+}
+
+/** Summary bullets grouped by the section they were written in, in paper order; untagged first. */
+function distillGroupBullets(bullets, bulletSections, sectionOrder) {
+  const tags = bulletSections || {};
+  const order = Array.isArray(sectionOrder) ? sectionOrder : [];
+  const groups = new Map();
+  for (const b of Array.isArray(bullets) ? bullets : []) {
+    const heading = tags[distillBulletKey(b)] || '';
+    if (!groups.has(heading)) groups.set(heading, []);
+    groups.get(heading).push(b);
+  }
+  const rank = h => (h === '' ? -1 : order.indexOf(h) === -1 ? order.length : order.indexOf(h));
+  return [...groups].sort((a, b) => rank(a[0]) - rank(b[0])).map(([heading, list]) => ({ heading, bullets: list }));
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { distillPaperExcerpt, distillTrustFacts, distillParseLabelled, distillParseTerms, distillFindSection, distillMergeGlossary, distillPickSections, distillSectionMap, distillByline };
+  module.exports = { distillBulletKey, distillGroupBullets, distillPaperExcerpt, distillTrustFacts, distillParseLabelled, distillParseTerms, distillFindSection, distillMergeGlossary, distillPickSections, distillSectionMap, distillByline };
 }

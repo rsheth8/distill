@@ -245,3 +245,24 @@ describe('distillByline', () => {
     expect(help.distillByline({ source: 'arxiv' })).toBe('arXiv');
   });
 });
+
+describe('distillGroupBullets', () => {
+  const tags = { [help.distillBulletKey('B in methods')]: 'Methods', [help.distillBulletKey('A in intro')]: 'Introduction' };
+  it('groups bullets under their sections in paper order, untagged first', () => {
+    expect(help.distillGroupBullets(['B in methods', 'Old one', 'A in intro'], tags, ['Introduction', 'Methods'])).toEqual([
+      { heading: '', bullets: ['Old one'] },
+      { heading: 'Introduction', bullets: ['A in intro'] },
+      { heading: 'Methods', bullets: ['B in methods'] }
+    ]);
+  });
+  it('puts sections missing from the order after the known ones', () => {
+    const g = help.distillGroupBullets(['x'], { [help.distillBulletKey('x')]: 'Appendix' }, ['Introduction']);
+    expect(g).toEqual([{ heading: 'Appendix', bullets: ['x'] }]);
+  });
+  it('keys ignore case, spacing and a leading bullet mark', () => {
+    expect(help.distillBulletKey('•  Hello   World ')).toBe(help.distillBulletKey('hello world'));
+  });
+  it('survives bad input', () => {
+    expect(help.distillGroupBullets(null, null, null)).toEqual([]);
+  });
+});

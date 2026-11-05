@@ -284,3 +284,14 @@ $('askInput').addEventListener('keydown', e => {
 });
 for (const btn of document.querySelectorAll('.ask-starter')) btn.addEventListener('click', () => askPaper(btn.textContent));
 $('askRetryBtn').addEventListener('click', () => askPaper(lastAskQuestion));
+
+// Selection card: carry the selected passage into Ask (the input holds 500 characters, so the quote is capped at 300).
+$('askAboutBtn').addEventListener('click', () => {
+  const quote = lastSelectedText.replace(/\s+/g, ' ').trim().slice(0, 300);
+  if (!quote) return;
+  setPanel('ask');
+  const input = $('askInput');
+  input.value = `About "${quote}": `;
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+});

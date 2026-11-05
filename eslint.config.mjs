@@ -57,7 +57,7 @@ export default [
         importScripts: 'readonly',
         queuePaperHelp: 'readonly', runOverview: 'readonly', publishPaperHelp: 'readonly', clearPaperHelp: 'readonly',
         runSectionGuide: 'readonly', runAsk: 'readonly', onSectionChanged: 'readonly', resendTerms: 'readonly', onReadingLevelChanged: 'readonly',
-        handlePaperMessage: 'readonly', resetPaperView: 'readonly', renderAll: 'readonly', distillTrustFacts: 'readonly', distillParseLabelled: 'readonly'
+        handlePaperMessage: 'readonly', resetPaperView: 'readonly', renderAll: 'readonly', distillTrustFacts: 'readonly', distillParseLabelled: 'readonly', distillGroupBullets: 'readonly', distillBulletKey: 'readonly', paperView: 'readonly'
       }
     },
     rules: {
@@ -90,7 +90,7 @@ export default [
       globals: {
         ...extGlobals,
         $: 'readonly', port: 'readonly', currentTabId: 'readonly', show: 'readonly', hide: 'readonly',
-        setStatus: 'readonly', setPanel: 'readonly',
+        setStatus: 'readonly', setPanel: 'readonly', lastSelectedText: 'readonly',
         distillParseLabelled: 'readonly', distillParseTerms: 'readonly',
         distillSectionMap: 'readonly', distillRenderSectionMap: 'readonly'
       }

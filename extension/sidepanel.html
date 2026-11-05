@@ -214,6 +214,13 @@
               <span class="action-ico">◈</span>
               <span class="action-label">Learn</span>
             </button>
+            <details id="copyMenu" class="copy-menu">
+              <summary class="btn-copy">Copy notes</summary>
+              <div class="copy-menu-list">
+                <button type="button" data-format="markdown">Markdown</button>
+                <button type="button" data-format="plain">Plain text</button>
+              </div>
+            </details>
             <span id="summaryStatus" class="status-badge"></span>
           </div>
         </div>
@@ -223,9 +230,10 @@
       <!-- Highlight (secondary) -->
       <section id="highlightSection" class="section highlight-section hidden">
         <div class="section-header">
-          <span class="section-title">Highlight</span>
+          <span class="section-title">Selected text</span>
           <div class="header-actions">
-            <button id="analyzeBtn" class="btn-analyze">Analyze →</button>
+            <button id="analyzeBtn" type="button" class="btn-copy">Explain</button>
+            <button id="askAboutBtn" type="button" class="btn-primary btn-sm">Ask about this</button>
           </div>
         </div>
         <blockquote id="selectedPreview" class="selected-preview"></blockquote>

@@ -637,13 +637,20 @@ testBackendBtn?.addEventListener('click', async () => {
 
 let focusOn = false;
 const focusBtn = $('focusBtn');
-const focusIcon = $('focusIcon');
 focusBtn.addEventListener('click', () => {
   focusOn = !focusOn;
   setActionActive(focusBtn, focusOn);
-  if (focusIcon) focusIcon.textContent = focusOn ? '◉' : '◎';
   port?.postMessage({ type: 'SET_FOCUS_MODE', on: focusOn, tabId: currentTabId });
 });
+
+// ── Copy notes menu ───────────────────────────────────────────────────────────
+
+for (const btn of document.querySelectorAll('#copyMenu [data-format]')) {
+  btn.addEventListener('click', () => {
+    $('copyMenu').open = false;
+    port?.postMessage({ type: 'GET_NOTES', tabId: currentTabId, format: btn.dataset.format });
+  });
+}
 
 // ── Learn Mode ────────────────────────────────────────────────────────────────
 
@@ -751,10 +758,10 @@ function applyAnalysisToPanel(entry, selection) {
   if (highlightNoteInput) highlightNoteInput.value = entry?.note || '';
   if (entry?.note) show(highlightNoteWrap);
   analyzeBtn.disabled = !sel || sel.length < 10;
-  analyzeBtn.textContent = 'Analyze →';
+  analyzeBtn.textContent = 'Explain';
 }
 
-const ANALYZE_EMPTY_HINT = 'Select text on the page, then tap Analyze →.';
+const ANALYZE_EMPTY_HINT = 'Select text on the page, then tap Explain.';
 
 function resetAnalyzeWorkspace() {
   analysisBuffer = '';
@@ -765,7 +772,7 @@ function resetAnalyzeWorkspace() {
   hide(analysisText);
   if (highlightNoteInput) highlightNoteInput.value = '';
   hide(highlightNoteWrap);
-  analyzeBtn.textContent = 'Analyze →';
+  analyzeBtn.textContent = 'Explain';
   analyzeBtn.disabled = true;
   selectedPreview.textContent = ANALYZE_EMPTY_HINT;
 }
@@ -886,6 +893,7 @@ highlightNoteSaveBtn?.addEventListener('click', () => {
 
 let nowBuffer      = '';
 let summaryBuffer  = '';
+let summaryBulletSections = {};
 let analysisBuffer = '';
 let summaryRenderScheduled = false;
 let summaryLastRenderAt = 0;
@@ -923,6 +931,7 @@ function handleMessage(msg) {
       hide(pdfCard);
       summaryText.innerHTML = '';
       summaryBuffer = '';
+      summaryBulletSections = {};
       progressLabel.textContent = '0 paragraphs read';
       timeLabel.textContent = '';
       hide(highlightPrompt);
@@ -985,6 +994,8 @@ function handleMessage(msg) {
       break;
 
     case 'SUMMARY_DONE':
+      summaryBulletSections = msg.bulletSections || {};
+      renderSummary(summaryBuffer, summaryText);
       summarySection.classList.remove('summary-section-streaming');
       summaryText.classList.remove('summary-text-streaming');
       setStatus('summaryStatus', '✓', 'done');
@@ -997,39 +1008,26 @@ function handleMessage(msg) {
         const t = msg.selectedText;
         const norm = distillNormalizeSelection(t);
         lastSelectedText = t;
+        if (norm !== analysisForSelection) {
+          analysisBuffer = '';
+          analysisForSelection = '';
+          analysisText.textContent = '';
+          hide(analysisText);
+          lastHighlightId = null;
+          if (highlightNoteInput) highlightNoteInput.value = '';
+        }
         selectedPreview.textContent = `"${t.length > 130 ? t.slice(0, 130) + '…' : t}"`;
         analyzeBtn.disabled = t.length < 10;
-        analyzeBtn.textContent = 'Analyze →';
-        if (highlightNoteInput) highlightNoteInput.value = '';
+        analyzeBtn.textContent = 'Explain';
         show(highlightNoteWrap);
-
-        if (analyzePanelVisible()) {
-          if (norm !== analysisForSelection) {
-            analysisBuffer = '';
-            analysisForSelection = '';
-            analysisText.textContent = '';
-            hide(analysisText);
-            lastHighlightId = null;
-          }
-          selectedPreview.textContent = `"${t.length > 130 ? t.slice(0, 130) + '…' : t}"`;
-          analyzeBtn.disabled = t.length < 10;
-          analyzeBtn.textContent = 'Analyze →';
-          show(highlightSection);
-          hide(highlightPrompt);
-        } else {
-          show(highlightPrompt);
-          showSuggestionOnce('You highlighted something. Want a quick analysis?', 'Analyze', () => {
-            enterAnalyzeMode();
-            analyzeBtn?.click?.();
-          });
-        }
+        show(highlightSection);
+        hide(highlightPrompt);
       } else {
         hide(highlightPrompt);
-        if (analyzePanelVisible()) {
+        // Keep the card while an Explain result is streaming or showing; otherwise it goes away.
+        const explaining = analyzeBtn.textContent === 'Analyzing...' || analysisBuffer.trim();
+        if (!explaining) {
           resetAnalyzeWorkspace();
-          show(highlightSection);
-        } else {
-          lastSelectedText = '';
           hide(highlightSection);
         }
       }
@@ -1062,7 +1060,7 @@ function handleMessage(msg) {
 
     case 'ANALYSIS_DONE':
       analyzeBtn.disabled = false;
-      analyzeBtn.textContent = 'Analyze →';
+      analyzeBtn.textContent = 'Explain';
       if (msg.highlightId) lastHighlightId = msg.highlightId;
       analysisForSelection = distillNormalizeSelection(lastSelectedText);
       if (highlightNoteInput) highlightNoteInput.value = '';
@@ -1245,7 +1243,7 @@ function handleMessage(msg) {
         showToast(msg.message);
       }
       analyzeBtn.disabled = false;
-      analyzeBtn.textContent = 'Analyze →';
+      analyzeBtn.textContent = 'Explain';
       break;
 
     case 'BACKEND_RETRYING':
@@ -1339,7 +1337,6 @@ function handleMessage(msg) {
       if (msg.tabId !== currentTabId) break;
       focusOn = !!msg.on;
       setActionActive(focusBtn, focusOn);
-      if (focusIcon) focusIcon.textContent = focusOn ? '◉' : '◎';
       break;
 
     case 'SITE_PREFS':
@@ -1387,37 +1384,46 @@ const QUIZ_EVERY = 5;
 // ── Summary renderer ──────────────────────────────────────────────────────────
 
 function renderSummary(text, container) {
-  container.innerHTML = '';
-  const lines = text.split('\n').filter(l => l.trim());
-  for (const line of lines) {
-    const t = line.trim();
-    if (t.toLowerCase().startsWith('the gist:')) {
-      const p = document.createElement('p');
-      p.className = 'gist-line summary-line';
-      const label = document.createElement('span');
-      label.className = 'gist-label';
-      label.textContent = 'The gist: ';
-      p.appendChild(label);
-      p.appendChild(document.createTextNode(t.slice('the gist:'.length).trim()));
-      container.appendChild(p);
-    } else if (t.startsWith('•')) {
+  container.replaceChildren();
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const gist = lines.find(l => l.toLowerCase().startsWith('the gist:'));
+  const bullets = lines.filter(l => l.startsWith('•')).map(l => l.slice(1).trim());
+  const other = lines.filter(l => l !== gist && !l.startsWith('•'));
+  if (gist) {
+    const p = document.createElement('p');
+    p.className = 'gist-line summary-line';
+    const label = document.createElement('span');
+    label.className = 'gist-label';
+    label.textContent = 'The gist: ';
+    p.append(label, document.createTextNode(gist.slice('the gist:'.length).trim()));
+    container.append(p);
+  }
+  const order = (paperView.state?.sections || []).map(sec => sec.heading);
+  for (const group of distillGroupBullets(bullets, summaryBulletSections, order)) {
+    if (group.heading) {
+      const h = document.createElement('p');
+      h.className = 'summary-group';
+      h.textContent = group.heading;
+      container.append(h);
+    }
+    for (const b of group.bullets) {
       const div = document.createElement('div');
       div.className = 'bullet-line summary-line';
       const dot = document.createElement('span');
       dot.className = 'bullet-dot';
       dot.textContent = '•';
       const span = document.createElement('span');
-      span.textContent = t.slice(1).trim();
-      div.appendChild(dot);
-      div.appendChild(span);
-      container.appendChild(div);
-    } else {
-      const p = document.createElement('p');
-      p.className = 'body-text summary-line';
-      p.style.marginBottom = '4px';
-      p.textContent = t;
-      container.appendChild(p);
+      span.textContent = b;
+      div.append(dot, span);
+      container.append(div);
     }
+  }
+  for (const t of other) {
+    const p = document.createElement('p');
+    p.className = 'body-text summary-line';
+    p.style.marginBottom = '4px';
+    p.textContent = t;
+    container.append(p);
   }
 }
 

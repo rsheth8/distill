@@ -45,6 +45,12 @@ describe('clamps', () => {
 });
 
 describe('distillBuildPageStatePayload', () => {
+  it('keeps bulletSections and round-trips them, capped at 40 entries', () => {
+    const many = Object.fromEntries(Array.from({ length: 60 }, (_, i) => [`b${i}`, 'Methods']));
+    const payload = distillBuildPageStatePayload({ pageUrl: 'https://x.test', bulletSections: many }, 1);
+    expect(Object.keys(payload.bulletSections).length).toBe(40);
+    expect(distillPagePayloadToState(payload).bulletSections.b59).toBe('Methods');
+  });
   it('captures fields, readCount, version, and applies caps', () => {
     const state = {
       pageUrl: 'https://x.test/a',

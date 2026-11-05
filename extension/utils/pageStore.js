@@ -80,7 +80,12 @@ function distillPaperHelpFields(src) {
     .filter(e => e && typeof e.q === 'string' && typeof e.a === 'string' && e.a !== '')
     .slice(-DISTILL_CAP_ASK_THREAD);
   const o = s.overview;
+  const bulletSections = Object.fromEntries(
+    Object.entries(s.bulletSections && typeof s.bulletSections === 'object' ? s.bulletSections : {})
+      .filter(([, h]) => typeof h === 'string').slice(-40)
+  );
   return {
+    bulletSections,
     overview: o && typeof o.text === 'string' && o.text ? { level: o.level || 'everyday', text: distillClampString(o.text, DISTILL_CAP_OVERVIEW_CHARS) } : null,
     guides,
     glossary: distillClampList(glossary, DISTILL_CAP_GLOSSARY),

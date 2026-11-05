@@ -1066,6 +1066,7 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
           currentSelection: null,
           currentQuestion:  '',
           lastSummary:      '',
+          bulletSections:   {},
           highlightHistory: [],
           pageUrl,
           overview: null, guides: {}, glossary: [], askThread: [],
@@ -1229,12 +1230,18 @@ async function updateSummary(tabId) {
           ? cleanSummaryText(summary)
           : mergeSummaryText(s.lastSummary, summary);
         s.lastSummary = trimSummaryLength(merged);
+        s.bulletSections = s.bulletSections || {};
+        const heading = s.section?.heading || '';
+        for (const bullet of normalizeSummaryShape(s.lastSummary).bullets) {
+          const key = distillBulletKey(bullet);
+          if (heading && !s.bulletSections[key]) s.bulletSections[key] = heading;
+        }
         s.wordsSinceSummary = 0;
         s.lastSummaryUnitCount = s.readUnits.length;
         s.isUpdating = false;
         summaryCadenceState.set(tabId, { lastSummaryAt: Date.now() });
         toPanel({ type: 'SUMMARY_REWRITE', text: s.lastSummary, tabId });
-        toPanel({ type: 'SUMMARY_DONE', tabId });
+        toPanel({ type: 'SUMMARY_DONE', tabId, bulletSections: s.bulletSections });
         schedulePersistTab(tabId);
         persistHistorySnapshot(tabId);
       },
@@ -1740,7 +1747,7 @@ async function restoreState(tabId) {
   if (s.lastSummary) {
     toPanel({ type: 'SUMMARY_START', tabId });
     toPanel({ type: 'SUMMARY_CHUNK', chunk: s.lastSummary, tabId });
-    toPanel({ type: 'SUMMARY_DONE', tabId });
+    toPanel({ type: 'SUMMARY_DONE', tabId, bulletSections: s.bulletSections || {} });
   }
   toPanel({ type: 'QUIZ_HISTORY_UPDATE', tabId, items: s.quiz?.history || [] });
   if (s.quiz && s.quiz.status !== 'idle') {
