@@ -1,0 +1,104 @@
+{
+  "guardAuditSourceSha256": "93f252f85478ce57915c012d74aad579e75c469b2b72d82ee2f9c99dfb8cfa2e",
+  "run": "accuracy-repair-planck",
+  "generated": "2026-11-05T19:44:51.861Z",
+  "metadata": {
+    "date": "2026-11-05T06:58:28.702Z",
+    "provider": "Ollama OpenAI-compatible API; Node direct, NOT extension origin verification",
+    "models": [
+      "qwen2.5:7b"
+    ],
+    "modelVersions": [
+      {
+        "name": "qwen2.5:7b",
+        "digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+        "parameterSize": "7.6B",
+        "quantization": "Q4_K_M"
+      }
+    ],
+    "gitRevision": "ad268917d7e935f580d329c9c52f0cee3264471c",
+    "hardware": {
+      "cpu": "Apple M2 Max",
+      "logicalCpus": 12,
+      "memoryBytes": 34359738368
+    },
+    "promptSha256": "6e599fc7a25ced83d0578179516bfca287d51de4158b4e6491d8a0f1fe917119",
+    "promptVersion": "working-tree",
+    "temperature": 0.5,
+    "maxTokens": {
+      "overview": 420,
+      "section_guide": 380,
+      "analysis": 260,
+      "ask": 320
+    },
+    "budgetMode": "production-balanced",
+    "platform": "darwin",
+    "architecture": "arm64",
+    "server": {
+      "version": "0.40.14"
+    }
+  },
+  "qualityScoring": "NOT SCORED: human source verification and independent review pending",
+  "total": 4,
+  "papers": [
+    "planck"
+  ],
+  "groups": {
+    "qwen2.5:7b / expert / close / ask": {
+      "count": 2,
+      "complete": 2,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 4550,
+      "firstTokenMedianMs": 2725
+    },
+    "qwen2.5:7b / newcomer / close / ask": {
+      "count": 2,
+      "complete": 2,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 4527,
+      "firstTokenMedianMs": 2709
+    }
+  },
+  "extraction": [
+    {
+      "paper": "planck",
+      "status": "extracted",
+      "cached": true,
+      "paperSha256": "72db22adb2579166f9b985bce17698bd62a686cd3e4127e76b543732ec1002ef",
+      "sections": [
+        {
+          "heading": "Introduction",
+          "chars": 17407
+        },
+        {
+          "heading": "Model, parameters, and methodology",
+          "chars": 28588
+        },
+        {
+          "heading": "Constraints on the parameters of the base",
+          "chars": 13536
+        },
+        {
+          "heading": "Planck combined with high-resolution CMB",
+          "chars": 39258
+        },
+        {
+          "heading": "Comparison of the Planck base ΛCDM model",
+          "chars": 52632
+        },
+        {
+          "heading": "Extensions to the base ΛCDM model",
+          "chars": 79194
+        },
+        {
+          "heading": "Discussion and conclusions",
+          "chars": 13292
+        }
+      ]
+    }
+  ]
+}

@@ -1,33 +1,13 @@
 'use strict';
 
 /**
- * Clipboard / export strings for Explain and Analyze (no DOM).
+ * Clipboard / export strings for Analyze (no DOM).
  * @param {Date} [d]
  * @returns {string}
  */
 function distillFormatExportCaptured(d) {
   const t = d instanceof Date ? d : new Date();
   return t.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-}
-
-/**
- * @param {{ title?: string, body?: string, capturedAt: string }} p
- */
-function distillBuildExplainExportMarkdown(p) {
-  const title = (p.title || '').trim();
-  const body = (p.body || '').trim();
-  const head = title ? `# Page explanation — ${title}` : '# Page explanation';
-  return [head, '', `Captured: ${p.capturedAt}`, '', body].join('\n').trim();
-}
-
-/**
- * @param {{ title?: string, body?: string, capturedAt: string }} p
- */
-function distillBuildExplainExportPlain(p) {
-  const title = (p.title || '').trim();
-  const body = (p.body || '').trim();
-  const head = title ? `Page explanation — ${title}` : 'Page explanation';
-  return [head, '', `Captured: ${p.capturedAt}`, '', body].join('\n').trim();
 }
 
 /**
@@ -75,8 +55,6 @@ function distillBuildPinnedAnalysisMarkdown(p) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     distillFormatExportCaptured,
-    distillBuildExplainExportMarkdown,
-    distillBuildExplainExportPlain,
     distillBuildAnalysisExportMarkdown,
     distillBuildAnalysisExportPlain,
     distillBuildPinnedAnalysisMarkdown

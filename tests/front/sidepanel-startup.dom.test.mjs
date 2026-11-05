@@ -1,0 +1,169 @@
+import { describe, it, expect, vi } from 'vitest';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import vm from 'vm';
+
+const read = f => readFileSync(join(process.cwd(), 'extension', f), 'utf8');
+const html = read('sidepanel.html');
+const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map(m => m[1]);
+const later = () => new Promise(r => setTimeout(r, 0));
+const inPanel = code => vm.runInThisContext(code); // the panel's top-level let/const are only reachable from its own scope
+const TAB = 7;
+const paperState = (askThread = []) => ({ type: 'PAPER_HELP_STATE', tabId: TAB, overview: null, trustFacts: [], section: '', canGuide: true, guides: {}, glossary: [], askThread });
+
+describe('side panel', () => {
+  const posted = [];
+  const errors = [];
+  let onPortMessage;
+  let earlyError = null;
+  const scrolls = vi.fn();
+
+  // Every <script> shares one global scope, and their top-level const/let can only be declared once: boot once.
+  // (Not in beforeAll: the shared setup gives each test its own `chrome`, so the first test boots.)
+  let booted;
+  const boot = () => (booted ||= (async () => {
+    document.body.innerHTML = html.replace(/^[\s\S]*<body[^>]*>|<\/body>[\s\S]*$/g, '').replace(/<script[\s\S]*?<\/script>/g, '');
+    // Chrome answers asynchronously, so an answer can arrive between two <script>s.
+    chrome.runtime.connect = vi.fn(() => ({ postMessage: m => posted.push(m), onMessage: { addListener: fn => { onPortMessage = fn; } }, onDisconnect: { addListener() {} } }));
+    chrome.tabs.query = vi.fn((_q, cb) => (cb ? void setTimeout(() => cb([{ id: TAB }]), 0) : Promise.resolve([{ id: TAB }])));
+    chrome.storage.local.get = vi.fn((_k, cb) => (cb ? void setTimeout(() => cb({}), 0) : Promise.resolve({})));
+    chrome.tabs.get = vi.fn();
+    chrome.runtime.getURL = f => f;
+    Element.prototype.scrollIntoView = scrolls;
+    const onError = e => { errors.push(e.message); e.preventDefault?.(); };
+    window.addEventListener('error', onError);
+    for (const f of scripts) {
+      vm.runInThisContext(read(f), { filename: f }); // same global scope for every script, like <script> tags
+      if (f === 'sidepanel.js') {
+        try { onPortMessage({ type: 'PAPER_HELP_STATE' }); } catch (e) { earlyError = e; } // sidepanelPaper.js has not loaded yet
+      }
+      await later(); // the page can handle events before the next script runs
+    }
+    document.dispatchEvent(new Event('DOMContentLoaded'));
+    await later();
+    await later();
+    window.removeEventListener('error', onError);
+  })());
+
+  it('asks for the open tab only once every panel script has loaded', async () => {
+    await boot();
+    expect(errors).toEqual([]);
+    expect(posted).toContainEqual({ type: 'GET_STATE', tabId: TAB });
+  });
+
+  it('a port message that arrives before sidepanelPaper.js loads is handled, not a crash', async () => {
+    await boot();
+    expect(earlyError).toBeNull();
+  });
+
+  it('a stream event renders only its own view', async () => {
+    await boot();
+    onPortMessage(paperState());
+    const spies = {};
+    for (const n of ['renderOverview', 'renderGuide', 'renderGlossary', 'renderAsk']) {
+      const orig = globalThis[n];
+      spies[n] = globalThis[n] = vi.fn(orig);
+    }
+    const reset = () => Object.values(spies).forEach(s => s.mockClear());
+    const called = () => Object.keys(spies).filter(n => spies[n].mock.calls.length);
+    onPortMessage({ type: 'PAPER_HELP_START', tabId: TAB, kind: 'overview', key: 'overview' });
+    onPortMessage({ type: 'PAPER_HELP_CHUNK', tabId: TAB, kind: 'overview', key: 'overview', chunk: 'ASKED: x' });
+    expect(called()).toEqual(['renderOverview']);
+    reset();
+    onPortMessage({ type: 'PAPER_HELP_DONE', tabId: TAB, kind: 'overview', key: 'overview', level: 'everyday', text: 'ASKED: x' });
+    expect(called()).toEqual(['renderOverview']);
+    reset();
+    onPortMessage({ type: 'PAPER_HELP_CHUNK', tabId: TAB, kind: 'guide', key: 'Methods', chunk: 'g' });
+    expect(called()).toEqual(['renderGuide']);
+    reset();
+    onPortMessage({ type: 'PAPER_HELP_CHUNK', tabId: TAB, kind: 'ask', key: '0', chunk: 'a' });
+    expect(called()).toEqual(['renderAsk']);
+    reset();
+    onPortMessage(paperState()); // a state publish still renders everything
+    expect(called().sort()).toEqual(['renderAsk', 'renderGlossary', 'renderGuide', 'renderOverview']);
+  });
+
+  it('the ask thread scrolls only when ask activity changed it', async () => {
+    await boot();
+    onPortMessage(paperState([{ q: 'one', a: '' }]));
+    scrolls.mockClear();
+    onPortMessage({ type: 'PAPER_HELP_CHUNK', tabId: TAB, kind: 'ask', key: '0', chunk: 'a' });
+    expect(scrolls).toHaveBeenCalledTimes(1);
+    scrolls.mockClear();
+    onPortMessage({ type: 'PAPER_HELP_CHUNK', tabId: TAB, kind: 'overview', key: 'overview', chunk: 'x' });
+    onPortMessage(paperState([{ q: 'one', a: 'done' }])); // an unrelated state publish
+    expect(scrolls).not.toHaveBeenCalled();
+    onPortMessage(paperState([{ q: 'one', a: 'done' }, { q: 'two', a: '' }])); // a new question
+    expect(scrolls).toHaveBeenCalledTimes(1);
+  });
+
+  it('an ABORTED job drops its live key and its "Reading…" status, without an error and offers manual generation', async () => {
+    await boot();
+    onPortMessage(paperState());
+    onPortMessage({ type: 'PAPER_HELP_START', tabId: TAB, kind: 'overview', key: 'overview' });
+    expect(document.getElementById('overviewStatus').textContent).toContain('Reading');
+    expect(inPanel('paperView.live.has("overview:overview")')).toBe(true);
+    onPortMessage({ type: 'PAPER_HELP_ERROR', tabId: TAB, kind: 'overview', key: 'overview', code: 'ABORTED', message: '' });
+    expect(inPanel('paperView.live.size')).toBe(0);
+    expect(inPanel('"overview:overview" in paperView.streams')).toBe(false);
+    expect(document.getElementById('overviewStatus').textContent).toBe('');
+    expect(document.getElementById('overviewRetryBtn').classList.contains('hidden')).toBe(false);
+    expect(document.getElementById('overviewRetryBtn').textContent).toBe('Generate overview');
+  });
+
+  it('clears the old paper, notes and selection when switching tabs', async () => {
+    await boot();
+    onPortMessage({ type: 'ARTICLE_DETECTED', tabId: TAB, title: 'Old paper' });
+    onPortMessage({ ...paperState(), section: 'Methods', sections: [{ heading: 'Methods', chars: 500 }] });
+    onPortMessage({ type: 'SUMMARY_REWRITE', tabId: TAB, text: 'The gist: old notes\n- Old result.' });
+    onPortMessage({ type: 'SELECTION_CHANGED', tabId: TAB, selectedText: 'A passage from the old paper.' });
+    inPanel('wireActiveTab(8)');
+    expect(document.getElementById('paperCard').classList.contains('hidden')).toBe(true);
+    expect(document.getElementById('articleTitle').textContent).toBe('');
+    expect(document.getElementById('summaryText').textContent).toBe('');
+    expect(document.getElementById('highlightSection').classList.contains('hidden')).toBe(true);
+    expect(inPanel('paperView.state')).toBeNull();
+  });
+
+  it('retains a completed explanation and its original quote while another is pending or canceled', async () => {
+    await boot();
+    inPanel('wireActiveTab(7)');
+    onPortMessage({type:'ARTICLE_DETECTED',tabId:TAB,title:'Paper'});
+    onPortMessage({type:'ANALYSIS_CACHED',tabId:TAB,selection:'The original selected passage.',analysis:'The completed explanation.',highlightId:'old'});
+    onPortMessage({type:'SELECTION_CHANGED',tabId:TAB,selectedText:'A different selected passage.'});
+    onPortMessage({type:'ANALYSIS_START',tabId:TAB,requestId:'new',selection:'A different selected passage.'});
+    onPortMessage({type:'ANALYSIS_CHUNK',tabId:TAB,requestId:'new',chunk:'A partial replacement.'});
+    expect(document.getElementById('analysisText').textContent).toBe('The completed explanation.');
+    expect(document.getElementById('analysisContext').textContent).toContain('The original selected passage.');
+    onPortMessage({type:'ERROR',tabId:TAB,code:'CANCELLED',message:'Stopped.'});
+    onPortMessage({type:'ANALYSIS_CHUNK',tabId:TAB,requestId:'new',chunk:'stale'});
+    expect(document.getElementById('analysisText').textContent).toBe('The completed explanation.');
+    expect(document.getElementById('analysisPending').textContent).not.toContain('stale');
+  });
+  it('stopping automatic help leaves an explicitly requested explanation active',async()=>{
+    await boot();
+    onPortMessage({type:'ANALYSIS_START',tabId:TAB,requestId:'explicit',selection:'Selected source.'});
+    onPortMessage({type:'ERROR',tabId:TAB,origin:'automatic',task:'summary',code:'CANCELLED',message:'Automatic help stopped.'});
+    onPortMessage({type:'ANALYSIS_CHUNK',tabId:TAB,requestId:'explicit',chunk:'The explicit answer.'});
+    onPortMessage({type:'ANALYSIS_DONE',tabId:TAB,requestId:'explicit'});
+    expect(document.getElementById('analysisText').textContent).toBe('The explicit answer.');
+  });
+  it('quiz feedback failure cannot discard a concurrent explicit explanation',async()=>{
+    await boot();
+    onPortMessage({type:'ANALYSIS_START',tabId:TAB,requestId:'explain-feedback',selection:'Source.'});
+    onPortMessage({type:'ERROR',tabId:TAB,task:'quiz_feedback',message:'Feedback failed.'});
+    onPortMessage({type:'ANALYSIS_CHUNK',tabId:TAB,requestId:'explain-feedback',chunk:'The complete explanation.'});
+    onPortMessage({type:'ANALYSIS_DONE',tabId:TAB,requestId:'explain-feedback'});
+    expect(document.getElementById('analysisText').textContent).toBe('The complete explanation.');
+  });
+
+  it('an unscoped retry error preserves the explanation request owner',async()=>{
+    await boot();
+    onPortMessage({type:'ANALYSIS_START',tabId:TAB,requestId:'keep-owner',selection:'Source.'});
+    onPortMessage({type:'ERROR',tabId:TAB,code:'NO_RETRY',message:'Nothing to retry.'});
+    onPortMessage({type:'ANALYSIS_CHUNK',tabId:TAB,requestId:'keep-owner',chunk:'Still completes.'});
+    onPortMessage({type:'ANALYSIS_DONE',tabId:TAB,requestId:'keep-owner'});
+    expect(document.getElementById('analysisText').textContent).toBe('Still completes.');
+  });
+
+});

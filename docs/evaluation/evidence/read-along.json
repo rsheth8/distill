@@ -1,0 +1,89 @@
+{
+  "checks": [
+    "silent advances",
+    "position persistence",
+    "360 light controls fit",
+    "360 dark controls fit",
+    "480 light controls fit",
+    "480 dark controls fit",
+    "real local speech start/stop requested"
+  ],
+  "errors": [],
+  "voices": 180,
+  "speechStatus": "Narration \u00b7 word boundaries from the voice engine.",
+  "speechActive": true,
+  "pdfResults": [
+    {
+      "url": "Planck 2013 XVI: existing accuracy-source/planck-v3.pdf served over temporary loopback",
+      "status": "view-position-preserved",
+      "pages": 69,
+      "alignment": {
+        "status": "matched",
+        "highlight": true,
+        "text": "Planck 2013 results. XVI. Cosmological parameters"
+      }
+    },
+    {
+      "url": "https://arxiv.org/pdf/1602.03837",
+      "status": "view-position-preserved",
+      "pages": 16,
+      "alignment": {
+        "status": "matched",
+        "highlight": true,
+        "text": "INTRODUCTION"
+      }
+    },
+    {
+      "url": "https://arxiv.org/pdf/1706.03762",
+      "status": "view-position-preserved",
+      "pages": 15,
+      "alignment": {
+        "status": "matched",
+        "highlight": true,
+        "text": "Attention Is All You Need"
+      }
+    }
+  ],
+  "requests": [
+    {
+      "url": "http://localhost:8787/v1/config",
+      "method": "GET"
+    },
+    {
+      "url": "https://distill-api.fly.dev/v1/config",
+      "method": "GET"
+    },
+    {
+      "url": "https://arxiv.org/pdf/1602.03837",
+      "method": "GET"
+    },
+    {
+      "url": "https://arxiv.org/pdf/1602.03837",
+      "method": "GET"
+    },
+    {
+      "url": "https://arxiv.org/pdf/1602.03837",
+      "method": "GET"
+    },
+    {
+      "url": "https://arxiv.org/pdf/1706.03762",
+      "method": "GET"
+    },
+    {
+      "url": "https://arxiv.org/pdf/1706.03762",
+      "method": "GET"
+    },
+    {
+      "url": "https://arxiv.org/pdf/1706.03762",
+      "method": "GET"
+    }
+  ],
+  "audioPerception": "Not evaluated: browser speaking status and boundary events do not establish perceived sound or naturalness.",
+  "date": "2026-11-05",
+  "automatedTests": {
+    "files": 26,
+    "tests": 286,
+    "command": "npm test"
+  },
+  "testedExtensionPath": "/Users/rahilsheth/Downloads/Distill"
+}

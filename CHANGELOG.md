@@ -2,6 +2,32 @@
 
 All notable changes to this project are documented here. The extension version is defined in `extension/manifest.json` (Chrome Web Store uses that value).
 
+## [3.0.0] — 2026-11-04
+
+### Added
+
+- **Section map.** A paper card with title, byline and trust tags, and a sticky map of the paper's sections that shows where you are and jumps to any section.
+- **"So far" grouped by section**, with check-ins inside each group.
+- **Ask about this.** A selection card with Explain and Ask about this for any passage you select.
+- **One Copy notes menu** in place of separate copy buttons.
+- **Paper-and-ink look** with an ink accent, and jargon marked with a highlighter.
+- **Key-first onboarding** with a "Try it on a sample paper" button, and a link to run a model on your own computer.
+- **Settings in four groups:** Connection, Appearance, Privacy and data, Advanced.
+
+### Fixed
+
+- Section tracking follows headings even when a tall figure fills the screen.
+- Switching tabs clears the previous paper's notes and selection, including on non-paper pages.
+- Key checks keep the provider and key that were tested and ignore outdated responses.
+- The Connected welcome card can be dismissed, and backend-only site settings stay disabled in store builds.
+
+### Removed
+
+- Teleprompter auto-scroll.
+- Reader and AI mode presets.
+- Now-reading tips.
+- The history drawer and the status card.
+
 ## [2.4.0] — 2026-05-28
 
 ### Added

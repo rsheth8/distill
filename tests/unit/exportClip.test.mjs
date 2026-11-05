@@ -5,8 +5,6 @@ import { dirname, join } from 'path';
 
 const require = createRequire(import.meta.url);
 const {
-  distillBuildExplainExportMarkdown,
-  distillBuildExplainExportPlain,
   distillBuildAnalysisExportMarkdown,
   distillBuildAnalysisExportPlain,
   distillBuildPinnedAnalysisMarkdown
@@ -14,27 +12,6 @@ const {
 
 describe('exportClip', () => {
   const cap = 'Jan 15, 2:30 PM';
-
-  it('explain markdown includes title and body', () => {
-    const s = distillBuildExplainExportMarkdown({
-      title: 'My Article',
-      body: 'The explanation.',
-      capturedAt: cap
-    });
-    expect(s).toContain('# Page explanation — My Article');
-    expect(s).toContain(`Captured: ${cap}`);
-    expect(s).toContain('The explanation.');
-  });
-
-  it('explain plain matches structure', () => {
-    const s = distillBuildExplainExportPlain({
-      title: 'Hi',
-      body: 'b',
-      capturedAt: cap
-    });
-    expect(s).toContain('Page explanation — Hi');
-    expect(s).toContain('b');
-  });
 
   it('analysis markdown collapses newlines in quote', () => {
     const s = distillBuildAnalysisExportMarkdown({

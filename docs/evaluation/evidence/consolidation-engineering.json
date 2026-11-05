@@ -1,0 +1,95 @@
+{
+  "date": "2026-11-05",
+  "sourceCommit": "96d06aad8dceb34cde167eddf8f44c43803fc335",
+  "tests": 328,
+  "testFiles": 34,
+  "browserFixtureChecks": 35,
+  "browserFixturePassed": 35,
+  "zipSha256": "e175536287bc5de4d02396561a00f029f3d84d067819377c4799eb67f706e381",
+  "zipIntegrity": true,
+  "sourceBytesMatchExceptProductionConfig": true,
+  "downloadsMatchesPackage": true,
+  "qualityGate": "UNMET \u2014 preserved critical failures; final limited probe still incomplete",
+  "newRealModelOutputs": 8,
+  "preservedInterruptedOutputs": 18,
+  "provisionalAskDiagnostics": 16,
+  "totalPreservedOutputs": 827,
+  "independentEngineeringReview": {
+    "bounded": true,
+    "importantFindings": 5,
+    "importantFindingsFixedWithRedGreenTests": 5,
+    "minorDeferred": "Refresh overview reuses same-profile cached result"
+  },
+  "readAlong": {
+    "checks": [
+      "silent advances",
+      "position persistence",
+      "360 light controls fit",
+      "360 dark controls fit",
+      "480 light controls fit",
+      "480 dark controls fit",
+      "real local speech start/stop requested"
+    ],
+    "errors": [],
+    "speechStatus": "Narration \u00b7 word boundaries from the voice engine.",
+    "speechActive": true,
+    "pdfResults": [
+      {
+        "url": "http://127.0.0.1:55626/planck.pdf",
+        "status": "view-position-preserved",
+        "pages": 69,
+        "alignment": {
+          "status": "matched",
+          "highlight": true,
+          "text": "Planck 2013 results. XVI. Cosmological parameters"
+        },
+        "paragraphAlignment": {
+          "status": "requested",
+          "page": 2,
+          "characters": 306,
+          "highlight": true,
+          "returned": true
+        }
+      },
+      {
+        "url": "https://arxiv.org/pdf/1602.03837",
+        "status": "view-position-preserved",
+        "pages": 16,
+        "alignment": {
+          "status": "matched",
+          "highlight": true,
+          "text": "INTRODUCTION"
+        },
+        "paragraphAlignment": {
+          "status": "requested",
+          "page": 1,
+          "characters": 592,
+          "highlight": true,
+          "returned": true
+        }
+      },
+      {
+        "url": "https://arxiv.org/pdf/1706.03762",
+        "status": "view-position-preserved",
+        "pages": 15,
+        "alignment": {
+          "status": "matched",
+          "highlight": true,
+          "text": "Attention Is All You Need"
+        },
+        "paragraphAlignment": {
+          "status": "requested",
+          "page": 1,
+          "characters": 1138,
+          "highlight": true,
+          "returned": true
+        }
+      }
+    ]
+  },
+  "limitations": [
+    "No human listening or scoring",
+    "No full independent whole-repository review",
+    "Fixtures do not establish answer accuracy"
+  ]
+}

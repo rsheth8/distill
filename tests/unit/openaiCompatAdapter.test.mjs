@@ -8,7 +8,9 @@ const {
   distillChatTextFromContent,
   distillBuildChatRequestBody,
   distillParseChatChunk,
-  distillClassifyChatError
+  distillClassifyChatError,
+  distillMakeThinkFilter,
+  distillClassifyLocalError
 } = require(join(dirname(fileURLToPath(import.meta.url)), '../../extension/utils/openaiCompatAdapter.js'));
 
 describe('distillChatTextFromContent', () => {
@@ -100,5 +102,33 @@ describe('distillClassifyChatError', () => {
     const r = distillClassifyChatError(400, { error: { message: 'bad field' } }, { label: 'OpenAI' });
     expect(r.code).toBe('CHAT_BAD_REQUEST');
     expect(r.message).toMatch(/bad field/);
+  });
+});
+
+describe('distillMakeThinkFilter', () => {
+  const run = (chunks) => {
+    const f = distillMakeThinkFilter();
+    return chunks.map(c => f(c)).join('') + f('', true);
+  };
+  it('passes plain text through', () => {
+    expect(run(['Hello ', 'world'])).toBe('Hello world');
+  });
+  it('drops think blocks and leading whitespace, even when tags split across chunks', () => {
+    expect(run(['<thi', 'nk>plan ', 'stuff</th', 'ink>\n\nThe ', 'answer.'])).toBe('The answer.');
+  });
+  it('drops an empty /no_think block', () => {
+    expect(run(['<think>\n\n</think>\n\nSummary here'])).toBe('Summary here');
+  });
+  it('keeps a lone < that is not a tag', () => {
+    expect(run(['a <', ' b'])).toBe('a < b');
+  });
+});
+
+describe('distillClassifyLocalError', () => {
+  const opts = { baseUrl: 'http://localhost:11434', model: 'qwen3:4b', extensionId: 'abc' };
+  it('maps unreachable, forbidden, and missing model to fix-it messages', () => {
+    expect(distillClassifyLocalError(0, opts).code).toBe('LOCAL_UNREACHABLE');
+    expect(distillClassifyLocalError(403, opts).message).toContain('chrome-extension://abc');
+    expect(distillClassifyLocalError(404, opts).message).toContain('ollama pull qwen3:4b');
   });
 });

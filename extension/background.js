@@ -1,6 +1,6 @@
 'use strict';
 
-importScripts('utils/buildConfig.js', 'utils/pageUrlKey.js', 'utils/backendEnv.js', 'utils/aiResultCache.js', 'utils/geminiAdapter.js', 'utils/openaiCompatAdapter.js', 'utils/pageStore.js');
+importScripts('utils/performanceMetrics.js', 'utils/readingAssistance.js', 'utils/buildConfig.js', 'utils/pageUrlKey.js', 'utils/backendEnv.js', 'utils/aiResultCache.js', 'utils/geminiAdapter.js', 'utils/openaiCompatAdapter.js', 'utils/pageStore.js', 'utils/paperExtractor.js', 'utils/prompts.js', 'utils/paperHelp.js', 'paperFeatures.js');
 
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
 
@@ -31,6 +31,7 @@ async function getSitePrefsForOrigin(origin) {
 }
 
 async function getSiteBackendOnly(pageUrl) {
+  if (typeof DISTILL_INCLUDE_BACKEND !== 'undefined' && !DISTILL_INCLUDE_BACKEND) return false;
   const o = safeOriginFromUrl(pageUrl);
   if (!o) return false;
   const p = await getSitePrefsForOrigin(o);
@@ -108,10 +109,6 @@ chrome.commands.onCommand.addListener(command => {
       await openSidePanelForTab(tabId);
       await ensureTabHydrated(tabId);
 
-      if (command === 'explain_page') {
-        explainPage(tabId);
-        return;
-      }
       if (command === 'analyze_selection') {
         analyzeSelection(tabId);
         return;
@@ -139,7 +136,12 @@ const OPENAI_API_KEY_STORAGE = 'openaiApiKey';
 // Groq is the default: genuinely free tier with broad availability. Gemini/OpenAI/
 // Anthropic are quick-switch options for users who prefer them.
 const DEFAULT_AI_PROVIDER = 'groq';
-const AI_PROVIDERS = ['groq', 'openai', 'gemini', 'anthropic'];
+const AI_PROVIDERS = ['groq', 'openai', 'gemini', 'anthropic', 'local'];
+// Local = Ollama / LM Studio on the user's machine (OpenAI-compatible, no key).
+const LOCAL_BASE_URL_KEY = 'localBaseUrl';
+const LOCAL_MODEL_KEY = 'localModel';
+const DEFAULT_LOCAL_BASE_URL = 'http://localhost:11434';
+const DEFAULT_LOCAL_MODEL = 'qwen3:4b';
 const GEMINI_MODEL = 'gemini-2.0-flash';
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 // Groq + OpenAI share the OpenAI-compatible chat/completions wire format.
@@ -154,6 +156,14 @@ function chatProviderConfig(provider) {
     return { url: OPENAI_API_URL, model: OPENAI_MODEL, label: 'OpenAI', keyUrl: 'platform.openai.com/api-keys' };
   }
   return { url: GROQ_API_URL, model: GROQ_MODEL, label: 'Groq', keyUrl: 'console.groq.com/keys' };
+}
+
+/** Config for a local server; explicit values (unsaved Settings fields) win over storage. */
+async function localChatConfig({ baseUrl, model } = {}) {
+  const r = await chrome.storage.local.get([LOCAL_BASE_URL_KEY, LOCAL_MODEL_KEY]);
+  const base = String(baseUrl || r[LOCAL_BASE_URL_KEY] || DEFAULT_LOCAL_BASE_URL).trim().replace(/\/+$/, '').replace(/\/v1$/, '');
+  const m = String(model || r[LOCAL_MODEL_KEY] || DEFAULT_LOCAL_MODEL).trim();
+  return { url: `${base}/v1/chat/completions`, model: m, baseUrl: base, label: 'Local model', keyUrl: '', local: true };
 }
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -213,12 +223,10 @@ async function useBackendProxy() {
   const r = await chrome.storage.local.get(USE_BACKEND_PROXY_KEY);
   return r[USE_BACKEND_PROXY_KEY] === true;
 }
-const AI_MODE_KEY = 'aiMode';
 const DEFAULT_AI_MODE = 'balanced';
 const MAX_READ_SO_FAR_CHARS = 12000;
 const MAX_CONTEXT_CHARS = 3200;
 const MAX_SELECTION_CHARS = 900;
-const MAX_PAGE_EXPLAIN_CHARS = 7000;
 // Full article text is only used for lightweight UI/heuristics; keep it bounded so
 // snapshots + memory stay stable on enormous pages.
 const MAX_ARTICLE_TEXT_CHARS = 240_000;
@@ -230,24 +238,26 @@ const SUMMARY_FORCE_INTERVAL_WORDS = 180;
 const AI_TUNING = {
   balanced: {
     taskMaxTokens: {
-      now: 70,
       summary: 280,
       quiz_question: 90,
       quiz_feedback: 180,
       quiz_skipped_review: 170,
-      explain_page: 180,
-      analysis: 260
+      analysis: 260,
+      overview: 420,
+      section_guide: 380,
+      ask: 320
     }
   },
   'ultra-lean': {
     taskMaxTokens: {
-      now: 50,
       summary: 190,
       quiz_question: 70,
       quiz_feedback: 130,
       quiz_skipped_review: 120,
-      explain_page: 130,
-      analysis: 180
+      analysis: 180,
+      overview: 300,
+      section_guide: 260,
+      ask: 220
     }
   }
 };
@@ -258,50 +268,45 @@ const persistTimers = new Map();
 const quizArchiveTimers = new Map();
 const INSTALL_ID_KEY = 'distillInstallId';
 const BACKEND_TOKEN_KEY = 'distillBackendToken';
-const AUTO_NOW_MODE_KEY = 'autoNowMode';
-const READER_MODE_KEY = 'readerMode';
-const NOW_COOLDOWN_MS = 9000;
-const PAUSE_TO_EXPLAIN_MIN_MS = 3500;
-const PAUSE_TO_EXPLAIN_MAX_MS = 14000;
-const ESTIMATED_READING_WPM = 220;
 // Persistence prefixes + retention come from utils/pageStore.js (single source of truth).
 const HISTORY_KEY_PREFIX = DISTILL_HISTORY_PREFIX;
 const PAGE_STATE_KEY_PREFIX = DISTILL_PAGE_STATE_PREFIX;
 
 let sidePanelPort = null;
-const nowAssistState = new Map();
+const autoAiWork = new Map();
+const analysisWork = new Map();
+let assistanceEpoch = 0;
 const summaryCadenceState = new Map();
-const pauseExplainTimers = new Map();
 // Tabs whose state was just loaded from persistent (chrome.storage.local) save-state,
 // i.e. a genuine "restored from last time" — used to show the restore notice once.
 const restoredFromStorageTabs = new Set();
 
-let readerMode = 'skim';
-chrome.storage.local.get(READER_MODE_KEY, r => {
-  readerMode = r?.[READER_MODE_KEY] === 'study' ? 'study' : (r?.[READER_MODE_KEY] === 'research' ? 'research' : 'skim');
-});
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
-  if (changes[READER_MODE_KEY]) {
-    const v = changes[READER_MODE_KEY].newValue;
-    readerMode = v === 'study' ? 'study' : (v === 'research' ? 'research' : 'skim');
+  if (changes.readingAssistance) {
+    assistanceEpoch++;
+    const assistance = distillReadingAssistance({ readingAssistance: changes.readingAssistance.newValue });
+    for (const work of autoAiWork.values()) if (!distillMayAutoRun(assistance, work.task)) work.ctrl.abort();
+    for (const timer of guideDwellTimers.values()) clearTimeout(timer);
+    guideDwellTimers.clear();
   }
   if (changes.backendTarget || changes.backendBaseUrlOverride) {
     backendProbeCache = { checkedAt: 0, result: null };
     void ensureBackendToken();
   }
   if (changes[USE_BACKEND_PROXY_KEY]?.newValue === true) void ensureBackendToken();
+  if (changes.readingLevel || changes.readerExpertise) {
+    for (const [tabId, s] of tabState) {
+      clearPaperHelp(tabId);
+      s.overview = null;
+      s.guides = {};
+      schedulePersistTab(tabId);
+    }
+    onReadingLevelChanged();
+  }
 });
 
-function summaryCadenceForMode() {
-  if (readerMode === 'study') {
-    return { minNewWords: 70, minIntervalMs: 7000, forceIntervalWords: 140 };
-  }
-  if (readerMode === 'research') {
-    return { minNewWords: 110, minIntervalMs: 12000, forceIntervalWords: 220 };
-  }
-  return { minNewWords: 95, minIntervalMs: 11000, forceIntervalWords: 200 };
-}
+const SUMMARY_CADENCE = { minNewWords: 95, minIntervalMs: 11000, forceIntervalWords: 200 };
 
 function defaultQuizState() {
   return {
@@ -328,27 +333,6 @@ function countWords(text) {
 function stableStringHash(text) { return distillStableHash(text); }
 function historyKeyForPageUrl(pageUrl) { return distillHistoryKey(pageUrl); }
 function pageStateKeyForPageUrl(pageUrl) { return distillPageStateKey(pageUrl); }
-
-async function publishResume(tabId) {
-  const s = tabState.get(tabId);
-  const pageUrl = s?.pageUrl || '';
-  if (!pageUrl) {
-    toPanel({ type: 'RESUME_DATA', tabId, item: null });
-    return;
-  }
-  // Prefer the newer full page snapshot (it contains the same fields and more).
-  const keyNew = pageStateKeyForPageUrl(pageUrl);
-  const bagNew = await chrome.storage.local.get(keyNew).catch(() => ({}));
-  const hitNew = bagNew?.[keyNew] || null;
-  if (hitNew) {
-    toPanel({ type: 'RESUME_DATA', tabId, item: hitNew });
-    return;
-  }
-  // Back-compat: older minimal history snapshot.
-  const keyOld = historyKeyForPageUrl(pageUrl);
-  const bagOld = await chrome.storage.local.get(keyOld).catch(() => ({}));
-  toPanel({ type: 'RESUME_DATA', tabId, item: bagOld?.[keyOld] || null });
-}
 
 function persistHistorySnapshot(tabId) {
   const s = tabState.get(tabId);
@@ -381,16 +365,6 @@ function persistPageState(tabId) {
   chrome.storage.local.set({ [key]: payload }).catch(() => {});
 }
 
-async function clearHistorySnapshot(tabId) {
-  const s = tabState.get(tabId);
-  const pageUrl = s?.pageUrl || '';
-  if (!pageUrl) return;
-  const keyOld = historyKeyForPageUrl(pageUrl);
-  const keyNew = pageStateKeyForPageUrl(pageUrl);
-  await chrome.storage.local.remove([keyOld, keyNew]).catch(() => {});
-  toPanel({ type: 'RESUME_DATA', tabId, item: null });
-}
-
 /** Remove every saved per-page snapshot (new + legacy). Returns count of pages cleared. */
 async function clearAllSavedHistory() {
   let all;
@@ -406,8 +380,16 @@ async function clearAllSavedHistory() {
   return hashes.size;
 }
 
+// ponytail: in memory only, so a service-worker restart forgets PDF tabs until they reload.
+const pdfTabs = new Map(); // tabId → reader.html URL for a PDF open in Chrome's viewer
+
 function clearTab(tabId) {
+  analysisWork.get(tabId)?.ctrl.abort();
+  analysisWork.delete(tabId);
+  for (const work of autoAiWork.values()) if (work.tabId===tabId) work.ctrl.abort();
   tabState.delete(tabId);
+  clearPaperHelp(tabId);
+  pdfTabs.delete(tabId);
   quizNextAt.delete(tabId);
   const t = persistTimers.get(tabId);
   if (t) clearTimeout(t);
@@ -415,18 +397,7 @@ function clearTab(tabId) {
   const q = quizArchiveTimers.get(tabId);
   if (q) clearTimeout(q);
   quizArchiveTimers.delete(tabId);
-  nowAssistState.delete(tabId);
-  const nd = nowDebounceTimers.get(tabId);
-  if (nd) clearTimeout(nd);
-  nowDebounceTimers.delete(tabId);
-  const nac = nowAbortControllers.get(tabId);
-  if (nac) nac.abort();
-  nowAbortControllers.delete(tabId);
-  lastActiveParagraphByTab.delete(tabId);
   summaryCadenceState.delete(tabId);
-  const p = pauseExplainTimers.get(tabId);
-  if (p) clearTimeout(p);
-  pauseExplainTimers.delete(tabId);
   focusModeByTab.delete(tabId);
   restoredFromStorageTabs.delete(tabId);
   chrome.storage.session.remove(SESSION_TAB_KEY(tabId)).catch(() => {});
@@ -440,6 +411,8 @@ function tabSnapshotPayload(tabId) {
     pageUrl: s.pageUrl || '',
     quizNextAt: quizNextAt.get(tabId) ?? QUIZ_EVERY,
     articleText: s.articleText,
+    paper: s.paper || null,
+    fullTextUrl: s.fullTextUrl || '',
     totalParagraphs: s.totalParagraphs,
     totalWords: s.totalWords,
     wordsRead: s.wordsRead,
@@ -456,7 +429,7 @@ function tabSnapshotPayload(tabId) {
     lastSummary: s.lastSummary,
     highlightHistory: s.highlightHistory || [],
     quiz: s.quiz || defaultQuizState(),
-    explainCache: s.explainCache || null
+    ...distillPaperHelpFields(s)
   };
 }
 
@@ -489,6 +462,8 @@ function snapshotToState(snap) {
   const quiz = snap.quiz || defaultQuizState();
   return {
     articleText: snap.articleText,
+    paper: snap.paper || null,
+    fullTextUrl: snap.fullTextUrl || '',
     totalParagraphs: snap.totalParagraphs,
     totalWords: snap.totalWords,
     wordsRead: snap.wordsRead,
@@ -512,7 +487,8 @@ function snapshotToState(snap) {
       answer: quiz.answer || '',
       feedback: quiz.feedback || '',
       history: Array.isArray(quiz.history) ? quiz.history : []
-    }
+    },
+    ...distillPaperHelpFields(snap)
   };
 }
 
@@ -535,6 +511,7 @@ function tailReadUnits(s, count = 3, maxChars = MAX_CONTEXT_CHARS) {
 }
 
 function firstParagraph(s) {
+  if (s?.paper?.abstract) return s.paper.abstract;
   if (!s?.articleText) return '';
   const chunks = s.articleText.split(/\n\s*\n/).map(t => t.trim()).filter(Boolean);
   return chunks[0] || '';
@@ -682,13 +659,11 @@ function absorbParagraphIntoUnits(s, text) {
   return 0;
 }
 
-function getAiMode() {
-  return new Promise(resolve => {
-    chrome.storage.local.get(AI_MODE_KEY, bag => {
-      const raw = bag?.[AI_MODE_KEY];
-      resolve(raw === 'ultra-lean' ? 'ultra-lean' : DEFAULT_AI_MODE);
-    });
-  });
+function getAiMode() { return Promise.resolve(DEFAULT_AI_MODE); } // everyone runs balanced tuning
+
+async function readingLevel() {
+  const { readingLevel: level } = await chrome.storage.local.get('readingLevel');
+  return ['simple', 'everyday', 'close'].includes(level) ? level : 'everyday';
 }
 
 function maxTokensForTask(task, mode) {
@@ -748,6 +723,11 @@ function pagePayloadToState(payload) {
 }
 
 async function ensureTabHydratedFromPageState(tabId) {
+  const measure = globalThis.distillPerformance?.start('restore_load');
+  try {const result=await ensureTabHydratedFromPageStateUnmeasured(tabId);measure?.finish('success');return result;}
+  catch(error){measure?.finish('error');throw error;}
+}
+async function ensureTabHydratedFromPageStateUnmeasured(tabId) {
   if (tabState.has(tabId)) return true;
 
   // Prefer existing session snapshot if present.
@@ -795,15 +775,11 @@ chrome.tabs.onRemoved.addListener(tabId => {
   clearTab(tabId);
 });
 
-const nowDebounceTimers = new Map();
-const nowAbortControllers = new Map();
-/** Latest paragraph unit text from content script (for manual Now tip). */
-const lastActiveParagraphByTab = new Map();
-
 // ── Port connection from side panel ──────────────────────────────────────────
 
 chrome.runtime.onConnect.addListener(port => {
   if (port.name !== 'sidepanel') return;
+  if (!port.sender?.url?.startsWith(chrome.runtime.getURL('sidepanel.html'))) return; // only our own panel page
   sidePanelPort = port;
 
   port.onMessage.addListener(msg => {
@@ -812,6 +788,7 @@ chrome.runtime.onConnect.addListener(port => {
         void (async () => {
           await ensureTabHydratedFromPageState(msg.tabId);
           await restoreState(msg.tabId);
+
           await publishSitePrefs(msg.tabId);
           toPanel({ type: 'FOCUS_SYNC', tabId: msg.tabId, on: !!focusModeByTab.get(msg.tabId) });
         })();
@@ -832,36 +809,31 @@ chrome.runtime.onConnect.addListener(port => {
           if (msg.tabId) await publishSitePrefs(msg.tabId);
         })();
         break;
-      case 'GET_RESUME':
-        void (async () => {
-          await ensureTabHydratedFromPageState(msg.tabId);
-          publishResume(msg.tabId);
-        })();
-        break;
-      case 'CLEAR_RESUME':
-        void (async () => {
-          await ensureTabHydratedFromPageState(msg.tabId);
-          await clearHistorySnapshot(msg.tabId);
-        })();
-        break;
       case 'CLEAR_ALL_HISTORY':
         void (async () => {
           const removed = await clearAllSavedHistory();
           toPanel({ type: 'ALL_HISTORY_CLEARED', tabId: msg.tabId, removed });
           if (msg.tabId != null) {
             restoredFromStorageTabs.delete(msg.tabId);
-            toPanel({ type: 'RESUME_DATA', tabId: msg.tabId, item: null });
           }
         })();
         break;
       case 'GET_USAGE':
         void publishUsage(msg.tabId);
         break;
+      case 'CANCEL_PAPER_HELP':
+        clearPaperHelp(msg.tabId, true);
+        analysisWork.get(msg.tabId)?.ctrl.abort();
+        for (const work of autoAiWork.values()) if (work.tabId === msg.tabId) work.ctrl.abort();
+        break;
+      case 'LIST_LOCAL_MODELS':
+        void listLocalModels(msg.baseUrl).then(result => toPanel({ type: 'LOCAL_MODELS_RESULT', baseUrl: String(msg.baseUrl || ''), ...result }));
+        break;
       case 'VALIDATE_AI_KEY':
         void (async () => {
-          const provider = msg.provider === 'anthropic' ? 'anthropic' : 'gemini';
-          const result = await validateAiKey(provider, msg.key);
-          toPanel({ type: 'KEY_VALIDATION_RESULT', provider, ok: !!result.ok, message: result.message });
+          const provider = AI_PROVIDERS.includes(msg.provider) ? msg.provider : DEFAULT_AI_PROVIDER;
+          const result = await validateAiKey(provider, msg.key, msg.local);
+          toPanel({ type: 'KEY_VALIDATION_RESULT', requestId: msg.requestId, provider, ok: !!result.ok, message: result.message });
         })();
         break;
       case 'RETRY_LAST_AI':
@@ -957,32 +929,47 @@ chrome.runtime.onConnect.addListener(port => {
           toPanel({ type: 'HIGHLIGHT_NOTE_SAVED', tabId: msg.tabId, highlightId: id });
         })();
         break;
+      case 'RETRY_OVERVIEW':
+        void (async () => {
+          await ensureTabHydrated(msg.tabId);
+          void runOverview(msg.tabId);
+        })();
+        break;
+      case 'GUIDE_SECTION':
+        void (async () => {
+          await ensureTabHydrated(msg.tabId);
+          void runSectionGuide(msg.tabId, String(msg.heading || '').slice(0, 120));
+        })();
+        break;
+      case 'ASK_PAPER':
+        void (async () => {
+          await ensureTabHydrated(msg.tabId);
+          void runAsk(msg.tabId, msg.question);
+        })();
+        break;
+      case 'RETURN_TO_READING':
+        chrome.tabs.sendMessage(msg.tabId,{type:'RETURN_TO_READING'})
+          .then(result=>toPanel({type:'SOURCE_RETURN_RESULT',tabId:msg.tabId,ok:!!result?.ok}))
+          .catch(()=>toPanel({type:'SOURCE_RETURN_RESULT',tabId:msg.tabId,ok:false}));
+        break;
+      case 'JUMP_TO_PASSAGE': {
+        const entry = tabState.get(msg.tabId)?.askThread?.[Number(msg.entryIndex)];
+        const source = entry?.passages?.find(p => p.id === msg.passageId);
+        if (source) chrome.tabs.sendMessage(msg.tabId, { type: 'SCROLL_TO_PASSAGE', heading: source.heading, text: source.text })
+          .then(result => toPanel({ type: 'SOURCE_NAVIGATION_RESULT', tabId: msg.tabId, ok: !!result?.ok }))
+          .catch(() => toPanel({ type: 'SOURCE_NAVIGATION_RESULT', tabId: msg.tabId, ok: false }));
+        break;
+      }
+      case 'JUMP_TO_SECTION':
+        chrome.tabs.sendMessage(msg.tabId, { type: 'SCROLL_TO_SECTION', heading: String(msg.heading || '') }).catch(() => {});
+        break;
+      case 'SCROLL_TO_TERM':
+        chrome.tabs.sendMessage(msg.tabId, { type: 'SCROLL_TO_TERM', term: String(msg.term || '') }).catch(() => {});
+        break;
       case 'ANALYZE_SELECTION':
         void (async () => {
           await ensureTabHydrated(msg.tabId);
           analyzeSelection(msg.tabId, { force: !!msg.force });
-        })();
-        break;
-      case 'EXPLAIN_PAGE':
-        void (async () => {
-          await ensureTabHydrated(msg.tabId);
-          explainPage(msg.tabId, { force: !!msg.force });
-        })();
-        break;
-      case 'REQUEST_NOW_TIP':
-        void (async () => {
-          await ensureTabHydrated(msg.tabId);
-          const para = lastActiveParagraphByTab.get(msg.tabId) || '';
-          if (!para.trim()) {
-            toPanel({
-              type: 'TOAST',
-              tabId: msg.tabId,
-              message: 'Scroll to a paragraph first, then try again.',
-              variant: 'info'
-            });
-            return;
-          }
-          await streamNowReading(msg.tabId, para, { force: !!msg.force });
         })();
         break;
       case 'SUBMIT_ANSWER':
@@ -1002,13 +989,7 @@ chrome.runtime.onConnect.addListener(port => {
           chrome.tabs.sendMessage(msg.tabId, { type: 'FOCUS_MODE', on: !!msg.on }).catch(() => {});
         }
         break;
-      case 'START_SCROLL':
-      case 'STOP_SCROLL':
-      case 'SET_SCROLL_SPEED':
-        if (msg.tabId) {
-          chrome.tabs.sendMessage(msg.tabId, msg).catch(() => {});
-        }
-        break;
+      case 'LATER_QUIZ':
       case 'SKIP_QUIZ':
         if (msg.tabId) {
           const s = tabState.get(msg.tabId);
@@ -1023,30 +1004,15 @@ chrome.runtime.onConnect.addListener(port => {
             s.quiz.feedback = '';
             schedulePersistTab(msg.tabId);
             toPanel({ type: 'QUIZ_SKIPPED', tabId: msg.tabId });
-            void generateSkippedReview(msg.tabId, question);
+            if (msg.type === 'SKIP_QUIZ') void generateSkippedReview(msg.tabId, question);
           }
-          chrome.tabs.sendMessage(msg.tabId, { type: 'UNFREEZE_SCROLL' }).catch(() => {});
         }
         break;
       case 'LEARN_MODE':
-        chrome.storage.local.set({ learnMode: msg.on });
-        if (!msg.on && msg.tabId) {
-          const s = tabState.get(msg.tabId);
-          if (s?.quiz && s.quiz.status !== 'idle') {
-            const prev = quizArchiveTimers.get(msg.tabId);
-            if (prev) clearTimeout(prev);
-            quizArchiveTimers.delete(msg.tabId);
-            const question = s.quiz.question || s.currentQuestion || 'Check-in';
-            s.quiz.status = 'idle';
-            s.quiz.question = '';
-            s.quiz.answer = '';
-            s.quiz.feedback = '';
-            schedulePersistTab(msg.tabId);
-            toPanel({ type: 'QUIZ_SKIPPED', tabId: msg.tabId });
-            void generateSkippedReview(msg.tabId, question);
-          }
-          chrome.tabs.sendMessage(msg.tabId, { type: 'UNFREEZE_SCROLL' }).catch(() => {});
-        }
+        void (async () => {
+          const prefs = distillReadingAssistance(await chrome.storage.local.get('readingAssistance'));
+          await chrome.storage.local.set({readingAssistance:{...prefs,checkins:!!msg.on}});
+        })();
         break;
     }
   });
@@ -1072,7 +1038,11 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
     await ensureTabHydrated(tabId);
 
     switch (msg.type) {
-      case 'ARTICLE_DETECTED': {
+      case 'PAPER_DETECTED': {
+        const paper = msg.paper || null;
+        // Until Part 3 reads the paper directly, older features read its text as articleText.
+        msg.articleText = paper ? distillPaperText(paper) : '';
+        const fullTextUrl = typeof msg.fullTextUrl === 'string' ? msg.fullTextUrl : '';
         const pageUrl = distillPageUrlKey(msg.pageUrl || '');
         const articleText = clampText(msg.articleText || '', MAX_ARTICLE_TEXT_CHARS);
 
@@ -1085,12 +1055,15 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
           (Array.isArray(existing.readUnits) && existing.readUnits.length > 0) ||
           (Array.isArray(existing.readParagraphs) && existing.readParagraphs.length > 0) ||
           (Array.isArray(existing.highlightHistory) && existing.highlightHistory.length > 0) ||
-          (existing.quiz && existing.quiz.status !== 'idle')
+          (existing.quiz && existing.quiz.status !== 'idle') ||
+          !!existing.overview || (Array.isArray(existing.askThread) && existing.askThread.length > 0)
         );
 
         if (hasSavedProgress) {
           // Same article with saved progress → refresh live fields, keep progress, republish.
           existing.articleText = articleText;
+          existing.paper = paper;
+          existing.fullTextUrl = fullTextUrl;
           existing.totalParagraphs = msg.paragraphCount || existing.totalParagraphs || 0;
           existing.totalWords = msg.totalWords || existing.totalWords || 0;
           if (msg.title) existing.title = msg.title;
@@ -1099,15 +1072,19 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
           persistTabSnapshot(tabId);
           persistHistorySnapshot(tabId);
           await restoreState(tabId); // republishes ARTICLE_DETECTED + progress + summary + quiz + highlights
-          void publishResume(tabId);
+
+          void resendTerms(tabId);
           void publishSitePrefs(tabId);
           break;
         }
 
         // Fresh article (new page or no saved progress) → reset.
         restoredFromStorageTabs.delete(tabId);
+        clearPaperHelp(tabId); // stop a stream still running for the previous paper
         tabState.set(tabId, {
           articleText,
+          paper,
+          fullTextUrl,
           totalParagraphs:  msg.paragraphCount,
           totalWords:       msg.totalWords || 0,
           wordsRead:        0,
@@ -1123,8 +1100,10 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
           currentSelection: null,
           currentQuestion:  '',
           lastSummary:      '',
+          bulletSections:   {},
           highlightHistory: [],
           pageUrl,
+          overview: null, guides: {}, glossary: [], askThread: [],
           quiz: defaultQuizState()
         });
         summaryCadenceState.set(tabId, { lastSummaryAt: 0 });
@@ -1134,31 +1113,35 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
           paragraphCount: msg.paragraphCount,
           title: msg.title || '',
           pageUrl,
+          fullTextUrl,
           tabId,
           paragraphsUntilNextQuiz: paragraphsUntilQuiz(tabId)
         });
+        publishPaperHelp(tabId);
+
         persistTabSnapshot(tabId);
         persistHistorySnapshot(tabId);
-        void publishResume(tabId);
         void publishSitePrefs(tabId);
         break;
       }
+
+      case 'PDF_DETECTED':
+        clearTab(tabId);
+        pdfTabs.set(tabId, msg.readerUrl);
+        toPanel({ type: 'PDF_DETECTED', tabId, readerUrl: msg.readerUrl });
+        break;
 
       case 'NO_ARTICLE':
         clearTab(tabId);
         toPanel({ type: 'NO_ARTICLE', tabId });
         break;
 
-      case 'NO_ARTICLE_SERP':
-        clearTab(tabId);
-        toPanel({ type: 'NO_ARTICLE_SERP', tabId });
-        break;
-
       case 'ACTIVE_PARAGRAPH': {
-        const para = (msg.text || '').trim();
-        if (para) lastActiveParagraphByTab.set(tabId, para);
-        scheduleMaybeAutoNow(tabId, para);
-        void schedulePauseToExplain(tabId, para);
+        const st = tabState.get(tabId);
+        if (st && typeof msg.section === 'string' && (st.section?.heading || '') !== msg.section) {
+          st.section = { heading: msg.section, kind: distillSectionKind(msg.section) };
+          onSectionChanged(tabId, msg.section);
+        }
         break;
       }
 
@@ -1175,23 +1158,6 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
         toPanel({ type: 'SELECTION_CHANGED', selectedText: msg.selectedText, tabId });
         break;
       }
-
-      case 'SCROLL_PAUSED':
-        toPanel({ type: 'SCROLL_PAUSED', tabId });
-        break;
-
-      case 'SCROLL_ENDED':
-        {
-          const s = tabState.get(tabId);
-          if (s) {
-            const emitted = flushPendingUnit(s);
-            if (emitted > 0) s.wordsSinceSummary += emitted;
-            if (!s.isUpdating && s.wordsSinceSummary > 0) updateSummary(tabId);
-            schedulePersistTab(tabId);
-          }
-        }
-        toPanel({ type: 'SCROLL_ENDED', tabId });
-        break;
 
     }
   })();
@@ -1223,11 +1189,11 @@ function onParagraphRead(tabId, text) {
   // "So far" summary every semantic unit window (whole paragraphs only).
   const cadence = summaryCadenceState.get(tabId) || { lastSummaryAt: 0 };
   const now = Date.now();
-  const cfg = summaryCadenceForMode();
+  const cfg = SUMMARY_CADENCE;
   const quietWindowPassed = now - cadence.lastSummaryAt >= cfg.minIntervalMs;
   const forceByVolume = s.wordsSinceSummary >= cfg.forceIntervalWords;
   if (!s.isUpdating && s.wordsSinceSummary >= cfg.minNewWords && (quietWindowPassed || forceByVolume)) {
-    updateSummary(tabId);
+    void updateSummary(tabId);
   }
 
   // Comprehension quiz every QUIZ_EVERY paragraphs (only in Learn Mode)
@@ -1235,210 +1201,17 @@ function onParagraphRead(tabId, text) {
   if (s.readParagraphs.length >= nextQuiz && !s.isUpdating) {
     quizNextAt.set(tabId, s.readParagraphs.length + QUIZ_EVERY);
     schedulePersistTab(tabId);
-    chrome.storage.local.get('learnMode', r => {
-      if (r.learnMode) generateQuestion(tabId);
-    });
+    void generateQuestion(tabId);
   }
 
   schedulePersistTab(tabId);
   persistHistorySnapshot(tabId);
 }
 
-function paragraphDifficultyScore(text) {
-  const raw = (text || '').trim();
-  if (!raw) return 0;
-  const words = countWords(raw);
-  const sentences = raw.split(/[.!?]+/).map(s => s.trim()).filter(Boolean).length || 1;
-  const avgSentenceLen = words / sentences;
-  const digitDensity = (raw.match(/\d/g) || []).length;
-  const punctuationDensity = (raw.match(/[;:()-]/g) || []).length;
-  const longTokenCount = (raw.match(/\b[A-Za-z]{12,}\b/g) || []).length;
-  let score = 0;
-  // Length helps, but density matters more so short-but-dense paragraphs still qualify.
-  if (words >= 90) score += 1.2;
-  if (avgSentenceLen >= 22) score += 1.0;
-  if (digitDensity >= 6) score += 1.0;
-  if (punctuationDensity >= 6) score += 0.9;
-  if (longTokenCount >= 3) score += 0.9;
-  return score;
-}
-
-function getAutoNowMode() {
-  return new Promise(resolve => {
-    chrome.storage.local.get(AUTO_NOW_MODE_KEY, bag => {
-      resolve(bag?.[AUTO_NOW_MODE_KEY] === 'smart' ? 'smart' : 'off');
-    });
-  });
-}
-
-function defaultNowAssistState() {
-  return { lastAt: 0, lastHash: '', lastHintAt: 0, cache: null };
-}
-
-function nowParagraphHash(paragraphText) {
-  return stableStringHash(clampText((paragraphText || '').trim(), 1300));
-}
-
-function scheduleMaybeAutoNow(tabId, paragraphText) {
-  const prev = nowDebounceTimers.get(tabId);
-  if (prev) clearTimeout(prev);
-  nowDebounceTimers.set(tabId, setTimeout(() => {
-    nowDebounceTimers.delete(tabId);
-    void maybeAutoNowReading(tabId, paragraphText);
-  }, 2000));
-}
-
-function replayNowCached(tabId, text) {
-  toPanel({ type: 'NOW_CACHED', tabId, text: text || '', fromCache: true });
-}
-
-/** Auto "Now reading" while scrolling (Settings → Smart). */
-async function maybeAutoNowReading(tabId, paragraphText) {
-  const mode = await getAutoNowMode();
-  if (mode === 'off') return;
-
-  const raw = (paragraphText || '').trim();
-  if (!raw) return;
-  const hash = nowParagraphHash(raw);
-  const now = Date.now();
-  const prev = nowAssistState.get(tabId) || defaultNowAssistState();
-
-  if (prev.lastHash === hash) return;
-  if (now - (prev.lastAt || 0) < NOW_COOLDOWN_MS) return;
-
-  const score = paragraphDifficultyScore(raw);
-  if (score < 1.1) {
-    if (score >= 0.7 && now - (prev.lastHintAt || 0) > 45000) {
-      nowAssistState.set(tabId, { ...prev, lastHash: hash, lastHintAt: now });
-      toPanel({ type: 'NOW_HINT', tabId });
-    }
-    return;
-  }
-
-  nowAssistState.set(tabId, { ...prev, lastAt: now, lastHash: hash });
-  await streamNowReading(tabId, raw, { force: false });
-}
-
-/** Study mode: linger on a hard paragraph (only when Auto Now is off). */
-async function schedulePauseToExplain(tabId, paragraphText) {
-  if (readerMode !== 'study') return;
-  const mode = await getAutoNowMode();
-  if (mode === 'smart') return;
-
-  const raw = (paragraphText || '').trim();
-  if (!raw) return;
-
-  const hash = nowParagraphHash(raw);
-  const prev = nowAssistState.get(tabId) || defaultNowAssistState();
-
-  if (prev.lastHash === hash && Date.now() - (prev.lastAt || 0) < 45000) return;
-
-  const existing = pauseExplainTimers.get(tabId);
-  if (existing) clearTimeout(existing);
-
-  const words = countWords(raw);
-  const expectedReadMs = Math.max(900, (words / ESTIMATED_READING_WPM) * 60000);
-  const delayMs = Math.max(
-    PAUSE_TO_EXPLAIN_MIN_MS,
-    Math.min(PAUSE_TO_EXPLAIN_MAX_MS, expectedReadMs * 2.8)
-  );
-
-  const scheduledAt = Date.now();
-  pauseExplainTimers.set(tabId, setTimeout(async () => {
-    pauseExplainTimers.delete(tabId);
-
-    const cur = nowAssistState.get(tabId) || defaultNowAssistState();
-    if (cur.lastHash === hash && scheduledAt < (cur.lastAt || 0)) return;
-
-    const score = paragraphDifficultyScore(raw);
-    if (score < 1.9) return;
-
-    nowAssistState.set(tabId, { ...cur, lastAt: Date.now(), lastHash: hash });
-    await streamNowReading(tabId, raw, { force: false });
-  }, delayMs));
-}
-
-// ── "Now reading" (one-line reading tip for current paragraph) ───────────────
-
-async function streamNowReading(tabId, paragraphText, opts = {}) {
-  const force = opts.force === true;
-  const s = tabState.get(tabId);
-  if (!s) return;
-
-  const raw = (paragraphText || '').trim();
-  if (!raw) return;
-  const hash = nowParagraphHash(raw);
-  const prev = nowAssistState.get(tabId) || defaultNowAssistState();
-
-  if (!force && prev.cache?.hash === hash && prev.cache?.text) {
-    replayNowCached(tabId, prev.cache.text);
-    return;
-  }
-
-  const prevCtrl = nowAbortControllers.get(tabId);
-  if (prevCtrl) prevCtrl.abort();
-  const ctrl = new AbortController();
-  nowAbortControllers.set(tabId, ctrl);
-
-  toPanel({ type: 'NOW_START', tabId });
-
-  let nowText = '';
-  try {
-    const recentContext = tailParagraphsCapped(s, 5);
-    const clampedParagraph = clampText(raw, 1300);
-    await streamTask({
-      tabId,
-      task: 'now',
-      s,
-      signal: ctrl.signal,
-      noAuthMessage: 'No API key set — click ⚙ to add your Anthropic API key.',
-      context: {
-        title: s.title || '',
-        recent: recentContext || '(start of article)'
-      },
-      input: { paragraph: clampedParagraph },
-      systemPrompt: 'You are a reading companion. Give one crisp sentence that helps the reader keep momentum.',
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: `Recent context:\n\n${recentContext || '(start of article)'}` },
-          { type: 'text', text: `Current paragraph:\n\n"${clampedParagraph}"\n\nIn ONE plain sentence (max 22 words), say what this means and why it matters.` }
-        ]
-      }],
-      onChunk: chunk => {
-        nowText += chunk;
-        toPanel({ type: 'NOW_CHUNK', chunk, tabId });
-      },
-      onDone: () => {
-        nowAbortControllers.delete(tabId);
-        const text = nowText.trim();
-        const state = nowAssistState.get(tabId) || defaultNowAssistState();
-        if (text) {
-          nowAssistState.set(tabId, {
-            ...state,
-            lastAt: Date.now(),
-            lastHash: hash,
-            cache: { hash, text }
-          });
-        }
-        toPanel({ type: 'NOW_DONE', tabId });
-      },
-      onError: err => {
-        nowAbortControllers.delete(tabId);
-        if (err.name !== 'AbortError') {
-          toPanel({ type: 'ERROR', code: err.code, message: err.message, tabId });
-        }
-      }
-    });
-  } catch (e) {
-    nowAbortControllers.delete(tabId);
-    if (e.name !== 'AbortError') toPanel({ type: 'ERROR', code: e.code, message: e.message, tabId });
-  }
-}
-
 // ── "So far" summary ──────────────────────────────────────────────────────────
 
 async function updateSummary(tabId) {
+  if (!distillMayAutoRun(distillReadingAssistance(await chrome.storage.local.get('readingAssistance')), 'summary')) return;
   const s = tabState.get(tabId);
   if (!s || s.isUpdating || s.readParagraphs.length === 0) return;
 
@@ -1471,6 +1244,7 @@ async function updateSummary(tabId) {
     await streamTask({
       tabId,
       task: 'summary',
+      origin: 'automatic',
       s,
       noAuthMessage: 'No API key set — click ⚙ to add your Anthropic API key.',
       context: {
@@ -1479,50 +1253,41 @@ async function updateSummary(tabId) {
         priorGist: priorGist || '',
         recent: recent || '',
         fresh: freshText || '',
+        prevSummary: s.lastSummary || '',
+        section: s.section,
         readCount
       },
       input: { readSoFar: readText, freshRead: freshText },
-      systemPrompt: 'You are a reading companion. Summarize only what the reader has read so far — never hint at what comes next.',
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: `Article title: ${s.title || '(untitled)'}` },
-          { type: 'text', text: `Opening paragraph:\n\n${opener || '(not available)'}` },
-          !isFirstSummary ? { type: 'text', text: `Previous summary:\n\n${s.lastSummary}` } : null,
-          { type: 'text', text: `Most recent read context:\n\n${recent || '(none yet)'}` },
-          isFirstSummary
-            ? { type: 'text', text: `Read so far (${readCount} paragraph(s)):\n\n${readText}` }
-            : { type: 'text', text: `Newly read section since last update:\n\n${freshText || '(no significant change)'}` },
-          isFirstSummary
-            ? { type: 'text', text: 'Write only what was read. Format exactly: one line "The gist: ..." plus up to 3 short bullets. No headings. No markdown.' }
-            : { type: 'text', text: 'Continue the summary with 1-3 NEW bullets for the newly read section. Keep previous details intact, avoid repeated points, and do not add headings.' }
-        ].filter(Boolean)
-      }],
       onChunk: chunk => { summary += chunk; toPanel({ type: 'SUMMARY_CHUNK', chunk, tabId }); },
       onDone:  ()    => {
         const merged = isFirstSummary
           ? cleanSummaryText(summary)
           : mergeSummaryText(s.lastSummary, summary);
         s.lastSummary = trimSummaryLength(merged);
+        s.bulletSections = s.bulletSections || {};
+        const heading = s.section?.heading || '';
+        for (const bullet of normalizeSummaryShape(s.lastSummary).bullets) {
+          const key = distillBulletKey(bullet);
+          if (heading && !s.bulletSections[key]) s.bulletSections[key] = heading;
+        }
         s.wordsSinceSummary = 0;
         s.lastSummaryUnitCount = s.readUnits.length;
         s.isUpdating = false;
         summaryCadenceState.set(tabId, { lastSummaryAt: Date.now() });
         toPanel({ type: 'SUMMARY_REWRITE', text: s.lastSummary, tabId });
-        toPanel({ type: 'SUMMARY_DONE', tabId });
+        toPanel({ type: 'SUMMARY_DONE', tabId, bulletSections: s.bulletSections });
         schedulePersistTab(tabId);
         persistHistorySnapshot(tabId);
-        void publishResume(tabId);
       },
       onError: err   => {
         s.isUpdating = false;
-        toPanel({ type: 'ERROR', code: err.code, message: err.message, tabId });
+        toPanel({ type: 'ERROR', origin:'automatic', task:'summary', code: err.code, message: err.message, tabId });
         schedulePersistTab(tabId);
       }
     });
   } catch (e) {
     s.isUpdating = false;
-    toPanel({ type: 'ERROR', code: e.code, message: e.message, tabId });
+    toPanel({ type: 'ERROR', origin:'automatic', task:'summary', code: e.code, message: e.message, tabId });
     schedulePersistTab(tabId);
   }
 }
@@ -1530,6 +1295,7 @@ async function updateSummary(tabId) {
 // ── Comprehension quiz ────────────────────────────────────────────────────────
 
 async function generateQuestion(tabId) {
+  if (!distillMayAutoRun(distillReadingAssistance(await chrome.storage.local.get('readingAssistance')), 'quiz_question')) return;
   const s = tabState.get(tabId);
   if (!s) return;
 
@@ -1540,25 +1306,17 @@ async function generateQuestion(tabId) {
   s.quiz.feedback = '';
   schedulePersistTab(tabId);
   toPanel({ type: 'QUIZ_START', tabId });
-  chrome.tabs.sendMessage(tabId, { type: 'FREEZE_SCROLL' }).catch(() => {});
 
   let question = '';
   try {
     await streamTask({
       tabId,
       task: 'quiz_question',
+      origin: 'automatic',
       s,
       noAuthMessage: 'No API key set — click ⚙ to add your Anthropic API key.',
-      context: { title: s.title || '', recent: recentText },
+      context: { title: s.title || '', recent: recentText, section: s.section },
       input: {},
-      systemPrompt: 'You generate single, focused comprehension questions to test reading understanding.',
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: `The reader just finished:\n\n${recentText}` },
-          { type: 'text', text: 'Ask ONE short, specific comprehension question about this section only. Output only the question.' }
-        ]
-      }],
       onChunk: chunk => { question += chunk; toPanel({ type: 'QUIZ_CHUNK', chunk, tabId }); },
       onDone:  ()    => {
         if (s) {
@@ -1580,8 +1338,7 @@ async function generateQuestion(tabId) {
           s.quiz = { ...defaultQuizState(), history };
           schedulePersistTab(tabId);
         }
-        toPanel({ type: 'ERROR', code: err.code, message: err.message, tabId });
-        chrome.tabs.sendMessage(tabId, { type: 'UNFREEZE_SCROLL' }).catch(() => {});
+        toPanel({ type: 'ERROR', origin:'automatic', task:'quiz_question', code: err.code, message: err.message, tabId });
       }
     });
   } catch (e) {
@@ -1590,8 +1347,7 @@ async function generateQuestion(tabId) {
       s.quiz = { ...defaultQuizState(), history };
       schedulePersistTab(tabId);
     }
-    toPanel({ type: 'ERROR', code: e.code, message: e.message, tabId });
-    chrome.tabs.sendMessage(tabId, { type: 'UNFREEZE_SCROLL' }).catch(() => {});
+    toPanel({ type: 'ERROR', origin:'automatic', task:'quiz_question', code: e.code, message: e.message, tabId });
   }
 }
 
@@ -1620,14 +1376,6 @@ async function evaluateAnswer(tabId, question, answer) {
       noAuthMessage: 'No API key set — click ⚙ to add your Anthropic API key.',
       context: { title: s.title || '', recent },
       input: { question, answer: safeAnswer },
-      systemPrompt: 'You give brief, encouraging feedback on reading comprehension answers. Be warm and specific.',
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: `Recent section:\n\n${recent}` },
-          { type: 'text', text: `Question: ${question}\nReader answer: "${safeAnswer}"\n\nGive 2-3 supportive sentences: correctness + what was right/missed.` }
-        ]
-      }],
       onChunk: chunk => {
         feedbackText += chunk;
         if (s?.quiz) s.quiz.feedback = feedbackText;
@@ -1644,7 +1392,6 @@ async function evaluateAnswer(tabId, question, answer) {
         }
         const until = s2 ? paragraphsUntilQuiz(tabId) : QUIZ_EVERY;
         toPanel({ type: 'FEEDBACK_DONE', paragraphsUntilNextQuiz: until, tabId });
-        chrome.tabs.sendMessage(tabId, { type: 'UNFREEZE_SCROLL' }).catch(() => {});
         schedulePersistTab(tabId);
       },
       onError: err => {
@@ -1653,8 +1400,7 @@ async function evaluateAnswer(tabId, question, answer) {
           s.quiz = { ...defaultQuizState(), history };
           schedulePersistTab(tabId);
         }
-        toPanel({ type: 'ERROR', code: err.code, message: err.message, tabId });
-        chrome.tabs.sendMessage(tabId, { type: 'UNFREEZE_SCROLL' }).catch(() => {});
+        toPanel({ type: 'ERROR', task: 'quiz_feedback', code: err.code, message: err.message, tabId });
       }
     });
   } catch (e) {
@@ -1663,8 +1409,7 @@ async function evaluateAnswer(tabId, question, answer) {
       s.quiz = { ...defaultQuizState(), history };
       schedulePersistTab(tabId);
     }
-    toPanel({ type: 'ERROR', code: e.code, message: e.message, tabId });
-    chrome.tabs.sendMessage(tabId, { type: 'UNFREEZE_SCROLL' }).catch(() => {});
+    toPanel({ type: 'ERROR', task: 'quiz_feedback', code: e.code, message: e.message, tabId });
   }
 }
 
@@ -1686,14 +1431,6 @@ async function generateSkippedReview(tabId, question) {
       noAuthMessage: '',
       context: { title: s.title || '', recent: tailReadUnits(s, 3, MAX_CONTEXT_CHARS) },
       input: { question, answer: 'Skipped' },
-      systemPrompt: 'You provide concise reading-comprehension coaching.',
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: `Recent section:\n\n${tailReadUnits(s, 3, MAX_CONTEXT_CHARS)}` },
-          { type: 'text', text: `Question: ${question}\n\nThe reader skipped this check-in.\nProvide a short model answer and one key takeaway in 2-3 sentences.` }
-        ]
-      }],
       onChunk: chunk => { feedbackText += chunk; },
       onDone: () => {
         pushQuizHistoryItem(s, {
@@ -1713,157 +1450,30 @@ async function generateSkippedReview(tabId, question) {
   }
 }
 
-// ── Explain this page ─────────────────────────────────────────────────────────
-
-async function runExplainStream(tabId, pageText, opts = {}) {
-  const allowEnqueue = opts.allowEnqueue !== false;
-  const s = tabState.get(tabId) || { pageUrl: '', title: '', totalParagraphs: 0 };
-  let completed = false;
-  let explainText = '';
-  const pageUrlKey = distillPageUrlKey(s.pageUrl || '');
-  const contentHash = distillExplainContentHash(pageText);
-  toPanel({ type: 'EXPLAIN_START', tabId });
-  const handleErr = err => {
-    if (allowEnqueue && isBackendUnreachableError(err)) {
-      void enqueueOfflineJob({
-        task: 'explain_page',
-        tabId,
-        payload: {
-          pageText: clampText(pageText, MAX_PAGE_EXPLAIN_CHARS),
-          pageUrl: s.pageUrl || ''
-        }
-      });
-      toPanel({
-        type: 'TOAST',
-        tabId,
-        message: 'Explain queued — will run when the backend is back.',
-        variant: 'success'
-      });
-    }
-    toPanel({ type: 'ERROR', code: err?.code, message: err?.message || String(err), tabId });
-  };
-  try {
-    await streamTask({
-      tabId,
-      task: 'explain_page',
-      s,
-      noAuthMessage: 'No API key set — click ⚙ to add your Anthropic API key.',
-      context: {},
-      input: { pageText },
-      systemPrompt: 'You explain web pages in plain, friendly language.',
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: `Page content:\n\n${pageText}`, cache_control: { type: 'ephemeral' } },
-          { type: 'text', text: 'Explain this web page in plain, friendly language. Cover what kind of page it is, what it\'s about (2–3 sentences), and who it\'s for. Under 120 words. No bullet points.' }
-        ]
-      }],
-      onChunk: chunk => {
-        explainText += chunk;
-        toPanel({ type: 'EXPLAIN_CHUNK', chunk, tabId });
-      },
-      onDone:  ()    => {
-        completed = true;
-        const text = explainText.trim();
-        if (text) {
-          s.explainCache = { pageUrl: pageUrlKey, contentHash, text };
-          schedulePersistTab(tabId);
-        }
-        toPanel({ type: 'EXPLAIN_DONE', tabId });
-      },
-      onError: handleErr
-    });
-  } catch (e) {
-    handleErr(e);
-  }
-  return completed;
-}
-
-function replayCachedExplain(tabId, s, cache) {
-  toPanel({ type: 'EXPLAIN_CACHED', tabId, text: cache.text, fromCache: true });
-}
-
-async function explainPage(tabId, opts = {}) {
-  const force = opts.force === true;
-  let tabUrl = '';
-  try {
-    const tab = await chrome.tabs.get(tabId);
-    tabUrl = tab?.url || '';
-  } catch {
-    tabUrl = '';
-  }
-
-  // Some pages are not scriptable by extensions (Chrome internal pages, Web Store, etc.).
-  // Give a clear error instead of the generic "Could not read page content."
-  if (!tabUrl) {
-    toPanel({ type: 'ERROR', code: 'TAB_URL_UNKNOWN', message: 'Could not read this tab’s URL.', tabId });
-    return;
-  }
-  const u = tabUrl.toLowerCase();
-  if (
-    u.startsWith('chrome://') ||
-    u.startsWith('edge://') ||
-    u.startsWith('about:') ||
-    u.startsWith('chrome-extension://') ||
-    u.startsWith('moz-extension://') ||
-    u.startsWith('safari-extension://') ||
-    u.startsWith('devtools://') ||
-    u.startsWith('view-source:') ||
-    u.includes('chrome.google.com/webstore')
-  ) {
-    toPanel({
-      type: 'ERROR',
-      code: 'PAGE_UNSUPPORTED',
-      message: 'Chrome does not allow extensions to read content on this kind of page. Try an http(s) article/page instead.',
-      tabId
-    });
-    return;
-  }
-
-  let pageText = '';
-  try {
-    const [result] = await chrome.scripting.executeScript({
-      target: { tabId },
-      func: maxChars => document.body.innerText.trim().slice(0, maxChars),
-      args: [MAX_PAGE_EXPLAIN_CHARS]
-    });
-    pageText = result.result || '';
-  } catch {
-    toPanel({
-      type: 'ERROR',
-      code: 'PAGE_READ_FAILED',
-      message: 'Could not read page content. This can happen on restricted pages, PDFs, or pages that block script injection.',
-      tabId
-    });
-    return;
-  }
-
-  if (!pageText) { toPanel({ type: 'ERROR', code: 'NO_READABLE_TEXT', message: 'No readable content found.', tabId }); return; }
-
-  const s = tabState.get(tabId) || {};
-  const pageUrlKey = distillPageUrlKey(tabUrl);
-  const contentHash = distillExplainContentHash(pageText);
-  if (!force && s.explainCache?.text && s.explainCache.pageUrl === pageUrlKey && s.explainCache.contentHash === contentHash) {
-    replayCachedExplain(tabId, s, s.explainCache);
-    return;
-  }
-
-  await runExplainStream(tabId, pageText, { allowEnqueue: true });
-}
-
 // ── Highlight analysis ────────────────────────────────────────────────────────
 
 async function runAnalyzeStream(tabId, s, ctx, rawSelection, opts = {}) {
+  analysisWork.get(tabId)?.ctrl.abort();
+  const ctrl = new AbortController();
+  const requestId = `${Date.now()}-${Math.random()}`;
+  analysisWork.set(tabId,{ctrl,requestId});
+  const stale = () => ctrl.signal.aborted || tabState.get(tabId) !== s || analysisWork.get(tabId)?.requestId !== requestId;
+  ctrl.signal.addEventListener('abort',()=>{
+    if (tabState.get(tabId)===s) toPanel({type:'ERROR',code:'CANCELLED',message:'Explanation stopped. Your previous result is kept.',tabId,requestId});
+  },{once:true});
   const allowEnqueue = opts.allowEnqueue !== false;
+  lastAiRetryByTab.set(tabId,()=>runAnalyzeStream(tabId,s,ctx,rawSelection,opts));
   const selectedText = clampText(rawSelection, MAX_SELECTION_CHARS);
   const opener = ctx.opener || '';
   const priorGist = ctx.priorGist || '';
   const recent = ctx.recent || '';
 
   let completed = false;
-  toPanel({ type: 'ANALYSIS_START', tabId });
+  toPanel({ type: 'ANALYSIS_START', tabId, requestId, selection:selectedText });
   let analysisText = '';
   const handleErr = err => {
+    if (stale()) return;
+    analysisWork.delete(tabId);
     if (allowEnqueue && isBackendUnreachableError(err)) {
       void enqueueOfflineJob({
         task: 'analysis',
@@ -1884,32 +1494,26 @@ async function runAnalyzeStream(tabId, s, ctx, rawSelection, opts = {}) {
         variant: 'success'
       });
     }
-    toPanel({ type: 'ERROR', code: err?.code, message: err?.message || String(err), tabId });
+    toPanel({ type: 'ERROR', task:'analysis', requestId, code: err?.code, message: err?.message || String(err), tabId });
   };
   try {
     await streamTask({
       tabId,
       task: 'analysis',
+      retry:false,
+      signal:ctrl.signal,
       s,
       noAuthMessage: 'No API key set.',
-      context: { title: s.title || '', opener, priorGist, recent },
+      context: { title: s.title || '', opener, priorGist, recent, section: s.section },
       input: { selection: selectedText },
-      systemPrompt: 'You add context and depth to highlighted text.',
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: `Article title: ${s.title || '(untitled)'}` },
-          { type: 'text', text: `Opening paragraph:\n\n${opener || '(not available)'}` },
-          priorGist ? { type: 'text', text: `Article gist so far:\n${priorGist}` } : null,
-          { type: 'text', text: `Recent reading context:\n\n${recent}` },
-          { type: 'text', text: `Highlighted:\n\n"${selectedText}"\n\nExplain in context in 3-5 conversational sentences.` }
-        ].filter(Boolean)
-      }],
       onChunk: chunk => {
+        if (stale()) return;
         analysisText += chunk;
-        toPanel({ type: 'ANALYSIS_CHUNK', chunk, tabId });
+        toPanel({ type: 'ANALYSIS_CHUNK', chunk, tabId, requestId });
       },
       onDone:  ()    => {
+        if (stale()) return;
+        analysisWork.delete(tabId);
         completed = true;
         s.highlightHistory = Array.isArray(s.highlightHistory) ? s.highlightHistory : [];
         const existing = s.highlightHistory.find(h => h?.selection === selectedText);
@@ -1933,7 +1537,7 @@ async function runAnalyzeStream(tabId, s, ctx, rawSelection, opts = {}) {
         schedulePersistTab(tabId);
         persistHistorySnapshot(tabId);
         broadcastHighlightHistory(tabId);
-        toPanel({ type: 'ANALYSIS_DONE', tabId, highlightId: item.id });
+        toPanel({ type: 'ANALYSIS_DONE', tabId, requestId, selection:selectedText, highlightId: item.id });
       },
       onError: handleErr
     });
@@ -2006,17 +1610,7 @@ async function tryFlushOfflineQueue() {
   try {
   for (const job of q) {
     try {
-      if (job.task === 'explain_page' && job.payload?.pageText) {
-        try {
-          await chrome.tabs.get(job.tabId);
-        } catch {
-          processed++;
-          continue;
-        }
-        const ok = await runExplainStream(job.tabId, job.payload.pageText, { allowEnqueue: false });
-        if (ok) processed++;
-        else kept.push(job);
-      } else if (job.task === 'analysis' && job.payload?.selectedText) {
+      if (job.task === 'analysis' && job.payload?.selectedText) {
         try {
           await chrome.tabs.get(job.tabId);
         } catch {
@@ -2069,6 +1663,9 @@ function buildNotesMarkdown(s) {
     out.push(summary.trim());
     out.push('');
   }
+
+  const paperNotes = distillPaperNotesText(s, true);
+  if (paperNotes) out.push(paperNotes, '');
 
   if (highlights.length) {
     out.push('## Highlights');
@@ -2126,6 +1723,9 @@ function buildNotesPlain(s) {
     out.push('');
   }
 
+  const paperNotes = distillPaperNotesText(s, false);
+  if (paperNotes) out.push(paperNotes, '');
+
   if (highlights.length) {
     out.push('Highlights');
     for (const h of highlights.slice(0, 5)) {
@@ -2174,6 +1774,8 @@ async function restoreState(tabId) {
   await ensureTabHydrated(tabId);
   const s = tabState.get(tabId);
   if (!s) {
+    if (pdfTabs.has(tabId)) toPanel({ type: 'PDF_DETECTED', tabId, readerUrl: pdfTabs.get(tabId) });
+    else toPanel({ type: 'NO_ARTICLE', tabId });
     broadcastHighlightHistory(tabId);
     return;
   }
@@ -2181,9 +1783,11 @@ async function restoreState(tabId) {
     type: 'ARTICLE_DETECTED',
     paragraphCount: s.totalParagraphs,
     title: s.title,
+    fullTextUrl: s.fullTextUrl || '',
     tabId,
     paragraphsUntilNextQuiz: paragraphsUntilQuiz(tabId)
   });
+  publishPaperHelp(tabId);
   toPanel({
     type: 'PROGRESS_UPDATE',
     readCount: s.readParagraphs.length,
@@ -2196,10 +1800,10 @@ async function restoreState(tabId) {
   if (s.lastSummary) {
     toPanel({ type: 'SUMMARY_START', tabId });
     toPanel({ type: 'SUMMARY_CHUNK', chunk: s.lastSummary, tabId });
-    toPanel({ type: 'SUMMARY_DONE', tabId });
+    toPanel({ type: 'SUMMARY_DONE', tabId, bulletSections: s.bulletSections || {} });
   }
   toPanel({ type: 'QUIZ_HISTORY_UPDATE', tabId, items: s.quiz?.history || [] });
-  if (s.quiz && s.quiz.status !== 'idle') {
+  if (s.quiz && s.quiz.status !== 'idle' && distillReadingAssistance(await chrome.storage.local.get('readingAssistance')).checkins) {
     toPanel({
       type: 'QUIZ_RESTORE',
       tabId,
@@ -2209,9 +1813,6 @@ async function restoreState(tabId) {
       feedback: s.quiz.feedback || '',
       paragraphsUntilNextQuiz: paragraphsUntilQuiz(tabId)
     });
-    // A check-in was in progress when the user left — re-freeze the page so the
-    // reader can't scroll past it, matching the normal quiz-start behavior.
-    chrome.tabs.sendMessage(tabId, { type: 'FREEZE_SCROLL' }).catch(() => {});
   }
   broadcastHighlightHistory(tabId);
 
@@ -2227,22 +1828,91 @@ async function restoreState(tabId) {
 
 // ── Claude API streaming ──────────────────────────────────────────────────────
 
-async function streamTask({
+async function runAutomaticTask(options) {
+  const ctrl = new AbortController();
+  const token = Symbol();
+  autoAiWork.set(token, { ctrl, task: options.task, tabId: options.tabId });
+  let terminal = false;
+  const cancel = () => {
+    if (!terminal) { terminal = true; options.onError?.({code:'CANCELLED',message:'Automatic help stopped.'}); }
+    autoAiWork.delete(token);
+  };
+  ctrl.signal.addEventListener('abort', cancel, {once:true});
+  const parentAbort = () => ctrl.abort();
+  options.signal?.addEventListener('abort', parentAbort, {once:true});
+  try {
+    const assistance = distillReadingAssistance(await chrome.storage.local.get('readingAssistance'));
+    if (options.signal?.aborted || ctrl.signal.aborted || !distillMayAutoRun(assistance, options.task)) { ctrl.abort(); return; }
+    await streamTask({ ...options, origin:'user', retry:false, signal:ctrl.signal,
+      onChunk: chunk => { if (!terminal && !ctrl.signal.aborted) options.onChunk?.(chunk); },
+      onDone: () => { if (!terminal && !ctrl.signal.aborted) { terminal=true; options.onDone?.(); } },
+      onError: err => { if (!terminal && !ctrl.signal.aborted) { terminal=true; options.onError?.(err); } }
+    });
+  } finally {
+    autoAiWork.delete(token);
+    options.signal?.removeEventListener('abort', parentAbort);
+  }
+}
+
+async function streamTask(options) {
+  if (options.origin === 'automatic') return runAutomaticTask(options);
+  if (!globalThis.distillPerformance?.enabled) return streamTaskUnmeasured(options);
+  const measure = globalThis.distillPerformance.start('ai_complete', { task: options.task });
+  let terminal = false;
+  let hasText = false;
+  let cancelMeasure;
+  const aborted = () => {
+    if (terminal || cancelMeasure) return;
+    cancelMeasure = globalThis.distillPerformance.start('cancel_ack');
+  };
+  options.signal?.addEventListener('abort', aborted, { once: true });
+  if (options.signal?.aborted) aborted();
+  try {
+    return await streamTaskUnmeasured({
+      ...options,
+      performanceMeasure: measure,
+      onChunk: chunk => {
+        if (typeof chunk === 'string' && chunk.trim().length) { hasText = true; measure.firstText(); }
+        return options.onChunk?.(chunk);
+      },
+      onDone: (...args) => {
+        terminal = true;
+        if (!options.signal?.aborted) measure.finish(hasText ? 'success' : 'error');
+        return options.onDone?.(...args);
+      },
+      onError: (...args) => {
+        terminal = true;
+        if (!options.signal?.aborted) measure.finish('error');
+        return options.onError?.(...args);
+      }
+    });
+  } finally {
+    options.signal?.removeEventListener('abort', aborted);
+    if (options.signal?.aborted || !terminal) measure.finish(options.signal?.aborted && cancelMeasure ? 'canceled' : 'error');
+    cancelMeasure?.finish('success');
+  }
+}
+
+async function streamTaskUnmeasured({
   tabId,
   task,
   s,
   signal,
+  origin = 'user',
+  performanceMeasure,
   noAuthMessage = 'No API key set.',
   context = {},
   input = {},
-  systemPrompt,
-  messages,
   onChunk,
   onDone,
-  onError
+  onError,
+  retry = true // false for background paper-help calls: they must not replace the Retry of the user's own request
 }) {
+  if (origin === 'automatic') return runAutomaticTask({tabId,task,s,signal,noAuthMessage,context,input,onChunk,onDone,onError});
+  const { readerExpertise } = await chrome.storage.local.get('readerExpertise');
+  context = { ...context, expertise: readerExpertise === 'expert' ? 'expert' : 'newcomer', level: context.level || await readingLevel() };
   // Allow the side panel to offer a "Retry" button for the last AI call.
-  if (tabId) {
+  if (tabId && retry) {
     lastAiRetryByTab.set(tabId, () => streamTask({
       tabId,
       task,
@@ -2251,15 +1921,22 @@ async function streamTask({
       noAuthMessage,
       context,
       input,
-      systemPrompt,
-      messages,
       onChunk,
       onDone,
       onError
     }));
   }
+  const { system: systemPrompt, blocks } = distillBuildPrompt(task, context, input);
+  const messages = [{ role: 'user', content: blocks.map(text => ({ type: 'text', text })) }];
   const aiMode = await getAiMode();
   const taskMaxTokens = maxTokensForTask(task, aiMode);
+  const provider = await getAiProvider();
+  if (provider === 'local') {
+    performanceMeasure?.setLabels({provider:'local',route:'direct'});
+    // "/no_think" is Qwen3's switch for LM Studio; Ollama uses reasoning_effort (set in streamOpenAiCompat).
+    await streamOpenAiCompat({ apiKey: '', cfg: await localChatConfig(), signal, systemPrompt: `${systemPrompt || ''}\n/no_think`, messages, maxTokens: taskMaxTokens, onChunk, onDone, onError });
+    return;
+  }
   const globalUseBackend = await useBackendProxy();
   const siteBackendOnly = await getSiteBackendOnly(s?.pageUrl || '');
   const preferBackend = siteBackendOnly || globalUseBackend !== false;
@@ -2271,6 +1948,7 @@ async function streamTask({
       const token = await ensureBackendToken();
       if (token) {
         void publishBackendStatus(tabId);
+        performanceMeasure?.setLabels({provider:'backend',route:'backend'});
         await streamViaBackend({
           token,
           signal,
@@ -2298,7 +1976,7 @@ async function streamTask({
     }
   }
 
-  const provider = await getAiProvider();
+  performanceMeasure?.setLabels({provider,route:'direct'});
   const apiKey = await getProviderKey(provider);
   if (!apiKey) {
     if (preferBackend) {
@@ -2513,7 +2191,7 @@ async function streamClaude({ apiKey, signal, systemPrompt, messages, maxTokens 
 // ── Gemini API streaming (direct, user's own free key) ────────────────────────
 
 // Serialize the START of Gemini calls with a minimum gap so a burst (progressive
-// summaries + "now" tips while scrolling) can't blow past the free-tier per-minute
+// summaries while scrolling) can't blow past the free-tier per-minute
 // limit. Calls still run to completion concurrently; only their kickoff is spaced.
 const GEMINI_MIN_GAP_MS = 1500;
 const GEMINI_RATELIMIT_MAX_WAIT_MS = 30_000; // cap auto-wait so the SW isn't parked too long
@@ -2630,25 +2308,45 @@ async function streamGemini({ apiKey, signal, systemPrompt, messages, maxTokens 
 // ── OpenAI-compatible streaming (Groq, OpenAI) — direct, user's own key ────────
 
 async function streamOpenAiCompat({ apiKey, cfg, signal, systemPrompt, messages, maxTokens = 256, onChunk, onDone, onError }) {
+  const requestSignal = AbortSignal.any([signal, AbortSignal.timeout(120_000)].filter(Boolean));
+  const reportError = e => {
+    if (requestSignal.reason?.name === 'TimeoutError') {
+      onError(Object.assign(new Error('The model took longer than two minutes. Retry, shorten the input, or choose a smaller model in Settings.'), { code: 'LOCAL_TIMEOUT' }));
+    } else onError(e);
+  };
   const body = distillBuildChatRequestBody({ systemPrompt, messages, maxTokens, temperature: 0.5, model: cfg.model });
   const classifyOpts = { label: cfg.label, keyUrl: cfg.keyUrl };
+  const localOpts = { baseUrl: cfg.baseUrl, model: cfg.model, extensionId: chrome.runtime.id };
+  const headers = { 'Content-Type': 'application/json' };
+  if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+  const visible = distillMakeThinkFilter();
+  // Ollama: skip hidden reasoning, which would otherwise eat the whole token budget and return blank.
+  if (cfg.local) body.reasoning_effort = 'none';
 
   let response;
   let attempt = 0;
   for (;;) {
     try {
-      response = await fetch(cfg.url, {
-        method: 'POST', signal,
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify(body)
-      });
-    } catch (e) { onError(e); return; }
+      response = await fetch(cfg.url, { method: 'POST', signal: requestSignal, headers, body: JSON.stringify(body) });
+    } catch (e) {
+      if (cfg.local && !requestSignal.aborted) {
+        const info = distillClassifyLocalError(0, localOpts);
+        const err = new Error(info.message);
+        err.code = info.code;
+        onError(err);
+        return;
+      }
+      reportError(e);
+      return;
+    }
 
     if (response.ok) break;
 
     let errBody = null;
     try { errBody = await response.clone().json(); } catch { /* non-JSON error */ }
-    const info = distillClassifyChatError(response.status, errBody, classifyOpts);
+    const info = cfg.local
+      ? distillClassifyLocalError(response.status, { ...localOpts, body: errBody })
+      : distillClassifyChatError(response.status, errBody, classifyOpts);
 
     if (info.retryable && response.status >= 500 && attempt < 1) {
       attempt++;
@@ -2680,11 +2378,21 @@ async function streamOpenAiCompat({ apiKey, cfg, signal, systemPrompt, messages,
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
+  let finishReason = null;
+  const finish = () => {
+    const tail = visible('', true);
+    if (tail) onChunk(tail);
+    if (finishReason && finishReason !== 'stop' && finishReason !== 'length') {
+      onError(Object.assign(new Error('The model did not complete a text answer. Retry or choose another model.'), { code: 'CHAT_INCOMPLETE' }));
+    } else if (finishReason === 'length') {
+      onError(Object.assign(new Error('The answer reached the model output limit. Retry with a narrower question; the partial answer has not been saved.'), { code: 'CHAT_TRUNCATED' }));
+    } else onDone();
+  };
   try {
     for (;;) {
       const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
+      if (done && !buffer) break;
+      buffer += done ? decoder.decode() + '\n' : decoder.decode(value, { stream: true });
       let nl;
       while ((nl = buffer.indexOf('\n')) >= 0) {
         const line = buffer.slice(0, nl).trim();
@@ -2692,19 +2400,30 @@ async function streamOpenAiCompat({ apiKey, cfg, signal, systemPrompt, messages,
         if (!line.startsWith('data:')) continue;
         const raw = line.slice(5).trim();
         if (!raw) continue;
-        if (raw === '[DONE]') { onDone(); return; }
+        if (raw === '[DONE]') {
+          finish();
+          return;
+        }
         let obj;
         try { obj = JSON.parse(raw); } catch { continue; }
         const parsed = distillParseChatChunk(obj);
-        if (parsed.text) onChunk(parsed.text);
+        if (parsed.finishReason) finishReason = parsed.finishReason;
+        const text = visible(parsed.text);
+        if (text) onChunk(text);
       }
+      if (done) break;
     }
-  } catch (e) { onError(e); return; }
-  onDone();
+  } catch (e) { reportError(e); return; }
+  if (!finishReason) {
+    onError(Object.assign(new Error('The model connection ended before the answer completed. Retry the question.'), { code: 'CHAT_INTERRUPTED' }));
+    return;
+  }
+  finish();
 }
 
 /** One-shot key check used by onboarding + Settings. Returns { ok, message }. */
-async function validateAiKey(provider, key) {
+async function validateAiKey(provider, key, local = {}) {
+  if (provider === 'local') return validateLocal(local);
   const trimmed = typeof key === 'string' ? key.trim() : '';
   if (!trimmed) return { ok: false, message: 'Paste your API key first.' };
   try {
@@ -2729,7 +2448,8 @@ async function validateAiKey(provider, key) {
       const r = await fetch(cfg.url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${trimmed}` },
-        body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 })
+        body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 }),
+      signal: AbortSignal.timeout(30_000)
       });
       if (r.ok) return { ok: true, message: 'Key works — you’re all set.' };
       let cBody = null;
@@ -2752,6 +2472,44 @@ async function validateAiKey(provider, key) {
   } catch {
     return { ok: false, message: 'Network error — check your connection and try again.' };
   }
+}
+
+/** Read-only discovery. Never pulls or loads a model. */
+async function listLocalModels(baseUrl) {
+  const cfg = await localChatConfig({ baseUrl });
+  for (const route of ['/api/tags', '/v1/models']) {
+    try {
+      const response = await fetch(cfg.baseUrl + route, { signal: AbortSignal.timeout(5000) });
+      if (!response.ok) {
+        if (response.status === 403) return { models: [], message: distillClassifyLocalError(403, { ...cfg, extensionId: chrome.runtime.id }).message };
+        continue;
+      }
+      const body = await response.json();
+      const models = (Array.isArray(body.data) ? body.data.map(m => m.id) : Array.isArray(body.models) ? body.models.filter(m => !m.capabilities || m.capabilities.includes('completion')).map(m => m.name) : []).filter(m => typeof m === 'string').slice(0, 100);
+      return { models, message: models.length ? 'Choose an installed model from the Model field, then test the connection.' : 'No models returned. Load a model in your server, then retry.' };
+    } catch { /* another supported discovery route may work */ }
+  }
+  return { models: [], message: `Could not list models at ${cfg.baseUrl}. Check that the server is running and allows this extension.` };
+}
+
+/** One-token request to the local server: checks it's up, Distill is allowed, and the model exists. */
+async function validateLocal(local) {
+  const cfg = await localChatConfig(local);
+  const opts = { baseUrl: cfg.baseUrl, model: cfg.model, extensionId: chrome.runtime.id };
+  let r;
+  try {
+    r = await fetch(cfg.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 }),
+      signal: AbortSignal.timeout(30_000)
+    });
+  } catch (err) {
+    return { ok: false, message: err?.name === 'TimeoutError' ? 'The local model did not respond within 30 seconds. Check the server and loaded model, then retry.' : distillClassifyLocalError(0, opts).message };
+  }
+  if (r.ok) return { ok: true, message: `Connected to ${cfg.model} — runs on your computer.` };
+  const body = await r.json().catch(() => null);
+  return { ok: false, message: distillClassifyLocalError(r.status, { ...opts, body }).message };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -2906,7 +2664,8 @@ async function publishUsage(tabId) {
       anthropic: 'Using your own Anthropic key — usage counts against your account.',
       openai: 'Using your own OpenAI key — usage counts against your account.',
       groq: 'Using your own Groq key — usage counts against your free Groq quota.',
-      gemini: 'Using your own Gemini key — usage counts against your free Google quota.'
+      gemini: 'Using your own Gemini key — usage counts against your free Google quota.',
+      local: 'Inference goes directly to your configured model server. Use localhost to keep inference on this computer.'
     };
     toPanel({ type: 'USAGE_UNAVAILABLE', tabId, message: labels[provider] || labels.groq });
     return;
@@ -3031,7 +2790,6 @@ chrome.runtime.onInstalled.addListener(() => {
       if (bag[USE_BACKEND_PROXY_KEY] === undefined) patch[USE_BACKEND_PROXY_KEY] = false;
       if (!bag[AI_PROVIDER_KEY]) patch[AI_PROVIDER_KEY] = DEFAULT_AI_PROVIDER;
       if (!bag.backendTarget) patch.backendTarget = 'prod';
-      if (!bag.readerMode) patch.readerMode = 'skim';
     }
     if (Object.keys(patch).length) chrome.storage.local.set(patch).catch(() => {});
   });

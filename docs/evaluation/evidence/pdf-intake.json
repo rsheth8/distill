@@ -1,0 +1,184 @@
+[
+  {
+    "capture": "baseline",
+    "paperId": "ligo",
+    "date": "2026-11-05T05:55:33.626Z",
+    "status": "extracted",
+    "productionReader": true,
+    "source": "https://arxiv.org/pdf/1602.03837v1",
+    "latencyMs": 496,
+    "errors": [],
+    "statusText": "",
+    "sections": [
+      {
+        "heading": "INTRODUCTION",
+        "chars": 4029
+      },
+      {
+        "heading": "OBSERVATION",
+        "chars": 3658
+      },
+      {
+        "heading": "DETECTORS",
+        "chars": 5548
+      },
+      {
+        "heading": "DETECTOR VALIDATION",
+        "chars": 1722
+      },
+      {
+        "heading": "SEARCHES",
+        "chars": 9714
+      },
+      {
+        "heading": "SOURCE DISCUSSION",
+        "chars": 4676
+      },
+      {
+        "heading": "OUTLOOK",
+        "chars": 665
+      },
+      {
+        "heading": "CONCLUSION",
+        "chars": 478
+      }
+    ],
+    "abstractChars": 0
+  },
+  {
+    "capture": "baseline",
+    "paperId": "planck",
+    "date": "2026-11-05T05:55:38.111Z",
+    "status": "extracted",
+    "productionReader": true,
+    "source": "https://arxiv.org/pdf/1303.5076v3",
+    "latencyMs": 4357,
+    "errors": [],
+    "statusText": "",
+    "sections": [
+      {
+        "heading": "Introduction",
+        "chars": 17407
+      },
+      {
+        "heading": "Model, parameters, and methodology",
+        "chars": 28588
+      },
+      {
+        "heading": "Constraints on the parameters of the base",
+        "chars": 13536
+      },
+      {
+        "heading": "Planck combined with high-resolution CMB",
+        "chars": 39258
+      },
+      {
+        "heading": "Comparison of the Planck base \u039bCDM model",
+        "chars": 52632
+      },
+      {
+        "heading": "Extensions to the base \u039bCDM model",
+        "chars": 79194
+      },
+      {
+        "heading": "Discussion and conclusions",
+        "chars": 13292
+      }
+    ],
+    "abstractChars": 565
+  },
+  {
+    "capture": "current-intake",
+    "paperId": "ligo",
+    "date": "2026-11-05T06:20:55.606Z",
+    "status": "extracted",
+    "productionReader": true,
+    "source": "https://arxiv.org/pdf/1602.03837v1",
+    "latencyMs": 433,
+    "errors": [],
+    "statusText": "",
+    "sections": [
+      {
+        "heading": "INTRODUCTION",
+        "chars": 4029
+      },
+      {
+        "heading": "OBSERVATION",
+        "chars": 3658
+      },
+      {
+        "heading": "DETECTORS",
+        "chars": 5548
+      },
+      {
+        "heading": "DETECTOR VALIDATION",
+        "chars": 1722
+      },
+      {
+        "heading": "SEARCHES",
+        "chars": 9714
+      },
+      {
+        "heading": "SOURCE DISCUSSION",
+        "chars": 4676
+      },
+      {
+        "heading": "OUTLOOK",
+        "chars": 665
+      },
+      {
+        "heading": "CONCLUSION",
+        "chars": 478
+      }
+    ],
+    "abstractChars": 0,
+    "warnings": [
+      "No labeled abstract extracted; inspect original PDF before relying on overview."
+    ]
+  },
+  {
+    "capture": "current-intake",
+    "paperId": "planck",
+    "date": "2026-11-05T06:20:59.591Z",
+    "status": "extracted",
+    "productionReader": true,
+    "source": "https://arxiv.org/pdf/1303.5076v3",
+    "latencyMs": 3884,
+    "errors": [],
+    "statusText": "",
+    "sections": [
+      {
+        "heading": "Introduction",
+        "chars": 17407
+      },
+      {
+        "heading": "Model, parameters, and methodology",
+        "chars": 28588
+      },
+      {
+        "heading": "Constraints on the parameters of the base",
+        "chars": 13536
+      },
+      {
+        "heading": "Planck combined with high-resolution CMB",
+        "chars": 39258
+      },
+      {
+        "heading": "Comparison of the Planck base \u039bCDM model",
+        "chars": 52632
+      },
+      {
+        "heading": "Extensions to the base \u039bCDM model",
+        "chars": 79194
+      },
+      {
+        "heading": "Discussion and conclusions",
+        "chars": 13292
+      }
+    ],
+    "abstractChars": 3360,
+    "warnings": [
+      "Text extraction does not establish table/equation fidelity."
+    ]
+  }
+]

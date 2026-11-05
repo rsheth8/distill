@@ -120,6 +120,7 @@ function corsOptionsDelegate(req, callback) {
 validateSecretsOrExit();
 
 const { createStateStore } = require('./lib/stateStore');
+const { distillBuildPrompt } = require('./lib/prompts');
 const {
   resolveProvider,
   isAiConfigured,
@@ -165,7 +166,9 @@ const TASK_COSTS = {
   quiz_question: 5,
   quiz_feedback: 7,
   quiz_skipped_review: 6,
-  explain_page: 8
+  overview: 12,
+  section_guide: 10,
+  ask: 10
 };
 
 const TASK_MODEL_ROUTER = {
@@ -175,7 +178,9 @@ const TASK_MODEL_ROUTER = {
   quiz_skipped_review: { primary: 'claude-haiku-4-5', fallback: 'claude-haiku-4-5' },
   summary: { primary: 'claude-haiku-4-5', fallback: 'claude-haiku-4-5' },
   analysis: { primary: 'claude-haiku-4-5', fallback: 'claude-haiku-4-5' },
-  explain_page: { primary: 'claude-haiku-4-5', fallback: 'claude-haiku-4-5' }
+  overview: { primary: 'claude-haiku-4-5', fallback: 'claude-haiku-4-5' },
+  section_guide: { primary: 'claude-haiku-4-5', fallback: 'claude-haiku-4-5' },
+  ask: { primary: 'claude-haiku-4-5', fallback: 'claude-haiku-4-5' }
 };
 
 const LLM_CONFIG = {
@@ -206,8 +211,10 @@ const AI_TUNING = {
       quiz_question: 90,
       quiz_feedback: 180,
       quiz_skipped_review: 170,
-      explain_page: 180,
-      analysis: 260
+      analysis: 260,
+      overview: 420,
+      section_guide: 380,
+      ask: 320
     }
   },
   'ultra-lean': {
@@ -217,8 +224,10 @@ const AI_TUNING = {
       quiz_question: 70,
       quiz_feedback: 130,
       quiz_skipped_review: 120,
-      explain_page: 130,
-      analysis: 180
+      analysis: 180,
+      overview: 300,
+      section_guide: 260,
+      ask: 220
     }
   }
 };
@@ -521,137 +530,10 @@ function validateAiRunBody(req, res, next) {
   return next();
 }
 
-function clampText(text, maxChars) {
-  const t = (text || '').trim();
-  if (!maxChars || t.length <= maxChars) return t;
-  return `${t.slice(0, maxChars).trim()}\n…`;
-}
-
-function joinUserBlocks(blocks) {
-  return blocks
-    .filter(Boolean)
-    .map(b => (typeof b === 'string' ? b : ''))
-    .join('\n\n');
-}
-
+/** Same prompts as the extension (lib/prompts.js is a copy of extension/utils/prompts.js). */
 function buildPrompt(task, payload) {
-  const context = payload.context || {};
-  const input = payload.input || {};
-
-  // Default system prompts mirror extension `background.js` streamTask usage.
-  if (task === 'now') {
-    const recent = clampText(context.recent || '(start of article)', 3200);
-    const paragraph = clampText(input.paragraph || '', 1300);
-    return {
-      system: 'You are a reading companion. Give one crisp sentence that helps the reader keep momentum.',
-      user: joinUserBlocks([
-        `Recent context:\n\n${recent}`,
-        `Current paragraph:\n\n"${paragraph}"\n\nIn ONE plain sentence (max 22 words), say what this means and why it matters.`
-      ])
-    };
-  }
-
-  if (task === 'summary') {
-    const title = context.title || '(untitled)';
-    const opener = context.opener || '(not available)';
-    const recent = context.recent || '(none yet)';
-    const readCount = typeof context.readCount === 'number' ? context.readCount : 0;
-    const readSoFar = clampText(input.readSoFar || '', 12000);
-    const freshRead = clampText(input.freshRead || '', 3200);
-    const prevSummary = (context.prevSummary || input.prevSummary || '').trim();
-    const isFirstSummary = !prevSummary;
-
-    const system = 'You are a reading companion. Summarize only what the reader has read so far — never hint at what comes next.';
-    const userBlocks = [
-      `Article title: ${title}`,
-      `Opening paragraph:\n\n${opener}`,
-      !isFirstSummary ? `Previous summary:\n\n${prevSummary}` : null,
-      `Most recent read context:\n\n${recent}`,
-      isFirstSummary
-        ? `Read so far (${readCount} paragraph(s)):\n\n${readSoFar}`
-        : `Newly read section since last update:\n\n${freshRead || '(no significant change)'}`,
-      isFirstSummary
-        ? 'Write only what was read. Format exactly: one line "The gist: ..." plus up to 3 short bullets. No headings. No markdown.'
-        : 'Continue the summary with 1-3 NEW bullets for the newly read section. Keep previous details intact, avoid repeated points, and do not add headings.'
-    ];
-    return { system, user: joinUserBlocks(userBlocks) };
-  }
-
-  if (task === 'quiz_question') {
-    const recent = clampText(context.recent || '', 3200);
-    return {
-      system: 'You generate single, focused comprehension questions to test reading understanding.',
-      user: joinUserBlocks([
-        `The reader just finished:\n\n${recent}`,
-        'Ask ONE short, specific comprehension question about this section only. Output only the question.'
-      ])
-    };
-  }
-
-  if (task === 'quiz_feedback') {
-    const recent = clampText(context.recent || '', 3200);
-    const question = input.question || '';
-    const answer = clampText(input.answer || '', 700);
-    return {
-      system: 'You give brief, encouraging feedback on reading comprehension answers. Be warm and specific.',
-      user: joinUserBlocks([
-        `Recent section:\n\n${recent}`,
-        `Question: ${question}\nReader answer: "${answer}"\n\nGive 2-3 supportive sentences: correctness + what was right/missed.`
-      ])
-    };
-  }
-
-  if (task === 'quiz_skipped_review') {
-    const recent = clampText(context.recent || '', 3200);
-    const question = input.question || '';
-    return {
-      system: 'You provide concise reading-comprehension coaching.',
-      user: joinUserBlocks([
-        `Recent section:\n\n${recent}`,
-        `Question: ${question}\n\nThe reader skipped this check-in.\nProvide a short model answer and one key takeaway in 2-3 sentences.`
-      ])
-    };
-  }
-
-  if (task === 'analysis') {
-    const title = context.title || '(untitled)';
-    const opener = context.opener || '(not available)';
-    const priorGist = (context.priorGist || '').trim();
-    const recent = clampText(context.recent || '', 3200);
-    const selection = clampText(input.selection || '', 900);
-    const system = 'You add context and depth to highlighted text.';
-    const userBlocks = [
-      `Article title: ${title}`,
-      `Opening paragraph:\n\n${opener}`,
-      priorGist ? `Article gist so far:\n${priorGist}` : null,
-      `Recent reading context:\n\n${recent}`,
-      `Highlighted:\n\n"${selection}"\n\nExplain in context in 3-5 conversational sentences.`
-    ];
-    return { system, user: joinUserBlocks(userBlocks) };
-  }
-
-  if (task === 'explain_page') {
-    const pageText = clampText(input.pageText || '', 7000);
-    return {
-      system: 'You explain web pages in plain, friendly language.',
-      user: joinUserBlocks([
-        `Page content:\n\n${pageText}`,
-        'Explain this web page in plain, friendly language. Cover what kind of page it is, what it\'s about (2–3 sentences), and who it\'s for. Under 120 words. No bullet points.'
-      ])
-    };
-  }
-
-  // Safe fallback for unknown future tasks.
-  return {
-    system: 'You are a reading companion. Keep responses concise and accurate.',
-    user: joinUserBlocks([
-      `Task: ${task}`,
-      `Title: ${context.title || '(untitled)'}`,
-      `Context:\n${JSON.stringify(context)}`,
-      `Input:\n${JSON.stringify(input)}`,
-      'Return only useful reader-facing text.'
-    ])
-  };
+  const { system, blocks } = distillBuildPrompt(task, payload.context, payload.input);
+  return { system, user: blocks.join('\n\n') };
 }
 
 app.get('/healthz', (_req, res) => {

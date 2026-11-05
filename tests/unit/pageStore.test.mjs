@@ -45,6 +45,12 @@ describe('clamps', () => {
 });
 
 describe('distillBuildPageStatePayload', () => {
+  it('keeps bulletSections and round-trips them, capped at 40 entries', () => {
+    const many = Object.fromEntries(Array.from({ length: 60 }, (_, i) => [`b${i}`, 'Methods']));
+    const payload = distillBuildPageStatePayload({ pageUrl: 'https://x.test', bulletSections: many }, 1);
+    expect(Object.keys(payload.bulletSections).length).toBe(40);
+    expect(distillPagePayloadToState(payload).bulletSections.b59).toBe('Methods');
+  });
   it('captures fields, readCount, version, and applies caps', () => {
     const state = {
       pageUrl: 'https://x.test/a',
@@ -57,8 +63,7 @@ describe('distillBuildPageStatePayload', () => {
       lastSummary: 'x'.repeat(9000),
       lastSummaryUnitCount: 12,
       highlightHistory: new Array(20).fill({ id: 1 }),
-      quiz: { status: 'question', question: 'Q', answer: '', feedback: '', history: new Array(9).fill({ q: 'h' }) },
-      explainCache: { pageUrl: 'https://x.test/a', contentHash: 'abc', text: 'y'.repeat(9000) }
+      quiz: { status: 'question', question: 'Q', answer: '', feedback: '', history: new Array(9).fill({ q: 'h' }) }
     };
     const p = distillBuildPageStatePayload(state, 111);
     expect(p.v).toBe(DISTILL_PAGE_STATE_VERSION);
@@ -70,24 +75,21 @@ describe('distillBuildPageStatePayload', () => {
     expect(p.highlightHistory.length).toBe(8);
     expect(p.quiz.history.length).toBe(3);
     expect(p.quiz.status).toBe('question');
-    expect(p.explainCache.text.length).toBe(3500);
   });
   it('tolerates empty state', () => {
     const p = distillBuildPageStatePayload({}, 1);
     expect(p.readUnits).toEqual([]);
     expect(p.readCount).toBe(0);
     expect(p.quiz.status).toBe('idle');
-    expect(p.explainCache).toBeNull();
   });
 });
 
 describe('round-trip: payload -> state', () => {
-  it('restores summary, units, quiz, highlights, explain', () => {
+  it('restores summary, units, quiz, highlights', () => {
     const payload = distillBuildPageStatePayload({
       pageUrl: 'https://x.test/a', title: 'T', totalParagraphs: 10, readParagraphs: ['a', 'b'],
       readUnits: ['a', 'b'], lastSummary: 'sum', highlightHistory: [{ id: 1 }],
-      quiz: { status: 'question', question: 'Q', answer: 'A', feedback: '', history: [{ q: 'h' }] },
-      explainCache: { pageUrl: 'https://x.test/a', contentHash: 'c1', text: 'exp' }
+      quiz: { status: 'question', question: 'Q', answer: 'A', feedback: '', history: [{ q: 'h' }] }
     }, 5);
     const s = distillPagePayloadToState(payload);
     expect(s.lastSummary).toBe('sum');
@@ -96,7 +98,6 @@ describe('round-trip: payload -> state', () => {
     expect(s.quiz.status).toBe('question');
     expect(s.quiz.answer).toBe('A');
     expect(s.highlightHistory).toEqual([{ id: 1 }]);
-    expect(s.explainCache).toEqual({ pageUrl: 'https://x.test/a', contentHash: 'c1', text: 'exp' });
     expect(s.articleText).toBe(''); // not persisted
   });
 });
@@ -144,4 +145,86 @@ describe('distillSelectPrunedKeys', () => {
     expect(distillSelectPrunedKeys([{ hash: 'a', updatedAt: now }], { maxPages: 5, ttlMs: 10000, now })).toEqual([]);
     expect(distillSelectPrunedKeys([], { maxPages: 5, ttlMs: 10000, now })).toEqual([]);
   });
+});
+
+describe('paper help fields', () => {
+  it('round-trip with caps', () => {
+    const guides = Object.fromEntries(Array.from({ length: 40 }, (_, i) => [`H${i}`, { level: 'everyday', text: 'g'.repeat(9000), terms: new Array(20).fill({ term: 't', definition: 'd' }) }]));
+    const p = distillBuildPageStatePayload({
+      overview: { level: 'simple', text: 'o'.repeat(9000) },
+      guides,
+      glossary: new Array(200).fill({ term: 't', definition: 'd', section: 's' }),
+      askThread: Array.from({ length: 30 }, (_, i) => ({ q: `q${i}`.padEnd(900, 'q'), a: 'a'.repeat(9000) }))
+    }, 1);
+    expect(p.overview).toEqual({ level: 'simple', text: 'o'.repeat(3500) });
+    expect(Object.keys(p.guides).length).toBe(30);
+    expect(p.guides.H0.text.length).toBe(2500);
+    expect(p.guides.H0.terms.length).toBe(12);
+    expect(p.glossary.length).toBe(150);
+    expect(p.askThread.length).toBe(20);
+    expect(p.askThread[19].q.startsWith('q29')).toBe(true); // newest kept
+    expect(p.askThread[0].q.length).toBe(500);
+    expect(p.askThread[0].a.length).toBe(2500);
+    const s = distillPagePayloadToState(p);
+    expect(s.overview).toEqual(p.overview);
+    expect(s.guides).toEqual(p.guides);
+    expect(s.glossary).toEqual(p.glossary);
+    expect(s.askThread).toEqual(p.askThread);
+  });
+  it('defaults when missing (old snapshots, legacy history)', () => {
+    const empty = { overview: null, guides: {}, glossary: [], askThread: [] };
+    const p = distillBuildPageStatePayload({}, 1);
+    expect({ overview: p.overview, guides: p.guides, glossary: p.glossary, askThread: p.askThread }).toEqual(empty);
+    const s = distillPagePayloadToState({ v: 1 });
+    expect({ overview: s.overview, guides: s.guides, glossary: s.glossary, askThread: s.askThread }).toEqual(empty);
+    const h = distillHistoryPayloadToState({});
+    expect({ overview: h.overview, guides: h.guides, glossary: h.glossary, askThread: h.askThread }).toEqual(empty);
+  });
+  it('restore drops malformed saved entries instead of crashing', () => {
+    const s = distillPagePayloadToState({
+      v: 1,
+      glossary: [{ term: 'ok', definition: 'd', section: 's' }, { term: 5, definition: 'd' }, null, { term: 't' }],
+      guides: {
+        Good: { level: 'everyday', text: 'g', terms: [{ term: 'a', definition: 'b' }, null, { term: 1 }] },
+        NoText: { level: 'everyday', text: 7, terms: [] },
+        BadTerms: { level: 'everyday', text: 'g', terms: 'x' },
+        Null: null
+      },
+      askThread: [{ q: 'kept', a: 'A' }, { q: 3, a: 'x' }, null],
+      overview: { level: 'simple', text: 42 }
+    });
+    expect(s.overview).toBeNull();
+    expect(s.guides.Good.terms).toEqual([{ term: 'a', definition: 'b' }]);
+    expect(s.glossary).toEqual([{ term: 'ok', definition: 'd', section: 's' }]);
+    expect(Object.keys(s.guides)).toEqual(['Good']);
+    expect(s.askThread).toEqual([{ q: 'kept', a: 'A' }]);
+  });
+  it('save drops questions still in flight (empty answer)', () => {
+    const p = distillBuildPageStatePayload({
+      askThread: [{ q: 'answered', a: 'A' }, { q: 'in flight', a: '' }, { q: 'also answered', a: 'B' }]
+    }, 1);
+    expect(p.askThread).toEqual([{ q: 'answered', a: 'A' }, { q: 'also answered', a: 'B' }]);
+    expect(distillPagePayloadToState(p).askThread).toEqual(p.askThread);
+  });
+});
+
+describe('saved provenance and audience compatibility',()=>{
+  it('preserves bounded supplied passages and rejects malformed source IDs',()=>{
+    const payload=distillBuildPageStatePayload({
+      overview:{level:'close',expertise:'expert',text:'An overview'},
+      askThread:[{q:'Sample?',a:'42 [S2P0]',passages:[
+        {id:'S2P0',heading:'Methods',text:'42 adults'},
+        {id:'javascript:bad',heading:'Bad',text:'Not a source'}
+      ]}]
+    },1);
+    const restored=distillPagePayloadToState(payload);
+    expect(restored.overview.expertise).toBe('expert');
+    expect(restored.askThread[0].passages).toEqual([{id:'S2P0',heading:'Methods',text:'42 adults'}]);
+  });
+});
+
+it('retains a merged source passage and its later interval after save and restore',()=>{
+ const text='B = 0.08. '+ 'Context. '.repeat(180)+'95% interval 0.02 to 0.14.';
+ const payload=distillBuildPageStatePayload({askThread:[{q:'Result?',a:'Reported coefficient.',passages:[{id:'S1P0',heading:'Results',text}]}]},1);
+ expect(distillPagePayloadToState(payload).askThread[0].passages[0].text).toBe(text);
 });

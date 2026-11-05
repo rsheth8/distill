@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Distill</title>
+  <link rel="stylesheet" href="tokens.css" />
   <link rel="stylesheet" href="sidepanel.css" />
 </head>
 <body>
@@ -73,42 +74,86 @@
         </span>
         <span class="title">Distill</span>
       </div>
-      <button id="settingsBtn" class="icon-btn" title="Settings">⚙</button>
+      <select id="expertiseSelect" class="level-select" aria-label="Reader experience" title="Reader experience">
+        <option value="newcomer">Newcomer</option>
+        <option value="expert">Experienced</option>
+      </select>
+      <select id="levelSelect" class="level-select" aria-label="Explanation detail" title="Explanation detail">
+        <option value="simple">Simple</option>
+        <option value="everyday" selected>Everyday</option>
+        <option value="close">Closer to the paper</option>
+      </select>
+      <button id="settingsBtn" class="icon-btn" title="Settings" aria-label="Settings"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68 1.65 1.65 0 0 0 10 3.17V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
     </header>
 
-    <nav class="tab-bar" aria-label="Distill sections">
-      <button id="tabReadBtn" class="tab-btn tab-btn-active" type="button">Read</button>
-      <button id="tabSettingsBtn" class="tab-btn" type="button">Settings</button>
+    <div class="assistance-bar"><span id="assistanceStatus" class="hint">Quiet reading</span> <button id="quietReadingBtn" type="button" class="paper-link-btn">Quiet reading</button></div>
+    <button id="paperStopBtn" type="button" class="paper-link-btn hidden">Stop current response</button>
+    <nav class="tab-bar" role="tablist" aria-label="Distill sections">
+      <button id="tabReadBtn" class="tab-btn tab-btn-active" type="button" role="tab" aria-selected="true">Read</button>
+      <button id="tabAskBtn" class="tab-btn" type="button" role="tab" aria-selected="false">Ask</button>
+      <button id="tabGlossaryBtn" class="tab-btn" type="button" role="tab" aria-selected="false">Glossary</button>
     </nav>
 
-    <!-- Article title strip -->
-    <div id="articleTitleBar" class="title-bar hidden">
-      <span id="articleTitle" class="article-title"></span>
-    </div>
-
     <div id="viewRead" class="panel-view">
+      <section id="paperCard" class="paper-card hidden">
+        <h1 id="articleTitle" class="paper-title"></h1>
+        <p id="paperByline" class="paper-byline"></p>
+        <ul id="paperFacts" class="fact-tags"></ul>
+        <p id="extractionNotice" class="hint">AI uses extracted text. Figures, tables and equations may be missing or incomplete; check the original source.</p>
+        <button id="fullTextLink" class="full-text-link hidden" type="button">Only the abstract is on this page. Open the full paper →</button>
+      </section>
+      <div id="paperWhere" class="paper-where hidden">
+        <div id="sectionMap" class="section-map" role="group" aria-label="Sections of this paper" hidden></div>
+        <p class="paper-where-line"><span id="sectionNow" class="section-now"></span> <span id="sectionLine" class="section-line"></span></p>
+        <p id="readingMeta" class="hint reading-meta">
+          <span id="progressLabel" class="progress-label">0 paragraphs read</span>
+          <span id="timeLabel" class="time-label"></span>
+        </p>
+      </div>
+      <section id="overviewCard" class="section hidden" aria-live="polite">
+        <h2 class="section-title">Overview</h2>
+        <p class="hint">Based on selected excerpts, which may omit important results and caveats.</p>
+        <div id="overviewBody"></div>
+        <p><span id="overviewStatus" class="status-badge"></span> <button id="overviewRetryBtn" type="button" class="paper-link-btn hidden">Retry</button></p>
+      </section>
+      <section id="trustCard" class="section hidden">
+        <h2 class="section-title">Study context and caveats</h2>
+        <p id="trustStudy"></p>
+        <div id="trustLimits"></div>
+        <p class="hint">AI summary of supplied text. Check the source; this does not rate the paper’s reliability.</p>
+      </section>
+      <section id="guideCard" class="section hidden" aria-live="polite">
+        <h2 class="section-title">You're in: <span id="guideHeading"></span></h2>
+        <p id="guideBody"></p>
+        <button id="guideBtn" type="button" class="paper-link-btn hidden">Guide this section</button>
+        <button id="guideTermsBtn" type="button" class="paper-link-btn hidden"></button>
+        <p><span id="guideStatus" class="status-badge"></span></p>
+      </section>
     <!-- First-run / missing AI credentials (dismissible) -->
     <div id="setupHintCard" class="setup-hint-card hidden" role="status">
       <div class="setup-hint-body">
-        <p class="setup-hint-title">Welcome to Distill 👋</p>
-        <p class="setup-hint-text">Distill uses your own <strong>free</strong> AI key — no account, no cost. Two quick steps:</p>
-        <ol class="onboard-steps">
-          <li><a id="onboardGetKeyLink" href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">Get a free Groq key →</a><br /><span id="onboardSubstep" class="onboard-substep">Groq Console · no credit card</span></li>
-          <li>Paste it below and connect.</li>
-        </ol>
-        <p class="hint onboard-switch">Prefer another provider? Change it in Settings (Gemini, OpenAI, Anthropic).</p>
-        <input id="onboardKeyInput" type="password" placeholder="Paste your Groq API key (gsk_…)" autocomplete="off" spellcheck="false" />
+        <p class="setup-hint-title">Read research papers in plain language</p>
+        <p class="setup-hint-text">Distill uses your own free AI key. No account, no cost.</p>
+        <a id="onboardGetKeyLink" class="onboard-key-link" href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">Get a free Groq key</a>
+        <span id="onboardSubstep" class="onboard-substep">Groq Console · no credit card</span>
+        <div class="onboard-row">
+          <input id="onboardKeyInput" type="password" placeholder="gsk_…" aria-label="Your Groq API key" autocomplete="off" spellcheck="false" />
+          <button id="onboardConnectBtn" type="button" class="btn-primary">Connect</button>
+        </div>
         <p id="onboardStatusLine" class="hint key-status-line" role="status"></p>
+        <button id="onboardLocalBtn" type="button" class="paper-link-btn">Prefer local inference? Run a model on your computer</button>
+        <div id="onboardDone" class="onboard-done hidden">
+          <p>Connected.</p>
+          <button id="onboardSampleBtn" type="button" class="btn-primary">Try it on a sample paper</button>
+        </div>
       </div>
       <div class="setup-hint-actions">
-        <button id="onboardConnectBtn" type="button" class="btn-primary">Connect</button>
-        <button id="setupHintOpenSettingsBtn" type="button" class="btn-copy">More options</button>
         <button id="setupHintDismissBtn" type="button" class="btn-copy">Dismiss</button>
       </div>
     </div>
     <!-- Backend down / recovery -->
     <div id="backendDownCard" class="state-msg hidden">
-      <span class="state-icon">🖥</span>
+      <span class="state-icon"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2l20 20M8.5 16.5a5 5 0 0 1 7 0M5 13a10 10 0 0 1 5.17-2.8M19 13a10 10 0 0 0-2.3-1.6M12 20h.01"/></svg></span>
       <p id="backendDownTitle">Can't reach Distill cloud.</p>
       <p id="backendDownHint" class="hint">Check your internet connection, then try again. For local development, open Settings → Advanced.</p>
       <div class="settings-key-actions">
@@ -120,10 +165,17 @@
 
     <!-- No article detected -->
     <div id="noArticle" class="state-msg hidden">
-      <span class="state-icon">📄</span>
-      <p>No article detected on this page.</p>
-      <p class="hint">But I can still explain what this page is about.</p>
-      <button id="explainBtnNoArticle" class="btn-explain-page">Explain this page →</button>
+      <span class="state-icon"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15h6"/></svg></span>
+      <p>This page isn't a research paper.</p>
+      <p class="hint">Distill helps you read research papers. Open one on arXiv, PubMed Central, bioRxiv or a journal's site, or open a paper's PDF.</p>
+    </div>
+
+    <!-- PDF open in Chrome's viewer -->
+    <div id="pdfCard" class="state-msg hidden">
+      <span class="state-icon"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M10 13l2 2 4-4"/></svg></span>
+      <p>This paper is a PDF.</p>
+      <p class="hint">Chrome's PDF viewer can't be read by extensions. Open it in Distill's reader to get help with it.</p>
+      <button id="openInReaderBtn" class="btn-explain-page" type="button">Open in Distill →</button>
     </div>
 
     <!-- Waiting for user to start reading -->
@@ -131,78 +183,6 @@
 
     <!-- Main reading panel -->
     <div id="mainContent">
-
-      <!-- Assistant status -->
-      <section id="assistantStatus" class="section assistant-status">
-        <div class="status-top">
-          <div class="status-left">
-            <div class="status-title">Assistant</div>
-            <div class="status-meta">
-              <span id="progressLabel" class="progress-label">0 paragraphs read</span>
-              <span id="timeLabel" class="time-label"></span>
-            </div>
-          </div>
-          <div class="status-right">
-            <div class="status-pill">
-              <span id="routingDot" class="routing-dot"></span>
-              <span id="routingText" class="routing-text">Direct</span>
-            </div>
-            <div class="status-pill">
-              <span id="usageLabel" class="usage-label hidden"></span>
-              <span id="usageFallback" class="usage-fallback">Your key</span>
-            </div>
-          </div>
-        </div>
-        <div class="progress-wrap">
-          <div id="progressBar" class="progress-bar"></div>
-        </div>
-      </section>
-
-      <!-- Actions -->
-      <section id="actionsRow" class="section actions-row">
-        <div class="actions-row-top">
-          <button id="focusBtn" type="button" class="action-btn action-icon" title="Dim surrounding text" aria-pressed="false">
-            <span id="focusIcon" class="action-ico">◎</span>
-            <span class="action-label">Focus</span>
-          </button>
-          <button id="learnBtn" type="button" class="action-btn action-icon" title="Comprehension quizzes (Learn Mode)" aria-pressed="false">
-            <span class="action-ico">◈</span>
-            <span class="action-label">Learn</span>
-          </button>
-
-          <div class="tele-wrap">
-            <button id="scrollPlayBtn" type="button" class="action-btn action-icon tele-play" title="Auto-scroll word by word" aria-pressed="false">
-              <span class="action-ico">▶</span>
-              <span class="action-label">Scroll</span>
-            </button>
-            <button id="scrollSlowBtn" class="action-btn action-icon tele-adj" title="Slower">
-              <span class="action-ico">−</span>
-              <span class="sr-only">Slower</span>
-            </button>
-            <span id="scrollSpeedLabel" class="tele-speed">200</span>
-            <span class="tele-unit">wpm</span>
-            <button id="scrollFastBtn" class="action-btn action-icon tele-adj" title="Faster">
-              <span class="action-ico">+</span>
-              <span class="sr-only">Faster</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="actions-row-bottom">
-          <button id="explainBtnMain" type="button" class="action-btn action-icon" title="Explain current page" aria-pressed="false">
-            <span class="action-ico">◌</span>
-            <span class="action-label">Explain</span>
-          </button>
-          <button id="analyzeActionBtn" type="button" class="action-btn action-icon" title="Analyze selected text" aria-pressed="false">
-            <span class="action-ico">✦</span>
-            <span class="action-label">Analyze</span>
-          </button>
-          <button id="historyActionBtn" type="button" class="action-btn action-icon" title="Open history" aria-pressed="false">
-            <span class="action-ico">≡</span>
-            <span class="action-label">History</span>
-          </button>
-        </div>
-      </section>
 
       <!-- Suggestions -->
       <section id="suggestionsCard" class="section suggestions-card hidden">
@@ -216,6 +196,7 @@
       <section id="quizSection" class="section quiz-section hidden">
         <div class="section-header">
           <span class="section-title">Check-in</span>
+          <button id="laterQuizBtn" type="button" class="btn-skip">Later</button>
           <button id="skipQuizBtn" class="btn-skip">Skip →</button>
         </div>
         <p id="quizStateText" class="quiz-state-text hidden"></p>
@@ -232,61 +213,44 @@
         <p id="quizNext" class="quiz-next hidden"></p>
       </section>
 
-      <!-- Now Reading -->
-      <section id="nowSection" class="section now-section hidden">
-        <div class="section-header">
-          <span class="now-dot"></span>
-          <span class="section-title">Now reading</span>
-          <div class="header-actions">
-            <span id="nowHintChip" class="now-hint-chip hidden" role="status">Dense section — tap Tip</span>
-            <span id="nowStatus" class="status-badge"></span>
-            <button id="nowTipBtn" type="button" class="btn-copy btn-export-mini" title="Get a one-line tip for this paragraph">Tip</button>
-            <button id="nowRefreshBtn" type="button" class="btn-copy btn-export-mini" title="Generate a new tip">Refresh</button>
-          </div>
-        </div>
-        <div id="nowText" class="body-text now-text"></div>
-      </section>
-
       <!-- So Far -->
       <section id="summarySection" class="section">
         <div class="section-header">
           <span class="section-title">So far</span>
           <div class="header-actions">
-            <button id="copyNotesBtn" class="btn-copy hidden" title="Copy notes as Markdown">Notes · MD</button>
-            <button id="copyNotesPlainBtn" class="btn-copy hidden" title="Copy notes as plain text">Notes · text</button>
-            <button id="copyBtn" class="btn-copy hidden" title="Copy summary">Copy</button>
+            <button id="focusBtn" type="button" class="action-btn action-icon" title="Dim surrounding text" aria-label="Focus" aria-pressed="false">
+              <span id="focusIcon" class="action-ico"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/></svg></span>
+              <span class="action-label sr-only">Focus</span>
+            </button>
+            <button id="learnBtn" type="button" class="action-btn action-icon" title="Check-ins" aria-label="Check-ins" aria-pressed="false">
+              <span class="action-ico"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></svg></span>
+              <span class="action-label sr-only">Check-ins</span>
+            </button>
+            <details id="copyMenu" class="copy-menu">
+              <summary class="btn-copy">Copy notes</summary>
+              <div class="copy-menu-list">
+                <button type="button" data-format="markdown">Markdown</button>
+                <button type="button" data-format="plain">Plain text</button>
+              </div>
+            </details>
             <span id="summaryStatus" class="status-badge"></span>
           </div>
         </div>
-        <div id="summaryText" class="body-text muted">Scroll through the article — your summary builds here.</div>
-      </section>
-
-      <!-- Explain (secondary) -->
-      <section id="explainSection" class="section explain-section hidden">
-        <div class="section-header">
-          <span class="section-title">Explain</span>
-          <div class="header-actions">
-            <span id="explainStatus" class="status-badge"></span>
-            <button id="exportExplainMdBtn" type="button" class="btn-copy btn-export-mini" disabled title="Copy explanation as Markdown">MD</button>
-            <button id="exportExplainTxtBtn" type="button" class="btn-copy btn-export-mini" disabled title="Copy explanation as plain text">Txt</button>
-            <button id="explainRefreshBtn" type="button" class="btn-copy" title="Generate a new explanation">Refresh</button>
-            <button id="explainCloseBtn" class="btn-copy" title="Turn off explain mode">Close</button>
-          </div>
-        </div>
-        <div id="explainText" class="body-text"></div>
+        <div id="summaryText" class="body-text muted">Scroll through the paper — your plain-language summary builds here.</div>
       </section>
 
       <!-- Highlight (secondary) -->
       <section id="highlightSection" class="section highlight-section hidden">
         <div class="section-header">
-          <span class="section-title">Highlight</span>
+          <span class="section-title">Selected text</span>
           <div class="header-actions">
-            <button id="exportAnalysisMdBtn" type="button" class="btn-copy btn-export-mini" disabled title="Copy analysis as Markdown">MD</button>
-            <button id="exportAnalysisTxtBtn" type="button" class="btn-copy btn-export-mini" disabled title="Copy analysis as plain text">Txt</button>
-            <button id="analyzeBtn" class="btn-analyze">Analyze →</button>
+            <button id="analyzeBtn" type="button" class="btn-copy">Explain</button>
+            <button id="askAboutBtn" type="button" class="btn-primary btn-sm">Ask about this</button>
           </div>
         </div>
         <blockquote id="selectedPreview" class="selected-preview"></blockquote>
+        <p id="analysisContext" class="hint hidden"></p>
+        <div id="analysisPending" class="body-text hidden" aria-live="polite"></div>
         <div id="analysisText" class="body-text analysis-text hidden"></div>
         <div id="highlightNoteWrap" class="highlight-note-wrap hidden">
           <label class="highlight-note-label">Your note</label>
@@ -295,55 +259,43 @@
         </div>
       </section>
 
-      <!-- History drawer -->
-      <details id="historyDetails" class="more-details">
-        <summary class="more-summary">
-          <span class="more-title">History</span>
-          <span class="more-hint">
-            Pins • Check-ins • Resume
-            <span id="moreResumeBadge" class="more-badge hidden">Resume available</span>
-          </span>
-        </summary>
-
-        <section id="pinnedAnalysesSection" class="section hidden">
-          <div class="section-header">
-            <span class="section-title">Pinned analyses</span>
-          </div>
-          <p class="hint analyses-hint">Star an analysis from this page (below) to keep it here across visits.</p>
-          <div id="pinnedAnalysesList" class="analyses-list"></div>
-        </section>
-
-        <section id="pageAnalysesSection" class="section hidden">
-          <div class="section-header">
-            <span class="section-title">On this page</span>
-          </div>
-          <div id="pageAnalysesList" class="analyses-list"></div>
-        </section>
-
-        <!-- Recent check-ins -->
-        <section id="recentCheckinsSection" class="section hidden">
-          <div class="section-header">
-            <span class="section-title">Recent check-ins</span>
-          </div>
-          <div id="recentCheckinsList" class="checkins-list"></div>
-        </section>
-
-        <!-- Resume card -->
-        <section id="resumeCard" class="section resume-card hidden">
-          <div class="section-header">
-            <span class="section-title">Resume</span>
-            <button id="resumeClearBtn" class="btn-copy" title="Clear saved progress">Clear</button>
-          </div>
-          <div id="resumeMeta" class="hint"></div>
-          <div id="resumeText" class="body-text"></div>
-        </section>
-      </details>
-
     </div>
+    </div>
+
+    <div id="viewAsk" class="panel-view hidden">
+      <section class="section">
+        <button id="returnReadingBtn" type="button" class="paper-link-btn hidden">Return to reading</button>
+        <div id="askThread" class="ask-thread" aria-live="polite"></div>
+        <div id="askStarters" class="ask-starters">
+          <button type="button" class="ask-starter">What's the main takeaway?</button>
+          <button type="button" class="ask-starter">Who could this affect?</button>
+          <button type="button" class="ask-starter">How sure are the authors?</button>
+        </div>
+        <form id="askForm" class="ask-form">
+          <textarea id="askInput" rows="2" maxlength="500" placeholder="Ask about this paper…" aria-label="Your question"></textarea>
+          <button type="submit" class="ask-submit">Ask</button>
+        </form>
+        <p><span id="askStatus" class="status-badge"></span> <button id="askRetryBtn" type="button" class="paper-link-btn hidden">Retry</button></p>
+      </section>
+    </div>
+
+    <div id="viewGlossary" class="panel-view hidden">
+      <section class="section">
+        <p id="glossaryEmpty" class="hint">Terms show up here as Distill guides you through each section.</p>
+        <dl id="glossaryList" class="glossary-list"></dl>
+      </section>
     </div>
 
     <div id="viewSettings" class="panel-view hidden">
       <div id="settingsPanel" class="settings-panel">
+        <section class="settings-group">
+          <h2 class="settings-group-title">Reading assistance</h2>
+          <label><input id="automaticHelpToggle" type="checkbox"> Automatic summaries and section guidance</label>
+          <label><input id="checkinsToggle" type="checkbox"> Optional check-ins</label>
+          <p id="assistanceMigration" class="hint hidden">Reading now starts quietly. Your saved notes and results are kept; enable automatic help here when you want it.</p>
+        </section>
+        <section class="settings-group">
+          <h2 class="settings-group-title">Connection</h2>
         <div class="settings-row settings-ai-row">
           <label for="aiProviderSelect">AI key</label>
           <p class="hint settings-intro">Distill runs on your own <strong>free</strong> AI key — no account, no cost, nothing sent to our servers. Connect a key once.</p>
@@ -352,12 +304,29 @@
             <option value="openai">OpenAI (your key)</option>
             <option value="gemini">Google Gemini (free tier)</option>
             <option value="anthropic">Anthropic Claude (your key)</option>
+            <option value="local">Local model — Ollama / LM Studio (no key)</option>
           </select>
           <p class="hint get-key-hint">
             <a id="getKeyLink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free Gemini key →</a>
             <span id="getKeyNote">No credit card required.</span>
           </p>
           <input id="apiKeyInput" type="password" placeholder="Paste your Gemini API key (AIza…)" autocomplete="off" spellcheck="false" />
+          <div id="localFields" class="hidden">
+            <label class="settings-sub" for="localBaseUrlInput">Server address</label>
+            <input id="localBaseUrlInput" type="url" placeholder="http://localhost:11434" autocomplete="off" spellcheck="false" />
+            <p class="hint">Ollama: <code>http://localhost:11434</code> · LM Studio: <code>http://localhost:1234</code></p>
+            <button id="discoverModelsBtn" type="button" class="paper-link-btn">List installed models</button>
+            <p id="localModelsStatus" class="hint" role="status"></p>
+            <datalist id="localModelsList"></datalist>
+            <label class="settings-sub" for="localModelInput">Model</label>
+            <input id="localModelInput" list="localModelsList" type="text" placeholder="qwen3:4b" autocomplete="off" spellcheck="false" />
+            <p class="hint">Setup: install Ollama, run <code>ollama pull qwen3:4b</code>, then allow Distill (macOS command below; restart Ollama after):</p>
+            <code id="localOriginsCmd" class="local-cmd"></code>
+            <button id="copyLocalCmdBtn" type="button" class="btn-copy">Copy command</button>
+            <p class="hint">Windows/Linux: set <code>OLLAMA_ORIGINS</code> to the same value. LM Studio: turn on CORS in the Developer tab.</p>
+          </div>
+          <button id="checkBrowserModelBtn" type="button" class="paper-link-btn">Check Chrome built-in availability</button>
+          <p id="browserModelStatus" class="hint" role="status"></p>
           <div class="settings-key-actions">
             <button id="saveKeyBtn" type="button" class="btn-primary">Save &amp; connect</button>
             <button id="validateKeyBtn" type="button" class="btn-copy">Test key</button>
@@ -365,12 +334,54 @@
           </div>
           <p id="keyStatusLine" class="hint key-status-line" role="status"></p>
         </div>
+        <div class="settings-row">
+          <label>Usage</label>
+          <p id="fairUseText" class="usage-help-text">
+            You use your own provider’s free quota — Distill adds no limits of its own.
+          </p>
+          <p id="usageResetText" class="usage-help-subtext">
+            <a id="quotaDashLink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Check your Gemini usage →</a>
+          </p>
+        </div>
+        </section>
+        <section class="settings-group">
+          <h2 class="settings-group-title">Appearance</h2>
+        <div class="settings-row">
+          <label>Accent Color</label>
+          <div id="accentSwatches" class="accent-swatches"></div>
+        </div>
+        <div id="sitePrefsSection" class="settings-row hidden">
+          <label id="sitePrefsLabel">This site</label>
+          <p id="sitePrefsHint" class="hint">Defaults for <strong id="sitePrefsHostname"></strong> apply whenever you open Distill here.</p>
+          <label class="settings-sub" for="siteFontScale">Panel size</label>
+          <div class="site-prefs-row">
+            <input type="range" id="siteFontScale" min="85" max="135" value="100" step="5" />
+            <span id="siteFontScaleLabel" class="site-prefs-value">100%</span>
+          </div>
+          <label class="settings-sub" for="siteThemeSelect">Panel theme</label>
+          <select id="siteThemeSelect">
+            <option value="system">Match system</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </div>
+        </section>
+        <section class="settings-group">
+          <h2 class="settings-group-title">Privacy and data</h2>
         <div class="settings-row privacy-settings-block">
-          <label>Privacy &amp; data</label>
           <p class="hint privacy-note-line"><strong>Your key stays on this device.</strong> It’s saved in Chrome local storage and never sent to Distill’s servers.</p>
-          <p class="hint privacy-note-line"><strong>Article text goes straight to your AI provider.</strong> When you ask for a summary, explanation, or analysis, the relevant text is sent over HTTPS from your browser directly to Google (Gemini) or Anthropic using your key — Distill has no server in the middle.</p>
+          <p class="hint privacy-note-line"><strong>Paper text goes straight to your AI provider.</strong> When you ask for a summary, explanation, or analysis, the relevant text is sent over HTTPS from your browser directly to your chosen provider (Groq, Gemini, OpenAI or Anthropic) using your key — Distill has no server in the middle.</p>
+          <p class="hint privacy-note-line"><strong>Local model = fully private.</strong> With Ollama / LM Studio, paper text stays on your computer.</p>
           <p class="hint privacy-note-line"><strong>Gemini free-tier note.</strong> Google may use content sent on the free tier to improve its products. For sensitive documents, use a paid key or Anthropic instead.</p>
         </div>
+        <div class="settings-row">
+          <label>Saved reading history</label>
+          <p class="hint">Distill saves your progress, summaries, highlights and check-ins per page on this device so you can resume. Nothing leaves your browser. Recent pages are kept; old ones are pruned automatically.</p>
+          <button id="clearAllHistoryBtn" type="button" class="btn-copy">Clear all saved history</button>
+        </div>
+        </section>
+        <section class="settings-group">
+          <h2 class="settings-group-title">Advanced</h2>
         <details id="advancedBackendDetails" class="settings-advanced details-block">
           <summary class="settings-advanced-summary">Advanced — hosted backend (optional)</summary>
           <div class="settings-row">
@@ -394,65 +405,7 @@
             <input id="backendUrlOverrideInput" type="url" placeholder="https://your-api.example" autocomplete="off" spellcheck="false" />
           </div>
         </details>
-        <div class="settings-row">
-          <label>Usage</label>
-          <p id="fairUseText" class="usage-help-text">
-            You use your own provider’s free quota — Distill adds no limits of its own.
-          </p>
-          <p id="usageResetText" class="usage-help-subtext">
-            <a id="quotaDashLink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Check your Gemini usage →</a>
-          </p>
-        </div>
-        <div class="settings-row">
-          <label>Saved reading history</label>
-          <p class="hint">Distill saves your progress, summaries, highlights and check-ins per page on this device so you can resume. Nothing leaves your browser. Recent pages are kept; old ones are pruned automatically.</p>
-          <button id="clearAllHistoryBtn" type="button" class="btn-copy">Clear all saved history</button>
-        </div>
-        <div class="settings-row">
-          <label class="toggle-row">
-            <input id="autoResumeToggle" type="checkbox" />
-            <span>Auto-resume teleprompter after check-ins</span>
-          </label>
-        </div>
-        <div class="settings-row">
-          <label for="aiModeSelect">AI Mode</label>
-          <select id="aiModeSelect">
-            <option value="balanced">Balanced</option>
-            <option value="ultra-lean">Ultra-lean</option>
-          </select>
-          <p class="hint">Balanced for quality, Ultra-lean for lower cost.</p>
-        </div>
-        <div class="settings-row">
-          <label for="readerModeSelect">Reader mode</label>
-          <select id="readerModeSelect">
-            <option value="skim">Skim</option>
-            <option value="study">Study</option>
-            <option value="research">Research</option>
-          </select>
-          <p class="hint">One-click behavior presets (noise, quizzes, and costs).</p>
-        </div>
-        <div class="settings-row">
-          <label for="autoNowModeSelect">Auto "Now reading"</label>
-          <select id="autoNowModeSelect">
-            <option value="off">Off</option>
-            <option value="smart">Smart (only difficult sections)</option>
-          </select>
-          <p class="hint">Smart shows tips on dense paragraphs. Use <strong>Tip</strong> on the Now reading card anytime (cached when possible).</p>
-        </div>
-        <div id="sitePrefsSection" class="settings-row hidden">
-          <label id="sitePrefsLabel">This site</label>
-          <p id="sitePrefsHint" class="hint">Defaults for <strong id="sitePrefsHostname"></strong> apply whenever you open Distill here.</p>
-          <label class="settings-sub" for="siteFontScale">Panel size</label>
-          <div class="site-prefs-row">
-            <input type="range" id="siteFontScale" min="85" max="135" value="100" step="5" />
-            <span id="siteFontScaleLabel" class="site-prefs-value">100%</span>
-          </div>
-          <label class="settings-sub" for="siteThemeSelect">Panel theme</label>
-          <select id="siteThemeSelect">
-            <option value="system">Match system</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
+        <div id="siteBackendOnlyRow" class="settings-row hidden">
           <label class="toggle-row site-backend-toggle">
             <input id="siteBackendOnlyToggle" type="checkbox" />
             <span>Always use backend for this site (no direct API fallback)</span>
@@ -461,12 +414,9 @@
         </div>
         <div class="settings-row">
           <label>Keyboard shortcuts</label>
-          <p class="hint">Open <code>chrome://extensions/shortcuts</code> to customize. Chrome allows up to four extension shortcuts; defaults are Alt+Shift+R (reader), F (focus), E (explain), and A (analyze). Use the panel for highlight navigation.</p>
+          <p class="hint">Open <code>chrome://extensions/shortcuts</code> to customize. Chrome allows up to four extension shortcuts; defaults are Alt+Shift+R (reader), F (focus), and A (analyze). Use the panel for highlight navigation.</p>
         </div>
-        <div class="settings-row">
-          <label>Accent Color</label>
-          <div id="accentSwatches" class="accent-swatches"></div>
-        </div>
+        </section>
       </div>
     </div>
 
@@ -474,6 +424,9 @@
     <div id="toast" class="toast hidden"></div>
 
   </div>
+  <script src="utils/performanceMetrics.js"></script>
+  <script src="utils/localConnection.js"></script>
+  <script src="utils/readingAssistance.js"></script>
   <script src="utils/buildConfig.js"></script>
   <script src="utils/pageUrlKey.js"></script>
   <script src="utils/aiResultCache.js"></script>
@@ -481,5 +434,9 @@
   <script src="utils/exportClip.js"></script>
   <script src="utils/accentColor.js"></script>
   <script src="sidepanel.js"></script>
+  <script src="utils/paperHelp.js"></script>
+  <script src="utils/sectionMap.js"></script>
+  <script src="utils/browserModel.js"></script>
+  <script src="sidepanelPaper.js"></script>
 </body>
 </html>

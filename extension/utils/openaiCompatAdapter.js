@@ -103,11 +103,83 @@ function distillClassifyChatError(status, body, opts = {}) {
   return { code: `CHAT_HTTP_${status}`, message: apiMsg || `${label} error ${status}.`, retryable: status >= 500 };
 }
 
+/**
+ * Streaming filter that drops `<think>…</think>` reasoning (Qwen3, DeepSeek R1) and the
+ * whitespace before the real answer. Tags may arrive split across chunks.
+ * @returns {(chunk: string, flush?: boolean) => string} feed text in, get visible text out.
+ */
+function distillMakeThinkFilter() {
+  let buf = '';
+  let inThink = false;
+  let started = false;
+  return function feed(chunk, flush = false) {
+    buf += chunk || '';
+    let out = '';
+    for (;;) {
+      const tag = inThink ? '</think>' : '<think>';
+      const i = buf.indexOf(tag);
+      if (i >= 0) {
+        if (!inThink) out += buf.slice(0, i);
+        buf = buf.slice(i + tag.length);
+        inThink = !inThink;
+        continue;
+      }
+      // Hold back a tail that could be the start of a split tag.
+      let keep = 0;
+      if (!flush) {
+        for (let k = Math.min(tag.length - 1, buf.length); k > 0; k--) {
+          if (buf.endsWith(tag.slice(0, k))) { keep = k; break; }
+        }
+      }
+      if (!inThink) out += buf.slice(0, buf.length - keep);
+      buf = buf.slice(buf.length - keep);
+      break;
+    }
+    if (!started) {
+      out = out.replace(/^\s+/, '');
+      if (out) started = true;
+    }
+    return out;
+  };
+}
+
+/**
+ * Map a local-server (Ollama / LM Studio) failure to a fix-it message.
+ * @param {number} status HTTP status, or 0 when the server could not be reached.
+ * @param {{ baseUrl: string, model: string, extensionId?: string }} opts
+ * @returns {{ code: string, message: string, retryable: boolean }}
+ */
+function distillClassifyLocalError(status, { baseUrl, model, extensionId = '<extension-id>', body = null }) {
+  if (status === 0) {
+    return { code: 'LOCAL_UNREACHABLE', message: `Can’t reach your local model at ${baseUrl}. Is Ollama or LM Studio running?`, retryable: true };
+  }
+  if (status === 403 && /:1234(?:\/|$)/.test(baseUrl)) {
+    return { code: 'LOCAL_FORBIDDEN', message: `LM Studio blocked Distill. Enable CORS in its Developer server settings, then retry chrome-extension://${extensionId}.`, retryable: false };
+  }
+  if (status === 403) {
+    return { code: 'LOCAL_FORBIDDEN', message: `Ollama blocked Distill. Allow it with OLLAMA_ORIGINS=chrome-extension://${extensionId}, then restart Ollama (see Settings).`, retryable: false };
+  }
+  const raw = typeof body?.error === 'string' ? body.error : body?.error?.message || '';
+  const lower = String(raw).toLowerCase();
+  if (status === 413 || /context|token limit|too (large|long)|reduce.*length/.test(lower)) {
+    return { code: 'LOCAL_CONTEXT', message: `The request exceeds ${model}’s context window. Try a shorter selection or a model with a larger context window.`, retryable: false };
+  }
+  if (status === 404) {
+    const lm = /:1234(?:\/|$)/.test(baseUrl);
+    return { code: 'LOCAL_NO_MODEL', message: lm
+      ? `Model “${model}” or the API route is unavailable. Load a model in LM Studio and copy its exact identifier from /v1/models into Settings.`
+      : `Model “${model}” or the API route is unavailable. Check Settings and installed models with ollama list; if needed, install it yourself with ollama pull ${model}.`, retryable: false };
+  }
+  return { code: `LOCAL_HTTP_${status}`, message: `Local model error ${status}.${raw ? ` ${String(raw).slice(0, 300)}` : ' Check the server log and model in Settings.'}`, retryable: status >= 500 };
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     distillChatTextFromContent,
     distillBuildChatRequestBody,
     distillParseChatChunk,
-    distillClassifyChatError
+    distillClassifyChatError,
+    distillMakeThinkFilter,
+    distillClassifyLocalError
   };
 }

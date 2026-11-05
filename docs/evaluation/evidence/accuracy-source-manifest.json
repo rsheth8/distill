@@ -1,0 +1,22 @@
+[
+  {
+    "paper": "facebook",
+    "url": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0069841",
+    "retrieved": "2026-11-05T06:58:30.390958+00:00",
+    "sha256": "05bfc1f064ea79b6f3d962bf3fcd36e2b53f802c40b5ef5ff08a07870a7d4b6d"
+  },
+  {
+    "paper": "handwashing",
+    "url": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0125200",
+    "retrieved": "2026-11-05T06:58:31.024033+00:00",
+    "sha256": "1e5339fae3b7bc96f9bb28b7b07bbe5b570b090214a7340b06a64d56b0ecd409"
+  },
+  {
+    "paper": "planck",
+    "url": "https://arxiv.org/pdf/1303.5076v3",
+    "retrieved": "2026-11-05T06:58:31.029103+00:00",
+    "sha256": "a9230af9b0d3b12cf12dbdcb5437db7c65dd6e237a2b95b84bd0ee1b05cd0c49",
+    "originalPageVisuallyInspected": 1,
+    "pdfTextDiagnostic": "Poppler reconstructed xref; page 1 rendered and inspected; not production intake"
+  }
+]

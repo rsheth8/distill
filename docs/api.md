@@ -289,13 +289,15 @@ Aligned with `extension/background.js` `streamTask` and `TASK_COSTS` in `server.
 
 | `task` | Base cost | Typical `context` | Typical `input` |
 |--------|-----------|-------------------|-----------------|
-| `now` | 4 | `recent` | `paragraph` |
-| `summary` | 10 | `title`, `opener`, `recent`, `readCount`, `prevSummary` | `readSoFar`, `freshRead` |
-| `quiz_question` | 5 | `recent` | — |
-| `quiz_feedback` | 7 | `recent` | `question`, `answer` |
-| `quiz_skipped_review` | 6 | `recent` | `question` |
-| `analysis` | 12 | `title`, `opener`, `priorGist`, `recent` | `selection` |
-| `explain_page` | 8 | — | `pageText` |
+| `now` | 4 | `level`, `recent` | `paragraph` |
+| `summary` | 10 | `level`, `title`, `opener`, `recent`, `readCount`, `prevSummary` | `readSoFar`, `freshRead` |
+| `quiz_question` | 5 | `level`, `recent` | — |
+| `quiz_feedback` | 7 | `level`, `recent` | `question`, `answer` |
+| `quiz_skipped_review` | 6 | `level`, `recent` | `question` |
+| `analysis` | 12 | `level`, `title`, `opener`, `priorGist`, `recent` | `selection` |
+| `overview` | 12 | `title`, `level` | `excerpt` |
+| `section_guide` | 10 | `title`, `section`, `level` | `sectionText` |
+| `ask` | 10 | `title`, `abstract`, `thread`, `level` | `question`, `excerpts` |
 
 **Cost modes**
 

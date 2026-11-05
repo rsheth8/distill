@@ -1,0 +1,115 @@
+{
+  "fixture": true,
+  "checks": [
+    {
+      "name": "overview uses real worker and panel with fixture inference",
+      "ok": true
+    },
+    {
+      "name": "experience selection reaches overview prompt",
+      "ok": true
+    },
+    {
+      "name": "only supplied citations become source controls",
+      "ok": true
+    },
+    {
+      "name": "invented ID gets no navigable source",
+      "ok": true
+    },
+    {
+      "name": "source passage is inspectable",
+      "ok": true
+    },
+    {
+      "name": "source navigation focuses actual passage",
+      "ok": true
+    },
+    {
+      "name": "first-use note export includes overview, Ask and supplied evidence",
+      "ok": true
+    },
+    {
+      "name": "Ask fits light 360",
+      "ok": true
+    },
+    {
+      "name": "Ask fits light 480",
+      "ok": true
+    },
+    {
+      "name": "Ask fits dark 360",
+      "ok": true
+    },
+    {
+      "name": "Ask fits dark 480",
+      "ok": true
+    },
+    {
+      "name": "200% zoom has no horizontal document overflow at 480px",
+      "ok": true
+    },
+    {
+      "name": "keyboard reaches a visible control",
+      "ok": true
+    },
+    {
+      "name": "keyboard focus has a visible outline",
+      "ok": true
+    },
+    {
+      "name": "reduced motion disables logo animation",
+      "ok": true
+    },
+    {
+      "name": "cancel releases stream and offers retry",
+      "ok": true
+    },
+    {
+      "name": "retry completes after cancellation",
+      "ok": true
+    },
+    {
+      "name": "interrupted answer is not saved as completed",
+      "ok": true
+    },
+    {
+      "name": "context failure offers actionable message",
+      "ok": true
+    },
+    {
+      "name": "unmatched demographic count is withheld before saving",
+      "ok": true
+    },
+    {
+      "name": "packaged build hides hosted-backend settings",
+      "ok": true
+    },
+    {
+      "name": "model discovery lists installed ID",
+      "ok": true
+    },
+    {
+      "name": "Chrome availability is explicit without download",
+      "ok": true
+    },
+    {
+      "name": "Settings fits 360",
+      "ok": true
+    },
+    {
+      "name": "Settings fits 480",
+      "ok": true
+    },
+    {
+      "name": "paper-bearing inference stays at configured loopback server despite backend preference",
+      "ok": true
+    },
+    {
+      "name": "no JavaScript page errors",
+      "ok": true,
+      "detail": []
+    }
+  ],
+  "errors": []
+}

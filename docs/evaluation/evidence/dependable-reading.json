@@ -1,0 +1,587 @@
+{
+  "date": "2026-11-05",
+  "fixture": {
+    "fixture": true,
+    "checks": [
+      {
+        "name": "fresh paper starts quiet with zero inference requests",
+        "ok": true,
+        "detail": 0
+      },
+      {
+        "name": "overview uses real worker and panel with fixture inference",
+        "ok": true
+      },
+      {
+        "name": "experience selection reaches overview prompt",
+        "ok": true
+      },
+      {
+        "name": "only supplied citations become source controls",
+        "ok": true
+      },
+      {
+        "name": "invented ID gets no navigable source",
+        "ok": true
+      },
+      {
+        "name": "source passage is inspectable",
+        "ok": true
+      },
+      {
+        "name": "source navigation focuses actual passage",
+        "ok": true
+      },
+      {
+        "name": "source return restores the original selected reading passage",
+        "ok": true
+      },
+      {
+        "name": "first-use note export includes overview, Ask and supplied evidence",
+        "ok": true
+      },
+      {
+        "name": "Ask fits light 360",
+        "ok": true
+      },
+      {
+        "name": "Ask fits light 480",
+        "ok": true
+      },
+      {
+        "name": "Ask fits dark 360",
+        "ok": true
+      },
+      {
+        "name": "Ask fits dark 480",
+        "ok": true
+      },
+      {
+        "name": "200% zoom has no horizontal document overflow at 480px",
+        "ok": true
+      },
+      {
+        "name": "keyboard reaches a visible control",
+        "ok": true
+      },
+      {
+        "name": "keyboard focus has a visible outline",
+        "ok": true
+      },
+      {
+        "name": "reduced motion disables logo animation",
+        "ok": true
+      },
+      {
+        "name": "cancel releases stream and offers retry",
+        "ok": true
+      },
+      {
+        "name": "retry completes after cancellation",
+        "ok": true
+      },
+      {
+        "name": "interrupted answer is not saved as completed",
+        "ok": true
+      },
+      {
+        "name": "context failure offers actionable message",
+        "ok": true
+      },
+      {
+        "name": "unmatched demographic count is withheld before saving",
+        "ok": true
+      },
+      {
+        "name": "packaged build hides hosted-backend settings",
+        "ok": true
+      },
+      {
+        "name": "model discovery lists installed ID",
+        "ok": true
+      },
+      {
+        "name": "Chrome availability is explicit without download",
+        "ok": true
+      },
+      {
+        "name": "failed Connect preserves the previous saved model",
+        "ok": true
+      },
+      {
+        "name": "Test explicitly identifies unsaved fields",
+        "ok": true
+      },
+      {
+        "name": "Connect saves exactly the successfully validated model",
+        "ok": true
+      },
+      {
+        "name": "Settings fits 360",
+        "ok": true
+      },
+      {
+        "name": "Settings fits 480",
+        "ok": true
+      },
+      {
+        "name": "paper-bearing inference stays at configured loopback server despite backend preference",
+        "ok": true
+      },
+      {
+        "name": "60-second quiet reading makes zero automatic inference calls",
+        "ok": true,
+        "detail": {
+          "before": 11,
+          "after": 11
+        }
+      },
+      {
+        "name": "reload and restore remain quiet",
+        "ok": true
+      },
+      {
+        "name": "saved answers and supplied source text remain available offline",
+        "ok": true
+      },
+      {
+        "name": "no JavaScript page errors",
+        "ok": true,
+        "detail": []
+      }
+    ],
+    "errors": []
+  },
+  "performance": {
+    "date": "2026-11-05",
+    "browser": "Chrome for Testing",
+    "machine": "arm64",
+    "scope": "Same-context initialization-to-next-frame and repeated warm extractor-function benchmarks on synthetic HTML; not native opening, full page intake, PDF, human usability, or AI latency.",
+    "runs": [
+      {
+        "label": "historical-before",
+        "panel": {
+          "cold": {
+            "n": 1,
+            "median": 26.400000002235174,
+            "p95": 26.400000002235174,
+            "status": "insufficient"
+          },
+          "warm": {
+            "n": 30,
+            "median": 25.199999999254942,
+            "p95": 29.699999999254942,
+            "status": "pass"
+          },
+          "durations": {
+            "cold": [
+              26.400000002235174
+            ],
+            "warm": [
+              33.70000000298023,
+              25.199999999254942,
+              23.600000001490116,
+              22.400000002235174,
+              27,
+              25.300000000745058,
+              25.400000002235174,
+              24.199999999254942,
+              24.699999999254942,
+              27.899999998509884,
+              25.399999998509884,
+              23.899999998509884,
+              27.899999998509884,
+              25.5,
+              24.799999997019768,
+              25,
+              26.400000002235174,
+              25.199999999254942,
+              26.5,
+              23.600000001490116,
+              27.899999998509884,
+              29.699999999254942,
+              20.300000000745058,
+              25.899999998509884,
+              24.699999999254942,
+              23.099999997764826,
+              21,
+              25.199999999254942,
+              25.400000002235174,
+              24.300000000745058
+            ]
+          }
+        },
+        "extraction": [
+          {
+            "scenario": "typical-html",
+            "n": 30,
+            "durations": [
+              0.4000000022351742,
+              0.29999999701976776,
+              0,
+              0.5,
+              0.10000000149011612,
+              0.10000000149011612,
+              0.09999999776482582,
+              0.10000000149011612,
+              0.09999999776482582,
+              0.30000000074505806,
+              0.10000000149011612,
+              0.09999999776482582,
+              0.10000000149011612,
+              0.10000000149011612,
+              0.09999999776482582,
+              0.10000000149011612,
+              0.09999999776482582,
+              0.10000000149011612,
+              0.10000000149011612,
+              0.09999999776482582,
+              0.10000000149011612,
+              0.19999999925494194,
+              0,
+              0.19999999925494194,
+              0.10000000149011612,
+              0.09999999776482582,
+              0.10000000149011612,
+              0.10000000149011612,
+              0.29999999701976776,
+              0.10000000149011612
+            ],
+            "median": 0.10000000149011612,
+            "p95": 0.4000000022351742,
+            "status": "pass"
+          },
+          {
+            "scenario": "long-html",
+            "n": 30,
+            "durations": [
+              0.8000000007450581,
+              1.1000000014901161,
+              0.3999999985098839,
+              0.6999999992549419,
+              0.5,
+              0.4000000022351742,
+              0.6999999992549419,
+              0.3999999985098839,
+              0.5,
+              0.5,
+              0.6000000014901161,
+              0.6000000014901161,
+              0.5,
+              0.29999999701976776,
+              0.5,
+              0.5,
+              0.6000000014901161,
+              0.3999999985098839,
+              0.5,
+              0.4000000022351742,
+              0.3999999985098839,
+              0.6000000014901161,
+              0.3999999985098839,
+              0.4000000022351742,
+              0.3999999985098839,
+              0.5,
+              0.5,
+              0.3999999985098839,
+              0.4000000022351742,
+              0.30000000074505806
+            ],
+            "median": 0.5,
+            "p95": 0.8000000007450581,
+            "status": "pass"
+          }
+        ],
+        "errors": []
+      },
+      {
+        "label": "packaged-current",
+        "panel": {
+          "cold": {
+            "n": 1,
+            "median": 40,
+            "p95": 40,
+            "status": "insufficient"
+          },
+          "warm": {
+            "n": 30,
+            "median": 25.75,
+            "p95": 29.100000001490116,
+            "status": "pass"
+          },
+          "durations": {
+            "cold": [
+              40
+            ],
+            "warm": [
+              22,
+              25.799999997019768,
+              26.300000000745058,
+              25.700000002980232,
+              26.399999998509884,
+              25.699999999254942,
+              25.5,
+              25.899999998509884,
+              26.199999999254942,
+              25.5,
+              26.800000000745058,
+              25.400000002235174,
+              26.400000002235174,
+              25.899999998509884,
+              25.5,
+              26.400000002235174,
+              26.099999997764826,
+              26.199999999254942,
+              26,
+              30.599999997764826,
+              17.400000002235174,
+              19.199999999254942,
+              23.800000000745058,
+              18.099999997764826,
+              20.600000001490116,
+              24.100000001490116,
+              26.099999997764826,
+              25.5,
+              11.100000001490116,
+              29.100000001490116
+            ]
+          }
+        },
+        "extraction": [
+          {
+            "scenario": "typical-html",
+            "n": 30,
+            "durations": [
+              0.3999999985098839,
+              0.19999999925494194,
+              0.20000000298023224,
+              0.29999999701976776,
+              0.10000000149011612,
+              0.10000000149011612,
+              0.09999999776482582,
+              0.19999999925494194,
+              0.10000000149011612,
+              0.30000000074505806,
+              0.09999999776482582,
+              0.10000000149011612,
+              0.19999999925494194,
+              0,
+              0.10000000149011612,
+              0.19999999925494194,
+              0.10000000149011612,
+              0,
+              0.19999999925494194,
+              0,
+              0.19999999925494194,
+              0.10000000149011612,
+              0.09999999776482582,
+              0.10000000149011612,
+              0.09999999776482582,
+              0.10000000149011612,
+              0.10000000149011612,
+              0.19999999925494194,
+              0.09999999776482582,
+              0.10000000149011612
+            ],
+            "median": 0.10000000149011612,
+            "p95": 0.30000000074505806,
+            "status": "pass"
+          },
+          {
+            "scenario": "long-html",
+            "n": 30,
+            "durations": [
+              0.8999999985098839,
+              1,
+              0.5,
+              0.6000000014901161,
+              0.5,
+              0.6999999992549419,
+              0.8000000007450581,
+              0.5,
+              0.5,
+              0.6000000014901161,
+              0.5999999977648258,
+              0.6999999992549419,
+              0.5,
+              0.30000000074505806,
+              0.4000000022351742,
+              0.29999999701976776,
+              0.6000000014901161,
+              0.5,
+              0.3999999985098839,
+              0.5,
+              0.5,
+              0.7000000029802322,
+              0.5,
+              0.3999999985098839,
+              0.5,
+              0.5,
+              0.6000000014901161,
+              0.3999999985098839,
+              0.5,
+              0.5
+            ],
+            "median": 0.5,
+            "p95": 0.8999999985098839,
+            "status": "pass"
+          }
+        ],
+        "errors": []
+      }
+    ]
+  },
+  "nativePanel": {
+    "date": "2026-11-05T08:49:10.369Z",
+    "openApiResult": "opened",
+    "nativePageAttached": false,
+    "scope": "Actual sidePanel.open from user gesture; OS shortcut dispatch and screen reader not tested.",
+    "nativeTargetAttached": true,
+    "initialLayout": {
+      "width": 360,
+      "height": 711,
+      "overflow": false,
+      "title": "Distill"
+    },
+    "paper": "Attention Is All You Need",
+    "nativeState": {
+      "paper": "Attention Is All You Need",
+      "overviewStatus": "",
+      "retryVisible": true
+    }
+  },
+  "pdfs": [
+    {
+      "status": "view-position-preserved",
+      "pages": 69,
+      "alignment": {
+        "status": "matched",
+        "highlight": true,
+        "text": "Planck 2013 results. XVI. Cosmological parameters"
+      },
+      "paragraphAlignment": {
+        "status": "requested",
+        "page": 2,
+        "characters": 306,
+        "highlight": true,
+        "returned": true
+      },
+      "paper": "Planck 2013 XVI"
+    },
+    {
+      "status": "view-position-preserved",
+      "pages": 16,
+      "alignment": {
+        "status": "matched",
+        "highlight": true,
+        "text": "INTRODUCTION"
+      },
+      "paragraphAlignment": {
+        "status": "requested",
+        "page": 1,
+        "characters": 592,
+        "highlight": true,
+        "returned": true
+      },
+      "paper": "LIGO 2016"
+    },
+    {
+      "status": "view-position-preserved",
+      "pages": 15,
+      "alignment": {
+        "status": "matched",
+        "highlight": true,
+        "text": "Attention Is All You Need"
+      },
+      "paragraphAlignment": {
+        "status": "requested",
+        "page": 1,
+        "characters": 1138,
+        "highlight": true,
+        "returned": true
+      },
+      "paper": "Attention Is All You Need"
+    }
+  ],
+  "audioPerception": "Not evaluated: browser speaking status and boundary events do not establish perceived sound or naturalness.",
+  "directSetup": {
+    "relay": false,
+    "freshProfile": true,
+    "checks": [
+      {
+        "name": "ordinary-ollama",
+        "result": {
+          "ok": false,
+          "message": "Ollama blocked Distill. Allow it with OLLAMA_ORIGINS=chrome-extension://pedokpnjlleojggolobkfgdfcflbcnnp, then restart Ollama (see Settings)."
+        }
+      },
+      {
+        "name": "wrong-model",
+        "result": {
+          "ok": false,
+          "message": "Ollama blocked Distill. Allow it with OLLAMA_ORIGINS=chrome-extension://pedokpnjlleojggolobkfgdfcflbcnnp, then restart Ollama (see Settings)."
+        }
+      },
+      {
+        "name": "unreachable",
+        "result": {
+          "ok": false,
+          "message": "Can\u2019t reach your local model at http://127.0.0.1:1. Is Ollama or LM Studio running?"
+        }
+      },
+      {
+        "name": "lmstudio",
+        "result": {
+          "ok": false,
+          "message": "Can\u2019t reach your local model at http://localhost:1234. Is Ollama or LM Studio running?"
+        }
+      }
+    ]
+  },
+  "quality": "No new human correctness scoring, listening study or participant sessions.",
+  "finalAutomatedTests": {
+    "files": 34,
+    "tests": 319,
+    "command": "npm test"
+  },
+  "deliveredDirectSetup": {
+    "freshProfile": true,
+    "relay": false,
+    "checks": [
+      {
+        "name": "ordinary-ollama",
+        "result": {
+          "ok": true,
+          "message": "Connected to qwen2.5:7b \u2014 runs on your computer."
+        }
+      },
+      {
+        "name": "wrong-model",
+        "result": {
+          "ok": false,
+          "message": "Model \u201cdistill-missing-eval-model\u201d or the API route is unavailable. Check Settings and installed models with ollama list; if needed, install it yourself with ollama pull distill-missing-eval-model."
+        }
+      },
+      {
+        "name": "unreachable",
+        "result": {
+          "ok": false,
+          "message": "Can\u2019t reach your local model at http://127.0.0.1:1. Is Ollama or LM Studio running?"
+        }
+      },
+      {
+        "name": "lmstudio",
+        "result": {
+          "ok": false,
+          "message": "Can\u2019t reach your local model at http://localhost:1234. Is Ollama or LM Studio running?"
+        }
+      }
+    ],
+    "settingsTest": "Test passed; connection settings are not saved. Use Save & connect to apply them.",
+    "saved": {
+      "aiProvider": "local",
+      "localBaseUrl": "http://localhost:11434",
+      "localModel": "qwen2.5:7b"
+    }
+  },
+  "independentReview": "Partial: selected runner lacked account access; fallback reported retry bug before usage limit. Reported bug fixed with RED\u2192GREEN test; no full independent approval."
+}

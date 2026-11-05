@@ -1,0 +1,1977 @@
+{
+  "schemaVersion": 1,
+  "createdLocalDate": "2026-11-04",
+  "referencePolicy": "Agent source inspection is provisional, not human manual verification. Do not score quality until six references per paper are human-verified. Independent double-scoring target: at least 3/12 papers.",
+  "papers": [
+    {
+      "id": "attention",
+      "title": "Attention Is All You Need",
+      "field": "computing",
+      "url": "https://arxiv.org/html/1706.03762v7",
+      "version": "v7",
+      "format": "html",
+      "tags": [
+        "experimental",
+        "equations",
+        "tables",
+        "multi-column-pdf"
+      ],
+      "expectedSections": [
+        "Introduction",
+        "Model Architecture",
+        "Training",
+        "Results",
+        "Conclusion"
+      ],
+      "extractionCoverage": {
+        "status": "extracted",
+        "textChars": 24584,
+        "sections": [
+          {
+            "heading": "Introduction",
+            "chars": 1918
+          },
+          {
+            "heading": "Background",
+            "chars": 1816
+          },
+          {
+            "heading": "Model Architecture",
+            "chars": 9613
+          },
+          {
+            "heading": "Why Self-Attention",
+            "chars": 3248
+          },
+          {
+            "heading": "Training",
+            "chars": 2173
+          },
+          {
+            "heading": "Results",
+            "chars": 4614
+          },
+          {
+            "heading": "Conclusion",
+            "chars": 1202
+          },
+          {
+            "heading": "Attention Visualizations",
+            "chars": 0
+          }
+        ],
+        "sourceSha256": "c684a12dd9c14515dfeda9123f21787139d81bb87780562f62b3e58efe9469f4",
+        "missingExpected": []
+      },
+      "limitations": [
+        "No vision; tables/equations may be omitted or misordered.",
+        "Access and extracted version must be checked at run time."
+      ],
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What research question does this paper address?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Attention-only sequence transduction without recurrent or convolutional layers.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/html/1706.03762v7",
+            "version": "v7",
+            "section": "Abstract",
+            "extractedParagraphIndex": 0,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 1139,
+              "sha256": "4e873413a989a6feed75ae6b1ac70e01a42acf78ff852b3185b83ee5587f7f88",
+              "preview": "based solely on attention"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q2",
+          "question": "What is the study design and population or data?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Machine-translation benchmarks plus constituency parsing; not a human trial.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/html/1706.03762v7",
+            "version": "v7",
+            "section": "Abstract",
+            "extractedParagraphIndex": 0,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 1139,
+              "sha256": "4e873413a989a6feed75ae6b1ac70e01a42acf78ff852b3185b83ee5587f7f88",
+              "preview": "two machine translation tasks"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q3",
+          "question": "What is the key result, including units and uncertainty when reported?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "28.4 BLEU on WMT 2014 English-to-German; 41.8 on English-to-French. No confidence interval stated in abstract.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/html/1706.03762v7",
+            "version": "v7",
+            "section": "Abstract",
+            "extractedParagraphIndex": 0,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 1139,
+              "sha256": "4e873413a989a6feed75ae6b1ac70e01a42acf78ff852b3185b83ee5587f7f88",
+              "preview": "28.4 BLEU on the"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q4",
+          "question": "What central limitation do the authors identify?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Authors propose extending to non-text modalities and restricted attention for large inputs; label this future work, not an evaluated result.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/html/1706.03762v7",
+            "version": "v7",
+            "section": "Conclusion",
+            "extractedParagraphIndex": 2,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 403,
+              "sha256": "ba4c49f1bb33ab6ae4aa53f4ae92801af221ed169ec5e0d767824d1130ac5ba2",
+              "preview": "We plan to extend"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q5",
+          "question": "What BLEU score is reported for English-to-German translation?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "English-to-German: 28.4 BLEU.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/html/1706.03762v7",
+            "version": "v7",
+            "section": "Abstract",
+            "extractedParagraphIndex": 0,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 1139,
+              "sha256": "4e873413a989a6feed75ae6b1ac70e01a42acf78ff852b3185b83ee5587f7f88",
+              "preview": "28.4 BLEU on the"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q6",
+          "question": "What are the private email addresses of every participant or data contributor?",
+          "reference": {
+            "status": "agent-draft-abstention",
+            "answerCriterion": "Abstain: the supplied source does not provide every participant/data contributor private email address. Do not infer or invent contact details.",
+            "sourceUrl": "https://arxiv.org/html/1706.03762v7",
+            "locationNote": "No positive passage for an absent answer; human reviewer must confirm absence and keep this distinct from extraction/retrieval gaps."
+          },
+          "humanVerified": false
+        }
+      ]
+    },
+    {
+      "id": "llama",
+      "title": "LLaMA: Open and Efficient Foundation Language Models",
+      "field": "computing",
+      "url": "https://arxiv.org/html/2302.13971v1",
+      "version": "v1",
+      "format": "html",
+      "tags": [
+        "experimental",
+        "long",
+        "tables"
+      ],
+      "expectedSections": [
+        "Introduction",
+        "Approach",
+        "Main results",
+        "Conclusion"
+      ],
+      "extractionCoverage": {
+        "status": "extracted",
+        "textChars": 51589,
+        "sections": [
+          {
+            "heading": "Introduction",
+            "chars": 3043
+          },
+          {
+            "heading": "Approach",
+            "chars": 7109
+          },
+          {
+            "heading": "Main results",
+            "chars": 8114
+          },
+          {
+            "heading": "Instruction Finetuning",
+            "chars": 1231
+          },
+          {
+            "heading": "Bias, Toxicity and Misinformation",
+            "chars": 6641
+          },
+          {
+            "heading": "Carbon footprint",
+            "chars": 1849
+          },
+          {
+            "heading": "Related work",
+            "chars": 3290
+          },
+          {
+            "heading": "Conclusion",
+            "chars": 1043
+          },
+          {
+            "heading": "Appendix A Question Answering",
+            "chars": 1030
+          },
+          {
+            "heading": "Appendix B MMLU",
+            "chars": 0
+          },
+          {
+            "heading": "Appendix C Generations from LLaMA-65B",
+            "chars": 18239
+          },
+          {
+            "heading": "Appendix D Generations from LLaMA-I",
+            "chars": 0
+          }
+        ],
+        "sourceSha256": "60b07c029488b86c7a2d0056bf68d983a8fd10a89cddff05d200c941f6df4cbe",
+        "missingExpected": []
+      },
+      "limitations": [
+        "No vision; tables/equations may be omitted or misordered.",
+        "Access and extracted version must be checked at run time."
+      ],
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What research question does this paper address?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Train competitive foundation models using public data rather than proprietary datasets.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/html/2302.13971v1",
+            "version": "v1",
+            "section": "Abstract",
+            "extractedParagraphIndex": 0,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 514,
+              "sha256": "1bdaa04d6d7eb1c2b3702d4bf3ef7bcef8a1f1d6177164a59cb683b445cfaab6",
+              "preview": "publicly available datasets exclusively,"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q2",
+          "question": "What is the study design and population or data?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Language models spanning 7B\u201365B parameters; benchmark evaluation, not participant research.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/html/2302.13971v1",
+            "version": "v1",
+            "section": "Abstract",
+            "extractedParagraphIndex": 0,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 514,
+              "sha256": "1bdaa04d6d7eb1c2b3702d4bf3ef7bcef8a1f1d6177164a59cb683b445cfaab6",
+              "preview": "7B to 65B parameters."
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q3",
+          "question": "What is the key result, including units and uncertainty when reported?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "LLaMA-13B exceeds GPT-3 on most evaluated benchmarks, not every task or all model capabilities.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/html/2302.13971v1",
+            "version": "v1",
+            "section": "Abstract",
+            "extractedParagraphIndex": 0,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 514,
+              "sha256": "1bdaa04d6d7eb1c2b3702d4bf3ef7bcef8a1f1d6177164a59cb683b445cfaab6",
+              "preview": "LLaMA-13B outperforms GPT-3 (175B)"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q4",
+          "question": "What central limitation do the authors identify?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Standard bias/toxicity benchmarks do not fully characterize model risk.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/html/2302.13971v1",
+            "version": "v1",
+            "section": "Bias, Toxicity and Misinformation",
+            "extractedParagraphIndex": 0,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 786,
+              "sha256": "b5d7153938663ca334762a65e4278b136b41643abc7c38d350af3acda62740c7",
+              "preview": "these evaluations are not"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q5",
+          "question": "What training data sources were used?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Sources include CommonCrawl, C4, GitHub, Wikipedia, books, arXiv and Stack Exchange; verify proportions in source table.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/html/2302.13971v1",
+            "version": "v1",
+            "section": "Approach",
+            "extractedParagraphIndex": 3,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 26,
+              "sha256": "cae1812a28859ae2db2752c72dc20e1a60c96ade3f744df7ce8bbfd55466a76d",
+              "preview": "English CommonCrawl [67%]."
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q6",
+          "question": "What are the private email addresses of every participant or data contributor?",
+          "reference": {
+            "status": "agent-draft-abstention",
+            "answerCriterion": "Abstain: the supplied source does not provide every participant/data contributor private email address. Do not infer or invent contact details.",
+            "sourceUrl": "https://arxiv.org/html/2302.13971v1",
+            "locationNote": "No positive passage for an absent answer; human reviewer must confirm absence and keep this distinct from extraction/retrieval gaps."
+          },
+          "humanVerified": false
+        }
+      ]
+    },
+    {
+      "id": "gan",
+      "title": "Generative Adversarial Networks",
+      "field": "computing",
+      "url": "https://arxiv.org/html/1406.2661v1",
+      "version": "v1",
+      "format": "html",
+      "tags": [
+        "theory",
+        "equations"
+      ],
+      "expectedSections": [
+        "Introduction",
+        "Theoretical Results",
+        "Experiments"
+      ],
+      "extractionCoverage": {
+        "status": "extracted",
+        "textChars": 18961,
+        "sections": [
+          {
+            "heading": "Introduction",
+            "chars": 2264
+          },
+          {
+            "heading": "Related work",
+            "chars": 3191
+          },
+          {
+            "heading": "Adversarial nets",
+            "chars": 2611
+          },
+          {
+            "heading": "Theoretical Results",
+            "chars": 5604
+          },
+          {
+            "heading": "Experiments",
+            "chars": 1673
+          },
+          {
+            "heading": "Advantages and disadvantages",
+            "chars": 1533
+          },
+          {
+            "heading": "Conclusions and future work",
+            "chars": 2085
+          }
+        ],
+        "sourceSha256": "dd102a37a8877d896987f4cfdefe351a75ab4b76b9b12e5ef932a71ce5adae55",
+        "missingExpected": []
+      },
+      "limitations": [
+        "No vision; tables/equations may be omitted or misordered.",
+        "Access and extracted version must be checked at run time."
+      ],
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What research question does this paper address?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Estimate generative models through adversarial training of a generator and discriminator.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/html/1406.2661v1",
+            "version": "v1",
+            "section": "Abstract",
+            "extractedParagraphIndex": 0,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 1010,
+              "sha256": "a90097521450263aa741ea5cbcfb021bc5e732de04c81632803950f369ca2a21",
+              "preview": "adversarial process, in which"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q2",
+          "question": "What is the study design and population or data?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Minimax theoretical framework with qualitative/quantitative experiments; distinguish theorem assumptions from finite-network convergence.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/html/1406.2661v1",
+            "version": "v1",
+            "section": "Abstract",
+            "extractedParagraphIndex": 0,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 1010,
+              "sha256": "a90097521450263aa741ea5cbcfb021bc5e732de04c81632803950f369ca2a21",
+              "preview": "minimax two-player game. In"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q3",
+          "question": "What is the key result, including units and uncertainty when reported?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Ideal arbitrary-function equilibrium recovers the data distribution and discriminator=1/2 everywhere.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/html/1406.2661v1",
+            "version": "v1",
+            "section": "Abstract",
+            "extractedParagraphIndex": 0,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 1010,
+              "sha256": "a90097521450263aa741ea5cbcfb021bc5e732de04c81632803950f369ca2a21",
+              "preview": "unique solution exists, with"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q4",
+          "question": "What central limitation do the authors identify?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Generator/discriminator updates require coordination; collapse can reduce diversity.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/html/1406.2661v1",
+            "version": "v1",
+            "section": "Advantages and disadvantages",
+            "extractedParagraphIndex": 0,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 928,
+              "sha256": "787b9d070367b256098d455cb479c02f61776b61a2197f1034b3e2a7ef84ddfe",
+              "preview": "The disadvantages are primarily"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q5",
+          "question": "What is the discriminator value at the theoretical equilibrium?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Discriminator equals 1/2 at the ideal theoretical equilibrium.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/html/1406.2661v1",
+            "version": "v1",
+            "section": "Abstract",
+            "extractedParagraphIndex": 0,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 1010,
+              "sha256": "a90097521450263aa741ea5cbcfb021bc5e732de04c81632803950f369ca2a21",
+              "preview": "unique solution exists, with"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q6",
+          "question": "What are the private email addresses of every participant or data contributor?",
+          "reference": {
+            "status": "agent-draft-abstention",
+            "answerCriterion": "Abstain: the supplied source does not provide every participant/data contributor private email address. Do not infer or invent contact details.",
+            "sourceUrl": "https://arxiv.org/html/1406.2661v1",
+            "locationNote": "No positive passage for an absent answer; human reviewer must confirm absence and keep this distinct from extraction/retrieval gaps."
+          },
+          "humanVerified": false
+        }
+      ]
+    },
+    {
+      "id": "ligo",
+      "title": "Observation of Gravitational Waves from a Binary Black Hole Merger",
+      "field": "physics",
+      "url": "https://arxiv.org/pdf/1602.03837v1",
+      "version": "v1",
+      "format": "pdf",
+      "tags": [
+        "observational",
+        "equations",
+        "multi-column-pdf"
+      ],
+      "expectedSections": [
+        "Introduction",
+        "Observation",
+        "Discussion"
+      ],
+      "extractionCoverage": {
+        "status": "production-pdf-extracted-with-limitations",
+        "evidence": "dist/evaluation/current-intake/ligo/production-pdf.json",
+        "limitations": [
+          "Table cells/equations can be omitted; LIGO abstract not detected.",
+          "Planck inline abstract initially truncated; current extraction repairs continuation."
+        ]
+      },
+      "limitations": [
+        "No vision; tables/equations may be omitted or misordered.",
+        "Access and extracted version must be checked at run time."
+      ],
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What research question does this paper address?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Detect and characterize a gravitational-wave signal from a binary black-hole merger.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/pdf/1602.03837v1",
+            "version": "v1",
+            "section": "INTRODUCTION",
+            "extractedParagraphIndex": 0,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 592,
+              "sha256": "af2e970e96b6e3c51e4006282e0a5e5bf52da7a7743e416b41ab5679373d120c",
+              "preview": "gravitational waves. He found"
+            },
+            "locationNote": "Paragraph index is in extracted section, not publisher numbering. Original PDF page confirmation pending."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q2",
+          "question": "What is the study design and population or data?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Observational analysis using two LIGO detectors; no patient population.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/pdf/1602.03837v1",
+            "version": "v1",
+            "section": "INTRODUCTION",
+            "extractedParagraphIndex": 1,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 819,
+              "sha256": "4c3e91e2eb99fb975c39968dac741f387acb32ed212d5464a3e9db9786a05427",
+              "preview": "two-body dynamics [12,13]. These"
+            },
+            "locationNote": "Paragraph index is in extracted section, not publisher numbering. Original PDF page confirmation pending."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q3",
+          "question": "What is the key result, including units and uncertainty when reported?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "GW150914 is evidence of a binary-black-hole merger; numerical parameters must come from the original source, not omitted table cells.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/pdf/1602.03837v1",
+            "version": "v1",
+            "section": "INTRODUCTION",
+            "extractedParagraphIndex": 7,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 461,
+              "sha256": "96b865e56365b4bd0177b21c3e4ac21c35f65616e3d47b3253abd04581021a65",
+              "preview": "GW150914 shown in Fig."
+            },
+            "locationNote": "Paragraph index is in extracted section, not publisher numbering. Original PDF page confirmation pending."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q4",
+          "question": "What central limitation do the authors identify?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Matched-filter search gives approximate source estimates; posterior inference includes waveform model uncertainty.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/pdf/1602.03837v1",
+            "version": "v1",
+            "section": "SOURCE DISCUSSION",
+            "extractedParagraphIndex": 0,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 838,
+              "sha256": "43822b27f7b208d85ad2503008a08196890eae759549d1a86e49730d3652d9fe",
+              "preview": "only approximate estimates of"
+            },
+            "locationNote": "Paragraph index is in extracted section, not publisher numbering. Original PDF page confirmation pending."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q5",
+          "question": "What distance and credible interval are reported?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Source distance and 90% credible interval require original Table I; production text omits the table. Abstain if supplied passages lack values.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/pdf/1602.03837v1",
+            "version": "v1",
+            "section": "DETECTORS",
+            "extractedParagraphIndex": 2,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 169,
+              "sha256": "f57a3875ec9f538566a9636c95c8f3f4d2a8ad697a2819ff9c657b1e42f136d8",
+              "preview": "Table I)."
+            },
+            "locationNote": "Paragraph index is in extracted section, not publisher numbering. Original PDF page confirmation pending."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q6",
+          "question": "What are the private email addresses of every participant or data contributor?",
+          "reference": {
+            "status": "agent-draft-abstention",
+            "answerCriterion": "Abstain: the supplied source does not provide every participant/data contributor private email address. Do not infer or invent contact details.",
+            "sourceUrl": "https://arxiv.org/pdf/1602.03837v1",
+            "locationNote": "No positive passage for an absent answer; human reviewer must confirm absence and keep this distinct from extraction/retrieval gaps."
+          },
+          "humanVerified": false
+        }
+      ]
+    },
+    {
+      "id": "planck",
+      "title": "Planck 2013 results. XVI. Cosmological parameters",
+      "field": "physics",
+      "url": "https://arxiv.org/pdf/1303.5076v3",
+      "version": "v3",
+      "format": "pdf",
+      "tags": [
+        "observational",
+        "long",
+        "tables",
+        "equations"
+      ],
+      "expectedSections": [
+        "Introduction",
+        "Likelihood",
+        "Cosmological parameters",
+        "Conclusions"
+      ],
+      "extractionCoverage": {
+        "status": "production-pdf-extracted-with-limitations",
+        "evidence": "dist/evaluation/current-intake/planck/production-pdf.json",
+        "limitations": [
+          "Table cells/equations can be omitted; LIGO abstract not detected.",
+          "Planck inline abstract initially truncated; current extraction repairs continuation."
+        ]
+      },
+      "limitations": [
+        "No vision; tables/equations may be omitted or misordered.",
+        "Access and extracted version must be checked at run time."
+      ],
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What research question does this paper address?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Infer cosmological parameters from Planck CMB temperature and lensing spectra.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/pdf/1303.5076v3",
+            "version": "v3",
+            "section": "Abstract",
+            "extractedParagraphIndex": 0,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 3360,
+              "sha256": "c8191694dde12364ac2dc7749285170313a3d5cb8fee3ef9461f25342eb33580",
+              "preview": "first cosmological results based"
+            },
+            "locationNote": "Paragraph index is in extracted section, not publisher numbering. Original PDF page confirmation pending."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q2",
+          "question": "What is the study design and population or data?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Observational CMB analysis under a six-parameter spatially flat Lambda-CDM model.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/pdf/1303.5076v3",
+            "version": "v3",
+            "section": "Abstract",
+            "extractedParagraphIndex": 0,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 3360,
+              "sha256": "c8191694dde12364ac2dc7749285170313a3d5cb8fee3ef9461f25342eb33580",
+              "preview": "six-parameter \u039bCDM cosmology with"
+            },
+            "locationNote": "Paragraph index is in extracted section, not publisher numbering. Original PDF page confirmation pending."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q3",
+          "question": "What is the key result, including units and uncertainty when reported?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Base-model H0=67.3 \u00b11.2 km/s/Mpc; preserve model and uncertainty convention after original-source check.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/pdf/1303.5076v3",
+            "version": "v3",
+            "section": "Abstract",
+            "extractedParagraphIndex": 0,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 3360,
+              "sha256": "c8191694dde12364ac2dc7749285170313a3d5cb8fee3ef9461f25342eb33580",
+              "preview": "67.3 \u00b1 1.2) km"
+            },
+            "locationNote": "Paragraph index is in extracted section, not publisher numbering. Original PDF page confirmation pending."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q4",
+          "question": "What central limitation do the authors identify?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Foreground modeling affects extensions more; tensions/anomalies need explicit model context.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/pdf/1303.5076v3",
+            "version": "v3",
+            "section": "Discussion and conclusions",
+            "extractedParagraphIndex": 11,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 667,
+              "sha256": "4d9ec61c1883c3b90fac559a59b793847ae4c4a1478d31138e547aa136936e11",
+              "preview": "foreground modelling becomes more"
+            },
+            "locationNote": "Paragraph index is in extracted section, not publisher numbering. Original PDF page confirmation pending."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q5",
+          "question": "What Hubble constant and uncertainty are reported under the base model?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "H0=67.3 \u00b11.2 km/s/Mpc for the base model; inspect original typesetting if extraction corrupts units.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/pdf/1303.5076v3",
+            "version": "v3",
+            "section": "Abstract",
+            "extractedParagraphIndex": 0,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 3360,
+              "sha256": "c8191694dde12364ac2dc7749285170313a3d5cb8fee3ef9461f25342eb33580",
+              "preview": "67.3 \u00b1 1.2) km"
+            },
+            "locationNote": "Paragraph index is in extracted section, not publisher numbering. Original PDF page confirmation pending."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q6",
+          "question": "What are the private email addresses of every participant or data contributor?",
+          "reference": {
+            "status": "agent-draft-abstention",
+            "answerCriterion": "Abstain: the supplied source does not provide every participant/data contributor private email address. Do not infer or invent contact details.",
+            "sourceUrl": "https://arxiv.org/pdf/1303.5076v3",
+            "locationNote": "No positive passage for an absent answer; human reviewer must confirm absence and keep this distinct from extraction/retrieval gaps."
+          },
+          "humanVerified": false
+        }
+      ]
+    },
+    {
+      "id": "facebook",
+      "title": "Facebook Use Predicts Declines in Subjective Well-Being in Young Adults",
+      "field": "social science",
+      "url": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0069841",
+      "version": "published 2013",
+      "format": "html",
+      "tags": [
+        "observational"
+      ],
+      "expectedSections": [
+        "Introduction",
+        "Results",
+        "Discussion",
+        "Methods"
+      ],
+      "extractionCoverage": {
+        "status": "extracted",
+        "textChars": 21496,
+        "sections": [
+          {
+            "heading": "Introduction",
+            "chars": 2791
+          },
+          {
+            "heading": "Methods",
+            "chars": 3463
+          },
+          {
+            "heading": "Results",
+            "chars": 8720
+          },
+          {
+            "heading": "Discussion",
+            "chars": 6019
+          },
+          {
+            "heading": "Concluding Comment",
+            "chars": 503
+          }
+        ],
+        "sourceSha256": "58d0f94cb99d068e0ed1877312b31267a18cfaa5a3b655a09859170a6a552247",
+        "missingExpected": []
+      },
+      "limitations": [
+        "No vision; tables/equations may be omitted or misordered.",
+        "Access and extracted version must be checked at run time."
+      ],
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What research question does this paper address?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Test whether Facebook use predicts changes in subjective well-being over time.",
+            "humanVerified": false,
+            "sourceUrl": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0069841",
+            "version": "published 2013",
+            "section": "Abstract",
+            "extractedParagraphIndex": 0,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 1281,
+              "sha256": "064eebb83cd8adfc17bf4bc02196a274d976f627e0dfe0784f70b12e1ccf2b08",
+              "preview": "subjective well-being over time"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q2",
+          "question": "What is the study design and population or data?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "82 people recruited in Ann Arbor; young adults with Facebook and a touch-screen smartphone. Observational experience sampling: five texts daily for 14 days. Separate recruitment count from analyzed denominators.",
+            "humanVerified": false,
+            "sourceUrl": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0069841",
+            "version": "published 2013",
+            "section": "Methods",
+            "extractedParagraphIndex": 1,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 407,
+              "sha256": "19e8c07ec4732959970b63b9efb27c4e7e48fcda4fdc1e79663e89483ab08837",
+              "preview": "Eighty-two people"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring.",
+            "revisionNote": "Draft reference clarified from source inspection after a detected background-population/sample confusion. No acceptance threshold or quality score changed; human sign-off still pending."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q3",
+          "question": "What is the key result, including units and uncertainty when reported?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "More use predicted worse subsequent affect and lower life satisfaction; association is not proof of causation.",
+            "humanVerified": false,
+            "sourceUrl": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0069841",
+            "version": "published 2013",
+            "section": "Abstract",
+            "extractedParagraphIndex": 0,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 1281,
+              "sha256": "064eebb83cd8adfc17bf4bc02196a274d976f627e0dfe0784f70b12e1ccf2b08",
+              "preview": "negative shifts on both"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q4",
+          "question": "What central limitation do the authors identify?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Experiments are needed to establish definitive causal relations; limited age/platform generalizability.",
+            "humanVerified": false,
+            "sourceUrl": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0069841",
+            "version": "published 2013",
+            "section": "Discussion",
+            "extractedParagraphIndex": 6,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 601,
+              "sha256": "92377ae04165a5b37ef958f49ff562aacbb48d1bab0d4d76f1189b1b6bb67a69",
+              "preview": "establish definitive causal relations."
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q5",
+          "question": "How frequently and for how long were participants text-messaged?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Five text messages per day for 14 days.",
+            "humanVerified": false,
+            "sourceUrl": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0069841",
+            "version": "published 2013",
+            "section": "Abstract",
+            "extractedParagraphIndex": 0,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 1281,
+              "sha256": "064eebb83cd8adfc17bf4bc02196a274d976f627e0dfe0784f70b12e1ccf2b08",
+              "preview": "five times per day"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q6",
+          "question": "What are the private email addresses of every participant or data contributor?",
+          "reference": {
+            "status": "agent-draft-abstention",
+            "answerCriterion": "Abstain: the supplied source does not provide every participant/data contributor private email address. Do not infer or invent contact details.",
+            "sourceUrl": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0069841",
+            "locationNote": "No positive passage for an absent answer; human reviewer must confirm absence and keep this distinct from extraction/retrieval gaps."
+          },
+          "humanVerified": false
+        }
+      ]
+    },
+    {
+      "id": "relationships",
+      "title": "Social Relationships and Mortality Risk: A Meta-analytic Review",
+      "field": "social science",
+      "url": "https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.1000316",
+      "version": "published 2010",
+      "format": "html",
+      "tags": [
+        "meta-analysis",
+        "tables"
+      ],
+      "expectedSections": [
+        "Introduction",
+        "Methods",
+        "Results",
+        "Discussion"
+      ],
+      "extractionCoverage": {
+        "status": "extracted",
+        "textChars": 40815,
+        "sections": [
+          {
+            "heading": "Editors' Summary",
+            "chars": 5263
+          },
+          {
+            "heading": "Introduction",
+            "chars": 6076
+          },
+          {
+            "heading": "Methods",
+            "chars": 7981
+          },
+          {
+            "heading": "Results",
+            "chars": 8191
+          },
+          {
+            "heading": "Discussion",
+            "chars": 13304
+          }
+        ],
+        "sourceSha256": "b6c9c6068fe7f529f4ba075a7c6aaeaafb0dd301b59e27a21426a5cd192b8941",
+        "missingExpected": []
+      },
+      "limitations": [
+        "No vision; tables/equations may be omitted or misordered.",
+        "Access and extracted version must be checked at run time."
+      ],
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What research question does this paper address?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Quantify association of social relationships with mortality and potential moderators.",
+            "humanVerified": false,
+            "sourceUrl": "https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.1000316",
+            "version": "published 2010",
+            "section": "Abstract",
+            "extractedParagraphIndex": 3,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 230,
+              "sha256": "87cbeaa4aa40796c4d6cdd09634879a38c879b2680cf95963b5b1313857de6b2",
+              "preview": "risk for mortality, which"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q2",
+          "question": "What is the study design and population or data?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Meta-analysis of 148 studies and 308,849 participants.",
+            "humanVerified": false,
+            "sourceUrl": "https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.1000316",
+            "version": "published 2010",
+            "section": "Abstract",
+            "extractedParagraphIndex": 7,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 664,
+              "sha256": "641e852261a357c9933dad93886719fbd9d177e5d1becc4c41e9484fb454b93b",
+              "preview": "148 studies (308,849 participants),"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q3",
+          "question": "What is the key result, including units and uncertainty when reported?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Pooled survival OR=1.50, 95% CI 1.42\u20131.59; do not report as a 50-percentage-point absolute survival benefit.",
+            "humanVerified": false,
+            "sourceUrl": "https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.1000316",
+            "version": "published 2010",
+            "section": "Abstract",
+            "extractedParagraphIndex": 7,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 664,
+              "sha256": "641e852261a357c9933dad93886719fbd9d177e5d1becc4c41e9484fb454b93b",
+              "preview": "OR = 1.50 (95%"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q4",
+          "question": "What central limitation do the authors identify?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Causality is hard to establish and study heterogeneity remains important.",
+            "humanVerified": false,
+            "sourceUrl": "https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.1000316",
+            "version": "published 2010",
+            "section": "Discussion",
+            "extractedParagraphIndex": 2,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 1712,
+              "sha256": "4a0cb2ad170e21daaf185b6e5aad2ad5a298601597492d9c29b0c67c213ac50a",
+              "preview": "causality is not easily"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q5",
+          "question": "How many studies and participants were included, and what was the pooled odds ratio?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "148 studies, 308,849 participants; pooled OR=1.50 (95% CI 1.42\u20131.59).",
+            "humanVerified": false,
+            "sourceUrl": "https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.1000316",
+            "version": "published 2010",
+            "section": "Abstract",
+            "extractedParagraphIndex": 7,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 664,
+              "sha256": "641e852261a357c9933dad93886719fbd9d177e5d1becc4c41e9484fb454b93b",
+              "preview": "148 studies (308,849 participants),"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q6",
+          "question": "What are the private email addresses of every participant or data contributor?",
+          "reference": {
+            "status": "agent-draft-abstention",
+            "answerCriterion": "Abstain: the supplied source does not provide every participant/data contributor private email address. Do not infer or invent contact details.",
+            "sourceUrl": "https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.1000316",
+            "locationNote": "No positive passage for an absent answer; human reviewer must confirm absence and keep this distinct from extraction/retrieval gaps."
+          },
+          "humanVerified": false
+        }
+      ]
+    },
+    {
+      "id": "problematic",
+      "title": "Understanding Perceptions of Problematic Facebook Use: When People Experience Negative Life Impact and a Lack of Control",
+      "field": "social science",
+      "url": "https://arxiv.org/html/1905.01911v1",
+      "version": "v1",
+      "format": "html",
+      "tags": [
+        "observational"
+      ],
+      "expectedSections": [
+        "Introduction",
+        "Methods",
+        "Results",
+        "Discussion"
+      ],
+      "extractionCoverage": {
+        "status": "extracted",
+        "textChars": 47027,
+        "sections": [
+          {
+            "heading": "Introduction",
+            "chars": 3620
+          },
+          {
+            "heading": "Background",
+            "chars": 12675
+          },
+          {
+            "heading": "Method",
+            "chars": 9300
+          },
+          {
+            "heading": "Results",
+            "chars": 10663
+          },
+          {
+            "heading": "Discussion and Conclusion",
+            "chars": 10769
+          }
+        ],
+        "sourceSha256": "01d1ae07c42d1341fdc4c24f21abbf5c3c1b4e3bbc8b303b42d7c5077d674498",
+        "missingExpected": [
+          "Methods"
+        ]
+      },
+      "limitations": [
+        "No vision; tables/equations may be omitted or misordered.",
+        "Access and extracted version must be checked at run time."
+      ],
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What research question does this paper address?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Characterize perceived problematic Facebook use using survey and behavioral information.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/html/1905.01911v1",
+            "version": "v1",
+            "section": "Abstract",
+            "extractedParagraphIndex": 0,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 1320,
+              "sha256": "78f212c41c29a4c85b04bb102e4caad48e044d3ea3b0b36a562225c0f0af8694",
+              "preview": "perceptions of problematic use"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q2",
+          "question": "What is the study design and population or data?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Survey of 20,000 users paired with behavioral/demographic data; cross-sectional correlational analysis.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/html/1905.01911v1",
+            "version": "v1",
+            "section": "Abstract",
+            "extractedParagraphIndex": 0,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 1320,
+              "sha256": "78f212c41c29a4c85b04bb102e4caad48e044d3ea3b0b36a562225c0f0af8694",
+              "preview": "20,000 Facebook users measuring"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q3",
+          "question": "What is the key result, including units and uncertainty when reported?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Perceived problematic use associated with younger age, male sex and major life events; no causal effect established.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/html/1905.01911v1",
+            "version": "v1",
+            "section": "Abstract",
+            "extractedParagraphIndex": 0,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 1320,
+              "sha256": "78f212c41c29a4c85b04bb102e4caad48e044d3ea3b0b36a562225c0f0af8694",
+              "preview": "more likely to be"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q4",
+          "question": "What central limitation do the authors identify?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Correlational design cannot identify direction or exclude confounding; selection and US-centric sample limits.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/html/1905.01911v1",
+            "version": "v1",
+            "section": "Discussion and Conclusion",
+            "extractedParagraphIndex": 13,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 657,
+              "sha256": "69f3d1598d97d767674043f0ddceec69fe1bcc9bdfe2ea266ea943f91d7f25c6",
+              "preview": "correlational rather than causal;"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q5",
+          "question": "How many Facebook users were surveyed?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "20,000 users surveyed.",
+            "humanVerified": false,
+            "sourceUrl": "https://arxiv.org/html/1905.01911v1",
+            "version": "v1",
+            "section": "Abstract",
+            "extractedParagraphIndex": 0,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 1320,
+              "sha256": "78f212c41c29a4c85b04bb102e4caad48e044d3ea3b0b36a562225c0f0af8694",
+              "preview": "20,000 Facebook users measuring"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q6",
+          "question": "What are the private email addresses of every participant or data contributor?",
+          "reference": {
+            "status": "agent-draft-abstention",
+            "answerCriterion": "Abstain: the supplied source does not provide every participant/data contributor private email address. Do not infer or invent contact details.",
+            "sourceUrl": "https://arxiv.org/html/1905.01911v1",
+            "locationNote": "No positive passage for an absent answer; human reviewer must confirm absence and keep this distinct from extraction/retrieval gaps."
+          },
+          "humanVerified": false
+        }
+      ]
+    },
+    {
+      "id": "false-findings",
+      "title": "Why Most Published Research Findings Are False",
+      "field": "biomedical methods",
+      "url": "https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.0020124",
+      "version": "published 2005",
+      "format": "html",
+      "tags": [
+        "theory",
+        "equations",
+        "tables"
+      ],
+      "expectedSections": [
+        "Model",
+        "Corollaries",
+        "Conclusions"
+      ],
+      "extractionCoverage": {
+        "status": "extracted",
+        "textChars": 25716,
+        "sections": [
+          {
+            "heading": "Correction",
+            "chars": 185
+          },
+          {
+            "heading": "Modeling the Framework for False Positive Findings",
+            "chars": 3509
+          },
+          {
+            "heading": "Bias",
+            "chars": 2245
+          },
+          {
+            "heading": "Testing by Several Independent Teams",
+            "chars": 1174
+          },
+          {
+            "heading": "Corollaries",
+            "chars": 9681
+          },
+          {
+            "heading": "Most Research Findings Are False for Most Research Designs and for Most Fields",
+            "chars": 1628
+          },
+          {
+            "heading": "Claimed Research Findings May Often Be Simply Accurate Measures of the Prevailing Bias",
+            "chars": 2808
+          },
+          {
+            "heading": "How Can We Improve the Situation?",
+            "chars": 4486
+          }
+        ],
+        "sourceSha256": "73d4aaaad43a57a2cfd9c44cc91e72d718fcd131fa204e09126fa0493ea097c8",
+        "missingExpected": [
+          "Conclusions"
+        ]
+      },
+      "limitations": [
+        "No vision; tables/equations may be omitted or misordered.",
+        "Access and extracted version must be checked at run time."
+      ],
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What research question does this paper address?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Model when a statistically significant research claim is likely to be true.",
+            "humanVerified": false,
+            "sourceUrl": "https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.0020124",
+            "version": "published 2005",
+            "section": "Abstract",
+            "extractedParagraphIndex": 1,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 1169,
+              "sha256": "7b2d6b1804a0f322a774111e9330b7259c6dac1eb37f93f76d4a9fed53c67402",
+              "preview": "probability that a research"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q2",
+          "question": "What is the study design and population or data?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Mathematical framework/essay with simulations; not a counted survey proving most individual papers false.",
+            "humanVerified": false,
+            "sourceUrl": "https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.0020124",
+            "version": "published 2005",
+            "section": "Abstract",
+            "extractedParagraphIndex": 1,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 1169,
+              "sha256": "7b2d6b1804a0f322a774111e9330b7259c6dac1eb37f93f76d4a9fed53c67402",
+              "preview": "Simulations show that for"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q3",
+          "question": "What is the key result, including units and uncertainty when reported?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Predictive value depends on power, prior odds, bias and multiplicity; conclusion is conditional on the model.",
+            "humanVerified": false,
+            "sourceUrl": "https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.0020124",
+            "version": "published 2005",
+            "section": "Abstract",
+            "extractedParagraphIndex": 1,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 1169,
+              "sha256": "7b2d6b1804a0f322a774111e9330b7259c6dac1eb37f93f76d4a9fed53c67402",
+              "preview": "study power and bias,"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q4",
+          "question": "What central limitation do the authors identify?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Larger studies can still carry bias; scale alone is not a guarantee of truth.",
+            "humanVerified": false,
+            "sourceUrl": "https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.0020124",
+            "version": "published 2005",
+            "section": "How Can We Improve the Situation?",
+            "extractedParagraphIndex": 1,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 1238,
+              "sha256": "5ed0d71efde19ef5e87bca37574f07ef94a4855fb6468b56138f9e5a5b6f0d4f",
+              "preview": "large studies may still"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q5",
+          "question": "What factors affect the probability that a finding is true?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Power, bias, prior ratio of true to null relationships, flexibility and multiplicity matter.",
+            "humanVerified": false,
+            "sourceUrl": "https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.0020124",
+            "version": "published 2005",
+            "section": "Abstract",
+            "extractedParagraphIndex": 1,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 1169,
+              "sha256": "7b2d6b1804a0f322a774111e9330b7259c6dac1eb37f93f76d4a9fed53c67402",
+              "preview": "study power and bias,"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q6",
+          "question": "What are the private email addresses of every participant or data contributor?",
+          "reference": {
+            "status": "agent-draft-abstention",
+            "answerCriterion": "Abstain: the supplied source does not provide every participant/data contributor private email address. Do not infer or invent contact details.",
+            "sourceUrl": "https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.0020124",
+            "locationNote": "No positive passage for an absent answer; human reviewer must confirm absence and keep this distinct from extraction/retrieval gaps."
+          },
+          "humanVerified": false
+        }
+      ]
+    },
+    {
+      "id": "handwashing",
+      "title": "Impact of Intensive Handwashing Promotion on Secondary Household Influenza-Like Illness in Rural Bangladesh: Findings from a Randomized Controlled Trial",
+      "field": "clinical",
+      "url": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0125200",
+      "version": "published 2015",
+      "format": "html",
+      "tags": [
+        "randomized",
+        "tables"
+      ],
+      "expectedSections": [
+        "Introduction",
+        "Methods",
+        "Results",
+        "Discussion"
+      ],
+      "extractionCoverage": {
+        "status": "extracted",
+        "textChars": 36849,
+        "sections": [
+          {
+            "heading": "Introduction",
+            "chars": 3709
+          },
+          {
+            "heading": "Materials and Methods",
+            "chars": 14160
+          },
+          {
+            "heading": "Results",
+            "chars": 6690
+          },
+          {
+            "heading": "Discussion",
+            "chars": 12290
+          }
+        ],
+        "sourceSha256": "ff613bb6e0c776a765de26c05110ee36813d803d0261be91a069dc852fa27c3a",
+        "missingExpected": []
+      },
+      "limitations": [
+        "No vision; tables/equations may be omitted or misordered.",
+        "Access and extracted version must be checked at run time."
+      ],
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What research question does this paper address?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Test intensive handwashing promotion for secondary household influenza-like illness.",
+            "humanVerified": false,
+            "sourceUrl": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0125200",
+            "version": "published 2015",
+            "section": "Abstract",
+            "extractedParagraphIndex": 1,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 267,
+              "sha256": "6917f5511e361dadd2435509c1789b2bf085e0c6a475bb7c125801ae5c812871",
+              "preview": "household transmission of influenza-like"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q2",
+          "question": "What is the study design and population or data?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Household compounds randomized to soap plus daily promotion versus control in rural Bangladesh.",
+            "humanVerified": false,
+            "sourceUrl": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0125200",
+            "version": "published 2015",
+            "section": "Abstract",
+            "extractedParagraphIndex": 3,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 555,
+              "sha256": "a88244ea44a769fc7bb0ee92097f376c777e56cc88ea959da53278824133e182",
+              "preview": "Household compounds of index"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q3",
+          "question": "What is the key result, including units and uncertainty when reported?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "ILI SAR ratio 1.24 (95% CI 0.92\u20131.65), with 9.5% versus 7.7%; no demonstrated protection in this setting.",
+            "humanVerified": false,
+            "sourceUrl": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0125200",
+            "version": "published 2015",
+            "section": "Abstract",
+            "extractedParagraphIndex": 5,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 882,
+              "sha256": "8dcd07ff90aad9b2bd00de135f35e498eba8f99b66fc4c540ab350f47590dd9a",
+              "preview": "SAR ratio 1.24, 95%"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q4",
+          "question": "What central limitation do the authors identify?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Reactive intervention after illness onset may be too late or fail to change behavior quickly.",
+            "humanVerified": false,
+            "sourceUrl": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0125200",
+            "version": "published 2015",
+            "section": "Abstract",
+            "extractedParagraphIndex": 7,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 375,
+              "sha256": "310c0517e4308a1ee800eab47892a57764684fd53e3a247b7c59d4bed54ccc3e",
+              "preview": "Behavior may not have"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q5",
+          "question": "What was randomized and what was the intervention?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Household compounds randomized; intervention was soap plus daily handwashing promotion.",
+            "humanVerified": false,
+            "sourceUrl": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0125200",
+            "version": "published 2015",
+            "section": "Abstract",
+            "extractedParagraphIndex": 3,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 555,
+              "sha256": "a88244ea44a769fc7bb0ee92097f376c777e56cc88ea959da53278824133e182",
+              "preview": "Household compounds of index"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q6",
+          "question": "What are the private email addresses of every participant or data contributor?",
+          "reference": {
+            "status": "agent-draft-abstention",
+            "answerCriterion": "Abstain: the supplied source does not provide every participant/data contributor private email address. Do not infer or invent contact details.",
+            "sourceUrl": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0125200",
+            "locationNote": "No positive passage for an absent answer; human reviewer must confirm absence and keep this distinct from extraction/retrieval gaps."
+          },
+          "humanVerified": false
+        }
+      ]
+    },
+    {
+      "id": "sanitiser",
+      "title": "Hand Sanitiser Provision for Reducing Illness Absences in Primary School Children: A Cluster Randomised Trial",
+      "field": "clinical",
+      "url": "https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.1001700",
+      "version": "published 2014",
+      "format": "html",
+      "tags": [
+        "randomized",
+        "tables"
+      ],
+      "expectedSections": [
+        "Introduction",
+        "Methods",
+        "Results",
+        "Discussion"
+      ],
+      "extractionCoverage": {
+        "status": "extracted",
+        "textChars": 43307,
+        "sections": [
+          {
+            "heading": "Editors' Summary",
+            "chars": 5576
+          },
+          {
+            "heading": "Introduction",
+            "chars": 4471
+          },
+          {
+            "heading": "Methods",
+            "chars": 13263
+          },
+          {
+            "heading": "Results",
+            "chars": 5683
+          },
+          {
+            "heading": "Discussion",
+            "chars": 14314
+          }
+        ],
+        "sourceSha256": "b65ffc3f2a1b7ae3bd6cd81e7c78dd3264c9d4d694ad165741fd0a2dee26e7ff",
+        "missingExpected": []
+      },
+      "limitations": [
+        "No vision; tables/equations may be omitted or misordered.",
+        "Access and extracted version must be checked at run time."
+      ],
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What research question does this paper address?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Test classroom hand sanitiser added to usual hand hygiene for illness absences.",
+            "humanVerified": false,
+            "sourceUrl": "https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.1001700",
+            "version": "published 2014",
+            "section": "Abstract",
+            "extractedParagraphIndex": 1,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 388,
+              "sha256": "d42766730ef45925f846f9d16e7c6494badf5d12c601aebe36f4ac67d69bbe81",
+              "preview": "reduce illness absences in"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q2",
+          "question": "What is the study design and population or data?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "68-school cluster randomized trial; 2,443 follow-up children aged 5\u201311 years in New Zealand.",
+            "humanVerified": false,
+            "sourceUrl": "https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.1001700",
+            "version": "published 2014",
+            "section": "Abstract",
+            "extractedParagraphIndex": 3,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 3047,
+              "sha256": "7c37e9bf6af75112bf5dfc69aa0e28b6d085a3d75a02b48c18957fea6e121892",
+              "preview": "68 primary schools, where"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q3",
+          "question": "What is the key result, including units and uncertainty when reported?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Illness-absence IRR=1.06 (95% CI 0.94\u20131.18); 1.21 versus 1.16 episodes per 100 child-days; no clear reduction.",
+            "humanVerified": false,
+            "sourceUrl": "https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.1001700",
+            "version": "published 2014",
+            "section": "Abstract",
+            "extractedParagraphIndex": 3,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 3047,
+              "sha256": "7c37e9bf6af75112bf5dfc69aa0e28b6d085a3d75a02b48c18957fea6e121892",
+              "preview": "incidence rate ratio 1.06,"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q4",
+          "question": "What central limitation do the authors identify?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "Pandemic hand-hygiene messaging may reduce additional intervention contrast; planned sample not fully reached.",
+            "humanVerified": false,
+            "sourceUrl": "https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.1001700",
+            "version": "published 2014",
+            "section": "Abstract",
+            "extractedParagraphIndex": 3,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 3047,
+              "sha256": "7c37e9bf6af75112bf5dfc69aa0e28b6d085a3d75a02b48c18957fea6e121892",
+              "preview": "Limitations of the study"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q5",
+          "question": "Did hand sanitiser reduce illness absence, and what uncertainty was reported?",
+          "reference": {
+            "status": "agent-source-inspected-draft",
+            "answerCriterion": "No clear reduction; illness-absence IRR=1.06, 95% CI 0.94\u20131.18.",
+            "humanVerified": false,
+            "sourceUrl": "https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.1001700",
+            "version": "published 2014",
+            "section": "Abstract",
+            "extractedParagraphIndex": 3,
+            "exactPassage": {
+              "startChar": 0,
+              "endChar": 3047,
+              "sha256": "7c37e9bf6af75112bf5dfc69aa0e28b6d085a3d75a02b48c18957fea6e121892",
+              "preview": "incidence rate ratio 1.06,"
+            },
+            "locationNote": "Confirm paragraph against publisher source before scoring."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q6",
+          "question": "What are the private email addresses of every participant or data contributor?",
+          "reference": {
+            "status": "agent-draft-abstention",
+            "answerCriterion": "Abstain: the supplied source does not provide every participant/data contributor private email address. Do not infer or invent contact details.",
+            "sourceUrl": "https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.1001700",
+            "locationNote": "No positive passage for an absent answer; human reviewer must confirm absence and keep this distinct from extraction/retrieval gaps."
+          },
+          "humanVerified": false
+        }
+      ]
+    },
+    {
+      "id": "chobi7",
+      "title": "Sustained Uptake of a Hospital-Based Handwashing with Soap and Water Treatment Intervention (CHoBI7): A Randomized Controlled Trial",
+      "field": "clinical",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4751953/",
+      "version": "published 2016",
+      "format": "html",
+      "tags": [
+        "randomized",
+        "follow-up"
+      ],
+      "expectedSections": [
+        "Introduction",
+        "Methods",
+        "Results",
+        "Discussion"
+      ],
+      "extractionCoverage": {
+        "status": "incomplete",
+        "textChars": 0,
+        "sections": [],
+        "sourceSha256": "d31cdf7c83828f681f862baac753a219a1b519403655eeafc1ee72f88fdec48e",
+        "missingExpected": [
+          "Introduction",
+          "Methods",
+          "Results",
+          "Discussion"
+        ]
+      },
+      "limitations": [
+        "No vision; tables/equations may be omitted or misordered.",
+        "Access and extracted version must be checked at run time."
+      ],
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What research question does this paper address?",
+          "reference": {
+            "status": "blocked-source-access",
+            "note": "PMC challenge prevented full source inspection. Human reference verification and six task criteria still required; do not quality-score this case."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q2",
+          "question": "What is the study design and population or data?",
+          "reference": {
+            "status": "blocked-source-access",
+            "note": "PMC challenge prevented full source inspection. Human reference verification and six task criteria still required; do not quality-score this case."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q3",
+          "question": "What is the key result, including units and uncertainty when reported?",
+          "reference": {
+            "status": "blocked-source-access",
+            "note": "PMC challenge prevented full source inspection. Human reference verification and six task criteria still required; do not quality-score this case."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q4",
+          "question": "What central limitation do the authors identify?",
+          "reference": {
+            "status": "blocked-source-access",
+            "note": "PMC challenge prevented full source inspection. Human reference verification and six task criteria still required; do not quality-score this case."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q5",
+          "question": "How many intervention and control household members were followed?",
+          "reference": {
+            "status": "blocked-source-access",
+            "note": "PMC challenge prevented full source inspection. Human reference verification and six task criteria still required; do not quality-score this case."
+          },
+          "humanVerified": false
+        },
+        {
+          "id": "q6",
+          "question": "What are the private email addresses of every participant or data contributor?",
+          "reference": {
+            "status": "blocked-source-access",
+            "note": "PMC challenge prevented full source inspection. Human reference verification and six task criteria still required; do not quality-score this case."
+          },
+          "humanVerified": false
+        }
+      ]
+    }
+  ],
+  "unsupportedFixtures": [
+    {
+      "id": "image-only-pdf",
+      "description": "Synthetic PDF page with only a raster image and no text layer; no OCR or visual interpretation supported.",
+      "expected": "Explicit unsupported text extraction, no generated overview.",
+      "fixture": "tests/fixtures/research/image-only.json"
+    }
+  ]
+}

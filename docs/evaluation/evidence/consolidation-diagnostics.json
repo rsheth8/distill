@@ -1,0 +1,596 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-05",
+  "status": "PROVISIONAL AGENT DIAGNOSTICS — not human-adjudicated frozen benchmark scores",
+  "scope": "16 close-detail Ask cases across four repair stages. Selected failure-oriented cohorts, not representative sampling. No aggregate release score. Guide outputs reviewed separately.",
+  "reviewer": "Codex agent; author of latest repair; not independent or blinded",
+  "sourceManifest": "accuracy-source-manifest.json",
+  "humanReferenceApproval": false,
+  "cases": [
+    {
+      "run": "accuracy-repair-facebook",
+      "paper": "facebook",
+      "model": "qwen2.5:7b",
+      "level": "close",
+      "audience": "expert",
+      "task": "ask",
+      "questionId": "q3",
+      "outputSha256": "cf780c8cc947ff76f4e7b596d96ced05b5bf2a2d4284de864b7b5bab965f1b56",
+      "promptSha256": "f6852ed7807f8684ac4af3e1e295f31519a569659abbe9f56824a77ed0c9919e",
+      "correctness": 2,
+      "caveats": 1,
+      "audienceUsefulness": 2,
+      "criticalError": false,
+      "acceptable": false,
+      "claims": [
+        {
+          "claim": "Between-message use predicts worse subsequent feelings.",
+          "assessment": "supported",
+          "passageIds": [
+            "S0P0"
+          ],
+          "reason": "Abstract separates momentary affect from life satisfaction."
+        },
+        {
+          "claim": "Greater mean use over two weeks predicts lower life satisfaction.",
+          "assessment": "supported",
+          "passageIds": [
+            "S0P0"
+          ],
+          "reason": "Correct time scale; outcome coefficients and significance from full Results omitted."
+        }
+      ]
+    },
+    {
+      "run": "accuracy-repair-facebook",
+      "paper": "facebook",
+      "model": "qwen2.5:7b",
+      "level": "close",
+      "audience": "expert",
+      "task": "ask",
+      "questionId": "q4",
+      "outputSha256": "2a5a29f3549c2c8c5a24ad1c129341ff2a945cf6b1e5ab433e77318d141ab0a9",
+      "promptSha256": "dbcb7f413bb86a60b5804878eeb2b3e3e1e8b93f7452c1bbfbbe0df3b1a663ca",
+      "correctness": 2,
+      "caveats": 2,
+      "audienceUsefulness": 2,
+      "criticalError": false,
+      "acceptable": true,
+      "claims": [
+        {
+          "claim": "Young-adult findings may not generalize to other ages or networks.",
+          "assessment": "supported",
+          "passageIds": [
+            "S4P4"
+          ],
+          "reason": "Discussion future-research paragraph explicitly identifies both limits."
+        }
+      ]
+    },
+    {
+      "run": "accuracy-repair-facebook",
+      "paper": "facebook",
+      "model": "qwen2.5:7b",
+      "level": "close",
+      "audience": "newcomer",
+      "task": "ask",
+      "questionId": "q3",
+      "outputSha256": "715a29db18f3317f71cca0700de3fc07972bdb24423efc7c3f8aaadac99e5d0f",
+      "promptSha256": "5331c0629f3d574d3ad2b6d06a42e8a6abf25adabd94240de1539ef1a8eba813",
+      "correctness": 0,
+      "caveats": 0,
+      "audienceUsefulness": 0,
+      "criticalError": true,
+      "acceptable": false,
+      "claims": [
+        {
+          "claim": "Life satisfaction declined between successive experience-sampling messages.",
+          "assessment": "contradicted",
+          "passageIds": [
+            "S3P7"
+          ],
+          "reason": "Between-message outcome was affect; life satisfaction was assessed across 14 days. Cited paragraph describes OLS methods, not this result."
+        },
+        {
+          "claim": "Mean Facebook use over two weeks predicts lower life satisfaction.",
+          "assessment": "supported",
+          "passageIds": [],
+          "reason": "Supported by abstract and Results, but cited S3P7 is procedural and lacks the finding."
+        },
+        {
+          "claim": "No coefficient was supplied.",
+          "assessment": "supported",
+          "passageIds": [],
+          "reason": "The old prompt omitted outcome estimates; this is a retrieval failure, not proof of absence from the paper."
+        }
+      ]
+    },
+    {
+      "run": "accuracy-repair-facebook",
+      "paper": "facebook",
+      "model": "qwen2.5:7b",
+      "level": "close",
+      "audience": "newcomer",
+      "task": "ask",
+      "questionId": "q4",
+      "outputSha256": "8157fc38ce6a526296f20de77f6f79748c0c39003786f87a137ed8277b01756c",
+      "promptSha256": "72553fd737e44c62b03105949e224334bd350baa22a9998b9c3f630b75272756",
+      "correctness": 2,
+      "caveats": 2,
+      "audienceUsefulness": 2,
+      "criticalError": false,
+      "acceptable": true,
+      "claims": [
+        {
+          "claim": "Young-adult findings may not generalize to other ages or networks.",
+          "assessment": "supported",
+          "passageIds": [
+            "S4P4"
+          ],
+          "reason": "Discussion future-research paragraph explicitly identifies both limits."
+        }
+      ]
+    },
+    {
+      "run": "accuracy-repair-planck",
+      "paper": "planck",
+      "model": "qwen2.5:7b",
+      "level": "close",
+      "audience": "expert",
+      "task": "ask",
+      "questionId": "q3",
+      "outputSha256": "85c5a9a96cf358609d7b37e5449aec2376aa219b388c73cd8ebd80e9aab6c89d",
+      "promptSha256": "e177c99b03eabef17c69f4c48332c36ff1a215e747af6d21e9980f490f60721e",
+      "correctness": 2,
+      "caveats": 1,
+      "audienceUsefulness": 2,
+      "criticalError": false,
+      "acceptable": false,
+      "claims": [
+        {
+          "claim": "H0=67.3 ±1.2 km/s/Mpc.",
+          "assessment": "supported",
+          "passageIds": [
+            "S0P0"
+          ],
+          "reason": "Original PDF abstract and Table 5 confirm value and units; the 68% error convention is omitted from the answer."
+        },
+        {
+          "claim": "Planck+WP+highL also yields this result.",
+          "assessment": "supported",
+          "passageIds": [],
+          "reason": "Original PDF Table 5 supports the combination, but this is not established by the cited abstract alone."
+        },
+        {
+          "claim": "Value is in tension with direct H0 and supernova measurements.",
+          "assessment": "supported",
+          "passageIds": [
+            "S0P0"
+          ],
+          "reason": "Explicitly stated in abstract."
+        }
+      ]
+    },
+    {
+      "run": "accuracy-repair-planck",
+      "paper": "planck",
+      "model": "qwen2.5:7b",
+      "level": "close",
+      "audience": "expert",
+      "task": "ask",
+      "questionId": "q4",
+      "outputSha256": "b351c373cf26827e67940d4118f301280d6f14bc36ccfd510ec1c7c8e57d5d4f",
+      "promptSha256": "eeeb83850c411038c98123698dc1cf063878162a2af9c7e157a10216b695b8fd",
+      "correctness": 2,
+      "caveats": 2,
+      "audienceUsefulness": 2,
+      "criticalError": false,
+      "acceptable": true,
+      "claims": [
+        {
+          "claim": "Base LCDM fits high multipoles better than low multipoles; low-l anomaly needs investigation.",
+          "assessment": "supported",
+          "passageIds": [
+            "S7P25",
+            "S7P26"
+          ],
+          "reason": "Discussion and original abstract support this caveat, without definitive model rejection."
+        },
+        {
+          "claim": "Figure 39 shows 2–2.7 sigma relative-amplitude deviation.",
+          "assessment": "supported",
+          "passageIds": [
+            "S7P25",
+            "S7P26"
+          ],
+          "reason": "The supplied discussion gives this range; figure itself is not visually interpreted."
+        }
+      ]
+    },
+    {
+      "run": "accuracy-repair-planck",
+      "paper": "planck",
+      "model": "qwen2.5:7b",
+      "level": "close",
+      "audience": "newcomer",
+      "task": "ask",
+      "questionId": "q3",
+      "outputSha256": "655589e53495d43ef111951885becd984aa914f736089e6dcfaf65d5b6f7c0d5",
+      "promptSha256": "3e609014274d5c221608f44a38aa6dc41d5d0a5ec1d6b564b6517c80c7537ca4",
+      "correctness": 2,
+      "caveats": 1,
+      "audienceUsefulness": 2,
+      "criticalError": false,
+      "acceptable": false,
+      "claims": [
+        {
+          "claim": "H0=67.3 ±1.2 km/s/Mpc.",
+          "assessment": "supported",
+          "passageIds": [
+            "S0P0"
+          ],
+          "reason": "Original PDF abstract and Table 5 confirm value and units; the 68% error convention is omitted from the answer."
+        },
+        {
+          "claim": "Planck+WP+highL also yields this result.",
+          "assessment": "supported",
+          "passageIds": [],
+          "reason": "Original PDF Table 5 supports the combination, but this is not established by the cited abstract alone."
+        },
+        {
+          "claim": "Value is in tension with direct H0 and supernova measurements.",
+          "assessment": "supported",
+          "passageIds": [
+            "S0P0"
+          ],
+          "reason": "Explicitly stated in abstract."
+        }
+      ]
+    },
+    {
+      "run": "accuracy-repair-planck",
+      "paper": "planck",
+      "model": "qwen2.5:7b",
+      "level": "close",
+      "audience": "newcomer",
+      "task": "ask",
+      "questionId": "q4",
+      "outputSha256": "8d0923d328d3e2a3e436cc84b0523d0a8f96f2d981a5abd95e7c7d4d672c41a5",
+      "promptSha256": "54b4140974b3ed8346a4e60ccfbb3d2b4a85c8d4f99295df6255284c662988b7",
+      "correctness": 2,
+      "caveats": 1,
+      "audienceUsefulness": 1,
+      "criticalError": false,
+      "acceptable": false,
+      "claims": [
+        {
+          "claim": "Base LCDM fits high multipoles better than low multipoles; low-l anomaly needs investigation.",
+          "assessment": "supported",
+          "passageIds": [
+            "S7P25",
+            "S7P26"
+          ],
+          "reason": "Discussion and original abstract support this caveat, without definitive model rejection."
+        },
+        {
+          "claim": "Anomalies suggest potential model incompleteness.",
+          "assessment": "partly-supported",
+          "passageIds": [],
+          "reason": "Source calls fit anomalous but not decisively significant; that qualification and inline source citation are missing."
+        }
+      ]
+    },
+    {
+      "run": "consolidation-facebook",
+      "paper": "facebook",
+      "model": "qwen2.5:7b",
+      "level": "close",
+      "audience": "expert",
+      "task": "ask",
+      "questionId": "q3",
+      "outputSha256": "2ec63f6e5bf3b21b7f5466256c93c577be646325e0dc7c7239b7f1ad797a10db",
+      "promptSha256": "31026b12542146ea74d487b10623de726393182a639065ed7a33bf5e6d1ae06f",
+      "correctness": 0,
+      "caveats": 0,
+      "audienceUsefulness": 0,
+      "criticalError": true,
+      "acceptable": false,
+      "claims": [
+        {
+          "claim": "Between-message use predicts worse affect; mean 14-day use predicts lower life satisfaction.",
+          "assessment": "supported",
+          "passageIds": [
+            "S3P10",
+            "S3P12"
+          ],
+          "reason": "The updated prompt supplies both actual result passages."
+        },
+        {
+          "claim": "Reported coefficients are B=.08 and B=-.012.",
+          "assessment": "supported",
+          "passageIds": [
+            "S3P10",
+            "S3P12"
+          ],
+          "reason": "Exact coefficients are present in Results."
+        },
+        {
+          "claim": "Coefficients express a change per additional use or per day.",
+          "assessment": "unsupported",
+          "passageIds": [
+            "S3P10",
+            "S3P12"
+          ],
+          "reason": "Predictor is self-reported amount, not an event count. The source does not define a per-day slope. Materially invented units fail fidelity."
+        }
+      ]
+    },
+    {
+      "run": "consolidation-facebook",
+      "paper": "facebook",
+      "model": "qwen2.5:7b",
+      "level": "close",
+      "audience": "expert",
+      "task": "ask",
+      "questionId": "q4",
+      "outputSha256": "4ccc83cae0b4d4271167b77e14786a2fc5d318e1af955168568e5116aa03de81",
+      "promptSha256": "dbcb7f413bb86a60b5804878eeb2b3e3e1e8b93f7452c1bbfbbe0df3b1a663ca",
+      "correctness": 2,
+      "caveats": 2,
+      "audienceUsefulness": 2,
+      "criticalError": false,
+      "acceptable": true,
+      "claims": [
+        {
+          "claim": "Manipulation experiments are needed to establish definitive causality.",
+          "assessment": "supported",
+          "passageIds": [
+            "S4P6"
+          ],
+          "reason": "Discussion explicitly distinguishes likely temporal sequence from definitive causality."
+        },
+        {
+          "claim": "Experiments may be difficult because Facebook is prevalent and central to daily interaction.",
+          "assessment": "supported",
+          "passageIds": [
+            "S4P6"
+          ],
+          "reason": "This challenge is explicitly discussed."
+        }
+      ]
+    },
+    {
+      "run": "consolidation-facebook",
+      "paper": "facebook",
+      "model": "qwen2.5:7b",
+      "level": "close",
+      "audience": "newcomer",
+      "task": "ask",
+      "questionId": "q3",
+      "outputSha256": "c09261008c6085af08420b9672471459baf7db2883d9562f61017e527da29b76",
+      "promptSha256": "eb396ceaf59f4f546fefdbfd90ae4010c84c8e0284268bba03d7f0df350c4031",
+      "correctness": 0,
+      "caveats": 0,
+      "audienceUsefulness": 0,
+      "criticalError": true,
+      "acceptable": false,
+      "claims": [
+        {
+          "claim": "Between-message use predicts worse affect; mean 14-day use predicts lower life satisfaction.",
+          "assessment": "supported",
+          "passageIds": [
+            "S3P10",
+            "S3P12"
+          ],
+          "reason": "The updated prompt supplies both actual result passages."
+        },
+        {
+          "claim": "Reported coefficients are B=.08 and B=-.012.",
+          "assessment": "supported",
+          "passageIds": [
+            "S3P10",
+            "S3P12"
+          ],
+          "reason": "Exact coefficients are present in Results."
+        },
+        {
+          "claim": "Coefficients express a change per additional use.",
+          "assessment": "unsupported",
+          "passageIds": [
+            "S3P10",
+            "S3P12"
+          ],
+          "reason": "Predictor is self-reported amount, not an event count. The source does not define a per-day slope. Materially invented units fail fidelity."
+        }
+      ]
+    },
+    {
+      "run": "consolidation-facebook",
+      "paper": "facebook",
+      "model": "qwen2.5:7b",
+      "level": "close",
+      "audience": "newcomer",
+      "task": "ask",
+      "questionId": "q4",
+      "outputSha256": "7ad4207192dbddfde5c5e50277d8c422d206639acd01c42e9d128b76935e9fe2",
+      "promptSha256": "72553fd737e44c62b03105949e224334bd350baa22a9998b9c3f630b75272756",
+      "correctness": 2,
+      "caveats": 2,
+      "audienceUsefulness": 2,
+      "criticalError": false,
+      "acceptable": true,
+      "claims": [
+        {
+          "claim": "Young-adult findings may not generalize to other ages or networks.",
+          "assessment": "supported",
+          "passageIds": [
+            "S4P4"
+          ],
+          "reason": "Discussion future-research paragraph explicitly identifies both limits."
+        }
+      ]
+    },
+    {
+      "run": "consolidation-scale",
+      "paper": "facebook",
+      "model": "qwen2.5:7b",
+      "level": "close",
+      "audience": "expert",
+      "task": "ask",
+      "questionId": "q3",
+      "outputSha256": "c84746a3d0610c16895761b71c1fe00f54f9bda21ab71cd30a74287d376e5e2a",
+      "promptSha256": "144c36855d3640834da2bab22dbc4617b1a75b5842221f6fe25029e548fdfb80",
+      "correctness": 0,
+      "caveats": 0,
+      "audienceUsefulness": 0,
+      "criticalError": true,
+      "acceptable": false,
+      "claims": [
+        {
+          "claim": "Between-message use predicts worse affect; mean 14-day use predicts lower life satisfaction.",
+          "assessment": "supported",
+          "passageIds": [
+            "S3P10",
+            "S3P12"
+          ],
+          "reason": "The updated prompt supplies both actual result passages."
+        },
+        {
+          "claim": "Reported coefficients are B=.08 and B=-.012.",
+          "assessment": "supported",
+          "passageIds": [
+            "S3P10",
+            "S3P12"
+          ],
+          "reason": "Exact coefficients are present in Results."
+        },
+        {
+          "claim": "Coefficients express a change per additional use.",
+          "assessment": "unsupported",
+          "passageIds": [
+            "S3P10",
+            "S3P12"
+          ],
+          "reason": "Predictor is self-reported amount, not an event count. The source does not define a per-day slope. Materially invented units fail fidelity."
+        }
+      ]
+    },
+    {
+      "run": "consolidation-scale",
+      "paper": "facebook",
+      "model": "qwen2.5:7b",
+      "level": "close",
+      "audience": "newcomer",
+      "task": "ask",
+      "questionId": "q3",
+      "outputSha256": "75c07fb6fb9068d9c9d4c108e5536e3b0bdd7f70738cd50ceb0c92a88a6193c5",
+      "promptSha256": "9b48a2d6a6726cef01dcb5c6543eb723d6eecf2024dd341a71b4bbba2326705f",
+      "correctness": 1,
+      "caveats": 1,
+      "audienceUsefulness": 2,
+      "criticalError": false,
+      "acceptable": false,
+      "claims": [
+        {
+          "claim": "Between-message use predicts worse affect; mean 14-day use predicts lower life satisfaction.",
+          "assessment": "supported",
+          "passageIds": [
+            "S3P10",
+            "S3P12"
+          ],
+          "reason": "The updated prompt supplies both actual result passages."
+        },
+        {
+          "claim": "Reported coefficients are B=.08 and B=-.012.",
+          "assessment": "supported",
+          "passageIds": [
+            "S3P10",
+            "S3P12"
+          ],
+          "reason": "Exact coefficients are present in Results."
+        },
+        {
+          "claim": "A one-unit predictor change has the reported slope.",
+          "assessment": "partly-supported",
+          "passageIds": [
+            "S3P10",
+            "S3P12"
+          ],
+          "reason": "Algebraic slope wording is plausible, but the supplied passages do not define measurement scale; no p-values/caveat are retained."
+        }
+      ]
+    },
+    {
+      "run": "reviewed-candidate",
+      "paper": "facebook",
+      "model": "qwen2.5:7b",
+      "level": "close",
+      "audience": "expert",
+      "task": "ask",
+      "questionId": "q3",
+      "outputSha256": "c035b4511a4c02ea77fce060bf3d7215fedd2ed3c9f1bfe6254685a175e32021",
+      "correctness": 1,
+      "caveats": 1,
+      "audienceUsefulness": 1,
+      "criticalError": false,
+      "acceptable": false,
+      "claims": [
+        {
+          "claim": "Between-message use predicts worse feelings; mean 14-day use predicts lower life satisfaction.",
+          "assessment": "supported",
+          "passageIds": [
+            "S3P10",
+            "S3P12"
+          ],
+          "reason": "Correct outcome/time-scale separation."
+        },
+        {
+          "claim": "B=.08 and B=-.012, described per predictor unit.",
+          "assessment": "partly-supported",
+          "passageIds": [
+            "S3P10",
+            "S3P12"
+          ],
+          "reason": "No per-event/per-day slope in this small rerun; predictor unit is not defined and reported significance/caveat context is omitted. This is not an acceptable full task under the frozen rubric. Newcomer lacks inline citations."
+        }
+      ],
+      "promptSha256": "144c36855d3640834da2bab22dbc4617b1a75b5842221f6fe25029e548fdfb80"
+    },
+    {
+      "run": "reviewed-candidate",
+      "paper": "facebook",
+      "model": "qwen2.5:7b",
+      "level": "close",
+      "audience": "newcomer",
+      "task": "ask",
+      "questionId": "q3",
+      "outputSha256": "20aab94588837cb2ff9f4e30ab9ae0994b2ae58d0fdbe9ac5f90960eb3f8fdf0",
+      "correctness": 1,
+      "caveats": 1,
+      "audienceUsefulness": 1,
+      "criticalError": false,
+      "acceptable": false,
+      "claims": [
+        {
+          "claim": "Between-message use predicts worse feelings; mean 14-day use predicts lower life satisfaction.",
+          "assessment": "supported",
+          "passageIds": [
+            "S3P10",
+            "S3P12"
+          ],
+          "reason": "Correct outcome/time-scale separation."
+        },
+        {
+          "claim": "B=.08 and B=-.012, described per predictor unit.",
+          "assessment": "partly-supported",
+          "passageIds": [
+            "S3P10",
+            "S3P12"
+          ],
+          "reason": "No per-event/per-day slope in this small rerun; predictor unit is not defined and reported significance/caveat context is omitted. This is not an acceptable full task under the frozen rubric. Newcomer lacks inline citations."
+        }
+      ],
+      "promptSha256": "9b48a2d6a6726cef01dcb5c6543eb723d6eecf2024dd341a71b4bbba2326705f"
+    }
+  ]
+}
