@@ -39,6 +39,16 @@ function distillCleanHeading(text) {
   return distillNormSpace(text).replace(/^(?:\d+(?:\.\d+)*\.?|[IVXLC]+\.)\s+/, '');
 }
 
+/** The section at the reading line, including when a tall figure fills the viewport. */
+function distillSectionAtLine(headings, readingY) {
+  let current = '';
+  for (const heading of headings) {
+    if (heading.getBoundingClientRect().top > readingY) break;
+    current = distillCleanHeading(distillNodeText(heading)).slice(0, 120);
+  }
+  return current;
+}
+
 /** Element text with math kept as LaTeX ($x^2$) and footnotes dropped. */
 function distillNodeText(el) {
   const copy = el.cloneNode(true);
@@ -179,5 +189,5 @@ function distillPaperText(paper) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { distillExtractPaper, distillSectionKind, distillPaperText, DISTILL_SKIP_SECTION_RE, DISTILL_PREPRINT_HOST_RE };
+  module.exports = { distillExtractPaper, distillSectionKind, distillPaperText, distillSectionAtLine, DISTILL_SKIP_SECTION_RE, DISTILL_PREPRINT_HOST_RE };
 }

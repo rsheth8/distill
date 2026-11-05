@@ -195,8 +195,8 @@ function handlePaperMessage(msg) {
     case 'PAPER_HELP_STATE': {
       const grew = (msg.askThread?.length || 0) > (paperView.state?.askThread?.length || 0); // a question was just added
       paperView.state = msg;
-      paperView.section = msg.section || paperView.section;
-      if (msg.section) paperView.canGuide = msg.canGuide !== false;
+      paperView.section = msg.section || '';
+      paperView.canGuide = msg.canGuide !== false;
       paperView.streams = Object.fromEntries(Object.entries(paperView.streams).filter(([key]) => paperView.live.has(key)));
       renderAll(grew);
       break;

@@ -67,8 +67,7 @@ function wireActiveTab(tabId) {
   if (tabId == null) return;
   currentTabId = tabId;
   clearThinking(); // the other tab's DONE/ERROR is dropped, so its streams would never end
-  resetPaperView(); // the new tab may have no paper; GET_STATE republishes one if it does
-  renderAll();
+  handleMessage({ type: 'ARTICLE_NAVIGATING', tabId }); // clear the old paper while GET_STATE restores the new one
   port?.postMessage({ type: 'GET_STATE', tabId: currentTabId });
   port?.postMessage({ type: 'GET_USAGE', tabId: currentTabId });
 }
@@ -199,7 +198,18 @@ const PROVIDER_META = {
 const PROVIDER_STORAGE = { groq: 'groqApiKey', openai: 'openaiApiKey', gemini: 'geminiApiKey', anthropic: 'anthropicApiKey' };
 let currentProvider = DEFAULT_PROVIDER;
 const providerKeys = { groq: '', openai: '', gemini: '', anthropic: '' };
-let pendingValidation = null; // 'settings' | 'onboard'
+let pendingValidation = null; // snapshot of the provider and key being checked
+let validationSequence = 0;
+
+function validateProvider(target, key = '') {
+  const requestId = ++validationSequence;
+  pendingValidation = { target, provider: currentProvider, key, requestId };
+  onboardConnectBtn.disabled = validateKeyBtn.disabled = true;
+  port?.postMessage({
+    type: 'VALIDATE_AI_KEY', provider: currentProvider, key, requestId,
+    ...(currentProvider === 'local' ? { local: localFieldValues() } : {})
+  });
+}
 
 function normProvider(p) { return Object.prototype.hasOwnProperty.call(PROVIDER_META, p) ? p : DEFAULT_PROVIDER; }
 function providerMeta(p) { return PROVIDER_META[normProvider(p)]; }
@@ -286,6 +296,8 @@ const siteFontScale = $('siteFontScale');
 const siteFontScaleLabel = $('siteFontScaleLabel');
 const siteThemeSelect = $('siteThemeSelect');
 const siteBackendOnlyToggle = $('siteBackendOnlyToggle');
+const siteBackendOnlyRow = $('siteBackendOnlyRow');
+if (!backendUiEnabled) hide(siteBackendOnlyRow);
 let currentSiteOrigin = '';
 let sitePrefsSaveTimer = null;
 const SITE_PREFS_STORAGE_KEY = 'distillSitePrefsMap';
@@ -432,6 +444,7 @@ async function refreshSitePrefsUi() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.url || (!tab.url.startsWith('http://') && !tab.url.startsWith('https://'))) {
       hide(sitePrefsSection);
+      hide(siteBackendOnlyRow);
       currentSiteOrigin = '';
       document.documentElement.style.removeProperty('--panel-zoom');
       document.documentElement.removeAttribute('data-theme');
@@ -440,6 +453,7 @@ async function refreshSitePrefsUi() {
     currentSiteOrigin = new URL(tab.url).origin;
     if (sitePrefsHostname) sitePrefsHostname.textContent = new URL(tab.url).hostname;
     show(sitePrefsSection);
+    if (backendUiEnabled) show(siteBackendOnlyRow);
     chrome.storage.local.get(SITE_PREFS_STORAGE_KEY, bag => {
       const map = bag[SITE_PREFS_STORAGE_KEY];
       const prefs = map && typeof map === 'object' && map[currentSiteOrigin] && typeof map[currentSiteOrigin] === 'object'
@@ -454,6 +468,7 @@ async function refreshSitePrefsUi() {
     });
   } catch {
     hide(sitePrefsSection);
+    hide(siteBackendOnlyRow);
     currentSiteOrigin = '';
   }
 }
@@ -545,6 +560,9 @@ removeKeyBtn?.addEventListener('click', () => {
 });
 
 aiProviderSelect?.addEventListener('change', () => {
+  pendingValidation = null;
+  onboardConnectBtn.disabled = validateKeyBtn.disabled = false;
+  setKeyStatus(onboardStatusLine, '', '');
   const provider = normProvider(aiProviderSelect.value);
   applyProviderUi(provider);
   setKeyStatus(keyStatusLine, '', '');
@@ -555,9 +573,8 @@ aiProviderSelect?.addEventListener('change', () => {
 
 validateKeyBtn?.addEventListener('click', () => {
   if (currentProvider === 'local') {
-    pendingValidation = 'settings';
     setKeyStatus(keyStatusLine, 'pending', 'Connecting to your local model… (first load can take ~30s)');
-    port?.postMessage({ type: 'VALIDATE_AI_KEY', provider: 'local', local: localFieldValues() });
+    validateProvider('settings');
     return;
   }
   const key = (apiKeyInput?.value || '').trim();
@@ -565,9 +582,8 @@ validateKeyBtn?.addEventListener('click', () => {
     setKeyStatus(keyStatusLine, 'err', 'Paste your API key first.');
     return;
   }
-  pendingValidation = 'settings';
   setKeyStatus(keyStatusLine, 'pending', 'Testing key…');
-  port?.postMessage({ type: 'VALIDATE_AI_KEY', provider: currentProvider, key });
+  validateProvider('settings', key);
 });
 
 onboardConnectBtn?.addEventListener('click', () => {
@@ -576,9 +592,8 @@ onboardConnectBtn?.addEventListener('click', () => {
     setKeyStatus(onboardStatusLine, 'err', 'Paste your key first.');
     return;
   }
-  pendingValidation = 'onboard';
   setKeyStatus(onboardStatusLine, 'pending', 'Checking your key…');
-  port?.postMessage({ type: 'VALIDATE_AI_KEY', provider: currentProvider, key });
+  validateProvider('onboard', key);
 });
 
 copyLocalCmdBtn?.addEventListener('click', () => {
@@ -614,6 +629,7 @@ clearAllHistoryBtn?.addEventListener('click', () => {
 
 setupHintDismissBtn?.addEventListener('click', () => {
   cachedSetupHintDismissed = true;
+  hide($('onboardDone'));
   chrome.storage.local.set({ distillSetupHintDismissed: true }, () => {
     syncSetupHintCard();
     showToast('You can change AI setup anytime in Settings.', 'success');
@@ -1329,13 +1345,15 @@ function handleMessage(msg) {
       break;
 
     case 'KEY_VALIDATION_RESULT': {
-      const target = pendingValidation;
+      const validation = pendingValidation;
+      if (!validation || msg.requestId !== validation.requestId || msg.provider !== validation.provider) break;
       pendingValidation = null;
+      onboardConnectBtn.disabled = validateKeyBtn.disabled = false;
+      const { target, provider, key } = validation;
       if (target === 'onboard') {
         if (msg.ok) {
-          const key = (onboardKeyInput?.value || '').trim();
-          providerKeys[currentProvider] = key;
-          chrome.storage.local.set({ [PROVIDER_STORAGE[currentProvider]]: key, aiProvider: currentProvider }, () => {
+          providerKeys[provider] = key;
+          chrome.storage.local.set({ [PROVIDER_STORAGE[provider]]: key, aiProvider: provider }, () => {
             cachedHasApiKey = true;
             if (apiKeyInput) apiKeyInput.value = key;
             for (const el of [setupHintCard.querySelector('.onboard-row'), $('onboardLocalBtn'), $('onboardGetKeyLink'), $('onboardSubstep'), onboardStatusLine]) hide(el);
@@ -1366,6 +1384,7 @@ function handleMessage(msg) {
           if (sitePrefsHostname) sitePrefsHostname.textContent = new URL(msg.origin).hostname;
         } catch {}
         show(sitePrefsSection);
+        if (backendUiEnabled) show(siteBackendOnlyRow);
         const prefs = msg.prefs && typeof msg.prefs === 'object' ? msg.prefs : {};
         const pct = Math.min(135, Math.max(85, Math.round(((prefs.fontScale ?? 1) * 100) / 5) * 5));
         if (siteFontScale) siteFontScale.value = String(pct);
@@ -1376,6 +1395,7 @@ function handleMessage(msg) {
       } else {
         currentSiteOrigin = '';
         hide(sitePrefsSection);
+        hide(siteBackendOnlyRow);
         document.documentElement.style.removeProperty('--panel-zoom');
         document.documentElement.removeAttribute('data-theme');
       }

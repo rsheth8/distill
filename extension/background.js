@@ -31,6 +31,7 @@ async function getSitePrefsForOrigin(origin) {
 }
 
 async function getSiteBackendOnly(pageUrl) {
+  if (typeof DISTILL_INCLUDE_BACKEND !== 'undefined' && !DISTILL_INCLUDE_BACKEND) return false;
   const o = safeOriginFromUrl(pageUrl);
   if (!o) return false;
   const p = await getSitePrefsForOrigin(o);
@@ -798,7 +799,7 @@ chrome.runtime.onConnect.addListener(port => {
         void (async () => {
           const provider = AI_PROVIDERS.includes(msg.provider) ? msg.provider : DEFAULT_AI_PROVIDER;
           const result = await validateAiKey(provider, msg.key, msg.local);
-          toPanel({ type: 'KEY_VALIDATION_RESULT', provider, ok: !!result.ok, message: result.message });
+          toPanel({ type: 'KEY_VALIDATION_RESULT', requestId: msg.requestId, provider, ok: !!result.ok, message: result.message });
         })();
         break;
       case 'RETRY_LAST_AI':
@@ -1104,7 +1105,7 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
 
       case 'ACTIVE_PARAGRAPH': {
         const st = tabState.get(tabId);
-        if (st && msg.section && st.section?.heading !== msg.section) {
+        if (st && typeof msg.section === 'string' && (st.section?.heading || '') !== msg.section) {
           st.section = { heading: msg.section, kind: distillSectionKind(msg.section) };
           onSectionChanged(tabId, msg.section);
         }
@@ -1723,6 +1724,7 @@ async function restoreState(tabId) {
   const s = tabState.get(tabId);
   if (!s) {
     if (pdfTabs.has(tabId)) toPanel({ type: 'PDF_DETECTED', tabId, readerUrl: pdfTabs.get(tabId) });
+    else toPanel({ type: 'NO_ARTICLE', tabId });
     broadcastHighlightHistory(tabId);
     return;
   }

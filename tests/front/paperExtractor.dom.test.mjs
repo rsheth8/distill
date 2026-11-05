@@ -4,11 +4,30 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 const require = createRequire(import.meta.url);
-const { distillExtractPaper, distillSectionKind, distillPaperText } = require(
+const { distillExtractPaper, distillSectionKind, distillPaperText, distillSectionAtLine } = require(
   join(dirname(fileURLToPath(import.meta.url)), '../../extension/utils/paperExtractor.js')
 );
 
 const parse = html => new DOMParser().parseFromString(html, 'text/html');
+
+describe('section tracking at the reading line', () => {
+  const headings = tops => tops.map((top, i) => {
+    const heading = document.createElement('h2');
+    heading.textContent = `${i + 1} ${['Introduction', 'Methods', 'Results'][i]}`;
+    heading.getBoundingClientRect = () => ({ top });
+    return heading;
+  });
+
+  it('tracks a section even when its figure fills the viewport and no paragraph is visible', () => {
+    expect(distillSectionAtLine(headings([-900, 0, 1800]), 315)).toBe('Methods');
+  });
+
+  it('follows the reading line, including scrolling back to the abstract', () => {
+    expect(distillSectionAtLine(headings([-1000, -400, 300]), 315)).toBe('Results');
+    expect(distillSectionAtLine(headings([400, 900, 1800]), 315)).toBe('');
+    expect(distillSectionAtLine([], 315)).toBe('');
+  });
+});
 
 // Trimmed copy of real arXiv HTML (LaTeXML) structure, e.g. arxiv.org/html/2310.06825.
 const ARXIV_HTML = `<html><body><article class="ltx_document">

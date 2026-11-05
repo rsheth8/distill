@@ -156,8 +156,8 @@ function runSectionGuide(tabId, heading, opts = {}) {
 function onSectionChanged(tabId, heading) {
   clearTimeout(guideDwellTimers.get(tabId));
   const s = tabState.get(tabId);
-  if (!s?.paper || !heading) return;
-  const canGuide = !!distillFindSection(s.paper, heading);
+  if (!s?.paper) return;
+  const canGuide = !!heading && !!distillFindSection(s.paper, heading);
   toPanel({ type: 'SECTION_CHANGED', tabId, heading, hasGuide: !!s.guides?.[heading], canGuide });
   if (!canGuide) return;
   guideDwellTimers.set(tabId, setTimeout(async () => {

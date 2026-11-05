@@ -126,6 +126,7 @@ export default [
         distillExtractPaper: 'readonly',
         distillPaperText: 'readonly',
         distillCleanHeading: 'readonly',
+        distillSectionAtLine: 'readonly',
         distillNodeText: 'readonly',
         distillMarkTerms: 'readonly',
         distillUnmarkTerms: 'readonly'

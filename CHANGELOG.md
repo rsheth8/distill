@@ -14,6 +14,13 @@ All notable changes to this project are documented here. The extension version i
 - **Key-first onboarding** with a "Try it on a sample paper" button, and a link to run a model on your own computer.
 - **Settings in four groups:** Connection, Appearance, Privacy and data, Advanced.
 
+### Fixed
+
+- Section tracking follows headings even when a tall figure fills the screen.
+- Switching tabs clears the previous paper's notes and selection, including on non-paper pages.
+- Key checks keep the provider and key that were tested and ignore outdated responses.
+- The Connected welcome card can be dismissed, and backend-only site settings stay disabled in store builds.
+
 ### Removed
 
 - Teleprompter auto-scroll.

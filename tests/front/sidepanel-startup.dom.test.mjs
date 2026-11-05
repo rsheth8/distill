@@ -109,4 +109,18 @@ describe('side panel', () => {
     expect(document.getElementById('overviewStatus').textContent).toBe('');
     expect(document.getElementById('overviewRetryBtn').classList.contains('hidden')).toBe(true);
   });
+
+  it('clears the old paper, notes and selection when switching tabs', async () => {
+    await boot();
+    onPortMessage({ type: 'ARTICLE_DETECTED', tabId: TAB, title: 'Old paper' });
+    onPortMessage({ ...paperState(), section: 'Methods', sections: [{ heading: 'Methods', chars: 500 }] });
+    onPortMessage({ type: 'SUMMARY_REWRITE', tabId: TAB, text: 'The gist: old notes\n- Old result.' });
+    onPortMessage({ type: 'SELECTION_CHANGED', tabId: TAB, selectedText: 'A passage from the old paper.' });
+    inPanel('wireActiveTab(8)');
+    expect(document.getElementById('paperCard').classList.contains('hidden')).toBe(true);
+    expect(document.getElementById('articleTitle').textContent).toBe('');
+    expect(document.getElementById('summaryText').textContent).toBe('');
+    expect(document.getElementById('highlightSection').classList.contains('hidden')).toBe(true);
+    expect(inPanel('paperView.state')).toBeNull();
+  });
 });

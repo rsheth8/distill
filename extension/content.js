@@ -216,16 +216,7 @@
 
   /** Paper section headings (h2) in page order; filled when a paper is detected. */
   let sectionHeads = [];
-
-  /** Heading of the last section that starts before el, e.g. "Methods". */
-  function sectionOf(el) {
-    let heading = null;
-    for (const h of sectionHeads) {
-      if (!el || !(h.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING)) break;
-      heading = h;
-    }
-    return heading ? distillCleanHeading(distillNodeText(heading)).slice(0, 120) : '';
-  }
+  let reportedSection = '';
 
   /** Does this heading element read as `want` (already trimmed and lower-cased)? */
   function headingIs(h, want) {
@@ -266,7 +257,8 @@
   document.addEventListener('focusin', onTermPointer);
 
   function sendActiveParagraph(idx) {
-    safeSend({ type: 'ACTIVE_PARAGRAPH', text: getParagraphUnitText(idx), section: sectionOf(paragraphs[idx]) });
+    reportedSection = distillSectionAtLine(sectionHeads, window.innerHeight * READING_LINE);
+    safeSend({ type: 'ACTIVE_PARAGRAPH', text: getParagraphUnitText(idx), section: reportedSection });
   }
 
   function getParagraphUnitText(startIdx) {
@@ -678,6 +670,11 @@
 
   function onScroll() {
     const readingY = window.innerHeight * READING_LINE;
+    const section = distillSectionAtLine(sectionHeads, readingY);
+    if (section !== reportedSection) {
+      reportedSection = section;
+      safeSend({ type: 'ACTIVE_PARAGRAPH', text: '', section });
+    }
 
     for (const el of paragraphs) {
       const id = el.dataset.airId;
