@@ -39,7 +39,7 @@ function distillTrustFacts(paper) {
   if (date) facts.push({ text: date });
   const n = Array.isArray(p.authors) ? p.authors.length : 0;
   if (n) facts.push({ text: n === 1 ? '1 author' : `${n} authors` });
-  if (p.doi) facts.push({ text: `DOI ${p.doi}`, href: `https://doi.org/${encodeURI(p.doi)}` });
+  if (p.doi) facts.push({ text: `DOI ${p.doi}`, href: `https://doi.org/${encodeURI(p.doi).replace(/[#?]/g, encodeURIComponent)}` });
   return facts;
 }
 

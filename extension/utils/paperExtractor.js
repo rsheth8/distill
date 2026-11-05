@@ -58,7 +58,7 @@ function distillPaperMeta(doc) {
   return {
     title: one('citation_title'),
     authors: all('citation_author'),
-    doi: one('citation_doi').replace(/^doi:\s*/i, ''),
+    doi: one('citation_doi').replace(/^(doi:\s*|https?:\/\/(dx\.)?doi\.org\/)/i, ''),
     date: (one('citation_publication_date') || one('citation_date') || one('citation_online_date')).slice(0, 10),
     pdfUrl: one('citation_pdf_url'),
     abstract: one('citation_abstract')

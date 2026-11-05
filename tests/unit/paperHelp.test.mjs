@@ -47,6 +47,7 @@ describe('distillTrustFacts', () => {
     const facts = help.distillTrustFacts(paper());
     expect(texts(paper())).toEqual(['Journal article', 'Mar 2021', '3 authors', 'DOI 10.1000/x']);
     expect(facts[3].href).toBe('https://doi.org/10.1000/x');
+    expect(help.distillTrustFacts(paper({ doi: '10.1002/(SICI)1#2?3' })).at(-1).href).toBe('https://doi.org/10.1002/(SICI)1%232%3F3');
   });
   it('preprint, arXiv date from the DOI, one author', () => {
     const p = paper({ isPreprint: true, source: 'arxiv', doi: '10.48550/arXiv.2310.06825', date: '', authors: ['A'] });

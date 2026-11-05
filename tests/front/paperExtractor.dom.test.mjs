@@ -72,7 +72,7 @@ describe('distillExtractPaper — citation meta tags', () => {
     <meta name="citation_title" content="A Study of Things">
     <meta name="citation_author" content="Jane Doe">
     <meta name="citation_author" content="John Roe">
-    <meta name="citation_doi" content="doi:10.1101/2024.01.01.123456">
+    <meta name="citation_doi" content="https://doi.org/10.1101/2024.01.01.123456">
     <meta name="citation_pdf_url" content="https://www.biorxiv.org/x.full.pdf">
     <meta name="citation_abstract" content="We studied things.">
   </head><body><p>Body</p></body></html>`;
@@ -208,5 +208,10 @@ describe('paper date', () => {
   });
   it('is empty when unknown', () => {
     expect(distillExtractPaper(page(''), 'https://journal.test/a').date).toBe('');
+  });
+  it('strips doi: and doi.org URL prefixes from citation_doi', () => {
+    for (const v of ['doi:10.1/x', 'https://dx.doi.org/10.1/x']) {
+      expect(distillExtractPaper(page(`<meta name="citation_doi" content="${v}">`), 'https://journal.test/a').doi).toBe('10.1/x');
+    }
   });
 });
