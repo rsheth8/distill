@@ -5,7 +5,8 @@
 const DISTILL_LEVELS = ['simple', 'everyday', 'close'];
 // state: last PAPER_HELP_STATE; section: heading the reader is in; streams: text arriving per "kind:key".
 // canGuide: false when the section is not in the paper object (no guide to offer).
-const paperView = { level: 'everyday', state: null, section: '', canGuide: true, streams: {} };
+// live: keys of streams still running, so a state publish does not wipe their partial text.
+const paperView = { level: 'everyday', state: null, section: '', canGuide: true, streams: {}, live: new Set() };
 
 const levelSelect = $('levelSelect');
 chrome.storage.local.get('readingLevel').then(({ readingLevel }) => {
@@ -135,14 +136,21 @@ function renderAsk() {
   box.lastElementChild?.scrollIntoView({ block: 'nearest' });
 }
 
+/** Returns true when the question was sent. */
 function askPaper(question) {
   const q = question.trim();
-  if (!q) return;
-  if (!paperView.state) return setStatus('askStatus', 'Open a research paper to ask about it.', 'error');
+  if (!q) return false;
+  if (!paperView.state) {
+    setStatus('askStatus', 'Open a research paper to ask about it.', 'error');
+    return false;
+  }
+  // A double click on a starter would queue the same question twice.
+  if ((paperView.state.askThread || []).some(e => e.q === q && !e.a)) return false;
   lastAskQuestion = q;
   hide($('askRetryBtn'));
   setStatus('askStatus', '', '');
   sendPaper({ type: 'ASK_PAPER', question: q });
+  return true;
 }
 
 function renderAll() {
@@ -157,6 +165,7 @@ function resetPaperView() {
   paperView.section = '';
   paperView.canGuide = true;
   paperView.streams = {};
+  paperView.live = new Set();
   for (const id of ['overviewCard', 'trustCard', 'guideCard']) hide($(id));
 }
 
@@ -167,10 +176,11 @@ function handlePaperMessage(msg) {
       paperView.state = msg;
       paperView.section = msg.section || paperView.section;
       if (msg.section) paperView.canGuide = msg.canGuide !== false;
-      paperView.streams = {};
+      paperView.streams = Object.fromEntries(Object.entries(paperView.streams).filter(([key]) => paperView.live.has(key)));
       renderAll();
       break;
     case 'PAPER_HELP_START':
+      paperView.live.add(k);
       paperView.streams[k] = '';
       if (msg.kind === 'overview') {
         hide($('overviewRetryBtn'));
@@ -184,6 +194,7 @@ function handlePaperMessage(msg) {
       renderAll();
       break;
     case 'PAPER_HELP_DONE':
+      paperView.live.delete(k);
       if (msg.kind === 'overview') {
         delete paperView.streams[k];
         if (paperView.state) paperView.state.overview = { level: msg.level, text: msg.text };
@@ -195,12 +206,14 @@ function handlePaperMessage(msg) {
       renderAll();
       break;
     case 'PAPER_HELP_ERROR':
+      paperView.live.delete(k);
       delete paperView.streams[k];
       if (msg.kind === 'overview') {
         setStatus('overviewStatus', msg.message || 'Something went wrong.', 'error');
         show($('overviewRetryBtn'));
       }
       if (msg.kind === 'ask') {
+        lastAskQuestion = paperView.state?.askThread?.[Number(msg.key)]?.q ?? lastAskQuestion; // Retry resends the one that failed
         setStatus('askStatus', msg.message || 'Something went wrong.', 'error');
         show($('askRetryBtn'));
       }
@@ -232,11 +245,10 @@ levelSelect.addEventListener('change', renderGuide);
 
 $('askForm').addEventListener('submit', e => {
   e.preventDefault();
-  askPaper($('askInput').value);
-  $('askInput').value = '';
+  if (askPaper($('askInput').value)) $('askInput').value = '';
 });
 $('askInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) {
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
     e.preventDefault();
     $('askForm').requestSubmit();
   }

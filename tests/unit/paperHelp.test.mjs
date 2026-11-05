@@ -171,3 +171,16 @@ describe('distillPickSections', () => {
     expect(help.distillPickSections({}, 'heart')).toEqual([]);
   });
 });
+
+describe('distillPickSections budget', () => {
+  it('cuts an oversized best match down to the room left instead of skipping it', () => {
+    const paper = { sections: [
+      { heading: 'Results', text: 'heart '.repeat(1000).trim() }, // 6,000-ish chars, the best match
+      { heading: 'Other', text: 'heart is mentioned once here, a weak match.' }
+    ] };
+    const r = help.distillPickSections(paper, 'heart heart', 5000);
+    expect(r[0].heading).toBe('Results');
+    expect(r[0].text.length).toBeGreaterThan(4000);
+    expect(r.map(x => x.text).join('').length).toBeLessThanOrEqual(5000);
+  });
+});

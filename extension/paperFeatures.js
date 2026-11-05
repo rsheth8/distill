@@ -53,6 +53,7 @@ function streamPaperHelp(tabId, { kind, key, task, context, input, level }) {
       onDone: () => {
         if (settled) return;
         if (stale()) { ctrl.abort(); return; }
+        if (!text.trim()) return fail(Object.assign(new Error('No answer came back.'), { code: 'EMPTY' })); // so the panel can offer Retry
         toPanel({ type: 'PAPER_HELP_DONE', tabId, kind, key, level, text });
         finish(text.trim());
       },

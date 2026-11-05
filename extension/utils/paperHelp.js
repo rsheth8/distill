@@ -130,11 +130,13 @@ function distillPickSections(paper, question, maxChars = 5000) {
   const chosen = [];
   let used = 0;
   for (const x of pool) {
-    if (used + x.text.length > maxChars) continue;
-    chosen.push(x);
-    used += x.text.length;
+    const gap = chosen.length ? 2 : 0; // the "\n\n" that may join it to a neighbour
+    const room = maxChars - used - gap;
+    if (room < 1) break;
+    const text = x.text.slice(0, room); // an oversized paragraph is cut down, not skipped
+    chosen.push({ ...x, text });
+    used += gap + text.length;
   }
-  if (!chosen.length && pool.length) chosen.push({ ...pool[0], text: pool[0].text.slice(0, maxChars) });
   chosen.sort((a, b) => a.si - b.si || a.pi - b.pi);
   const out = [];
   for (const x of chosen) {

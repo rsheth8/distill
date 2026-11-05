@@ -60,15 +60,17 @@ describe('paperFeatures', () => {
     const b = ctx.queuePaperHelp(1, job(1, 'b'));
     await tick();
     expect(calls).toHaveLength(1);
+    calls[0].onChunk('x');
     calls[0].onDone();
     calls[0].resolve();
     await a;
     await tick();
     expect(calls).toHaveLength(2);
+    calls[1].onChunk('x');
     calls[1].onDone();
     calls[1].resolve();
     await b;
-    expect(types()).toEqual(['PAPER_HELP_START:a', 'PAPER_HELP_DONE:a', 'PAPER_HELP_START:b', 'PAPER_HELP_DONE:b']);
+    expect(types()).toEqual(['PAPER_HELP_START:a', 'PAPER_HELP_CHUNK:a', 'PAPER_HELP_DONE:a', 'PAPER_HELP_START:b', 'PAPER_HELP_CHUNK:b', 'PAPER_HELP_DONE:b']);
   });
 
   it('a failed job does not block the next', async () => {
@@ -338,6 +340,20 @@ describe('ask the paper', () => {
     expect(s.askThread).toEqual([]);
     expect(sent.some(m => m.type === 'PAPER_HELP_ERROR' && m.kind === 'ask')).toBe(true);
     expect(sent.at(-1)).toMatchObject({ type: 'PAPER_HELP_STATE', askThread: [] });
+  });
+
+  it('an empty answer reports EMPTY once (so Retry shows) and removes the entry', async () => {
+    const s = setup();
+    const p = ctx.runAsk(1, 'Why?');
+    await flush();
+    calls[0].onDone();
+    calls[0].resolve();
+    await p;
+    const errs = sent.filter(m => m.type === 'PAPER_HELP_ERROR');
+    expect(errs).toHaveLength(1);
+    expect(errs[0]).toMatchObject({ kind: 'ask', key: '0', code: 'EMPTY', message: 'No answer came back.' });
+    expect(sent.some(m => m.type === 'PAPER_HELP_DONE')).toBe(false);
+    expect(s.askThread).toEqual([]);
   });
 
   it('sends at most the 3 latest answered turns, a clipped abstract and a clipped question', async () => {
