@@ -207,9 +207,9 @@ function handlePaperMessage(msg) {
       paperView.streams[k] = '';
       if (msg.kind === 'overview') {
         hide($('overviewRetryBtn'));
-        setStatus('overviewStatus', '⟳ Reading the paper…', 'updating');
+        setStatus('overviewStatus', 'Reading the paper…', 'updating');
       }
-      if (msg.kind === 'guide' && msg.key === paperView.section) setStatus('guideStatus', '⟳ Reading this section…', 'updating');
+      if (msg.kind === 'guide' && msg.key === paperView.section) setStatus('guideStatus', 'Reading this section…', 'updating');
       renderKind(msg.kind);
       break;
     case 'PAPER_HELP_CHUNK':

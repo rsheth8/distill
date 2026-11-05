@@ -57,13 +57,14 @@ let currentTabId = null;
 function connect() {
   port = chrome.runtime.connect({ name: 'sidepanel' });
   port.onMessage.addListener(handleMessage);
-  port.onDisconnect.addListener(() => { port = null; setTimeout(connect, 600); });
+  port.onDisconnect.addListener(() => { port = null; clearThinking(); setTimeout(connect, 600); });
 }
 connect();
 
 function wireActiveTab(tabId) {
   if (tabId == null) return;
   currentTabId = tabId;
+  clearThinking(); // the other tab's DONE/ERROR is dropped, so its streams would never end
   resetPaperView(); // the new tab may have no paper; GET_STATE republishes one if it does
   renderAll();
   port?.postMessage({ type: 'GET_STATE', tabId: currentTabId });
@@ -921,7 +922,7 @@ function handleMessage(msg) {
   switch (msg.type) {
 
     case 'ARTICLE_NAVIGATING':
-      thinkingStreams.clear(); document.body.classList.remove('is-thinking');
+      clearThinking();
       dismissQuiz();
       highlightHistoryForPage = [];
       analysisBuffer = '';
@@ -957,7 +958,7 @@ function handleMessage(msg) {
       pdfReaderUrl = msg.readerUrl || '';
     // falls through
     case 'NO_ARTICLE':
-      thinkingStreams.clear(); document.body.classList.remove('is-thinking');
+      clearThinking();
       dismissQuiz();
       hide(backendDownCard);
       hide(highlightPrompt);
@@ -983,7 +984,7 @@ function handleMessage(msg) {
       summaryText.classList.remove('muted');
       summarySection.classList.add('summary-section-streaming');
       summaryText.classList.add('summary-text-streaming');
-      setStatus('summaryStatus', '⟳', 'updating');
+      setStatus('summaryStatus', 'Updating…', 'updating');
       break;
 
     case 'SUMMARY_CHUNK':
@@ -1077,7 +1078,7 @@ function handleMessage(msg) {
 
     case 'HIGHLIGHT_NOTE_SAVED':
       if (msg.highlightId) lastHighlightId = msg.highlightId;
-      showToast('Note saved!', 'success');
+      showToast('Note saved.', 'success');
       break;
 
     // ── Comprehension quiz ──
@@ -1237,7 +1238,7 @@ function handleMessage(msg) {
     }
 
     case 'ERROR':
-      thinkingStreams.clear(); document.body.classList.remove('is-thinking');
+      clearThinking();
       if (msg.code === 'BACKEND_DOWN') {
         backendDownTitle.textContent = "Can't reach Distill cloud.";
         backendDownHint.textContent = msg.message || 'Check your connection, then tap Retry.';
@@ -1455,6 +1456,7 @@ function setThinking(key, on) {
   if (on) thinkingStreams.add(key); else thinkingStreams.delete(key);
   document.body.classList.toggle('is-thinking', thinkingStreams.size > 0);
 }
+function clearThinking() { thinkingStreams.clear(); document.body.classList.remove('is-thinking'); }
 
 function show(el) { if (!el) return; el.classList.remove('hidden'); }
 function hide(el) { if (!el) return; el.classList.add('hidden'); }
