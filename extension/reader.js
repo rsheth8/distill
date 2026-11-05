@@ -138,6 +138,7 @@ function setUpToggle(pdf) {
     document.dispatchEvent(new CustomEvent('distill-reader-view'));
   };
   document.addEventListener('distill-show-reading', () => show(false));
+  document.addEventListener('distill-show-pdf', () => show(true));
   readingBtn.addEventListener('click', () => show(false));
   pdfBtn.addEventListener('click', () => show(true));
   toolbarEl.hidden = false;

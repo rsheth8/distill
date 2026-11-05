@@ -787,6 +787,8 @@ submitAnswerBtn.addEventListener('click', () => {
 });
 
 let analysisForSelection = '';
+let completedAnalysisSelection = '';
+let pendingAnalysis = null;
 
 function findCachedAnalysisForSelection(selection) {
   return distillFindCachedHighlight(highlightHistoryForPage, selection);
@@ -796,6 +798,9 @@ function applyAnalysisToPanel(entry, selection) {
   const sel = selection || entry?.selection || '';
   analysisBuffer = entry?.analysis || '';
   analysisForSelection = distillNormalizeSelection(sel);
+  completedAnalysisSelection = sel;
+  $('analysisContext').textContent = `Explanation of: “${sel}”`;
+  show($('analysisContext'));
   lastSelectedText = sel;
   lastHighlightId = entry?.id || null;
   if (sel) {
@@ -817,6 +822,8 @@ function applyAnalysisToPanel(entry, selection) {
 const ANALYZE_EMPTY_HINT = 'Select text on the page, then tap Explain.';
 
 function resetAnalyzeWorkspace() {
+  pendingAnalysis=null;completedAnalysisSelection='';
+  $('analysisPending').textContent='';hide($('analysisPending'));hide($('analysisContext'));
   analysisBuffer = '';
   analysisForSelection = '';
   lastSelectedText = '';
@@ -921,8 +928,6 @@ analyzeBtn.addEventListener('click', () => {
     showToast('Showing saved analysis (no new AI call).', 'success');
     return;
   }
-  analysisText.textContent = '';
-  hide(analysisText);
   analyzeBtn.disabled = true;
   analyzeBtn.textContent = 'Analyzing...';
   port?.postMessage({ type: 'ANALYZE_SELECTION', tabId: currentTabId, force: false });
@@ -1079,10 +1084,6 @@ function handleMessage(msg) {
         const norm = distillNormalizeSelection(t);
         lastSelectedText = t;
         if (norm !== analysisForSelection) {
-          analysisBuffer = '';
-          analysisForSelection = '';
-          analysisText.textContent = '';
-          hide(analysisText);
           lastHighlightId = null;
           if (highlightNoteInput) highlightNoteInput.value = '';
         }
@@ -1119,23 +1120,29 @@ function handleMessage(msg) {
 
     case 'ANALYSIS_START':
       setThinking('analysis', true);
-      analysisBuffer = '';
-      analysisText.textContent = '';
-      show(analysisText);
+      pendingAnalysis={requestId:msg.requestId,selection:msg.selection || lastSelectedText,text:''};
+      $('analysisPending').textContent='Explaining the new selection…';show($('analysisPending'));
       break;
 
     case 'ANALYSIS_CHUNK':
-      analysisBuffer += msg.chunk;
-      analysisText.textContent = analysisBuffer;
+      if (!pendingAnalysis || pendingAnalysis.requestId !== msg.requestId) break;
+      pendingAnalysis.text += msg.chunk;
+      $('analysisPending').textContent=pendingAnalysis.text;
       break;
 
     case 'ANALYSIS_DONE':
+      if (!pendingAnalysis || pendingAnalysis.requestId !== msg.requestId) break;
       setThinking('analysis', false);
+      completedAnalysisSelection=pendingAnalysis.selection;
+      analysisBuffer=pendingAnalysis.text;
+      analysisText.textContent=analysisBuffer;
+      $('analysisContext').textContent=`Explanation of: “${completedAnalysisSelection}”`;
+      show($('analysisContext'));show(analysisText);
+      pendingAnalysis=null;$('analysisPending').textContent='';hide($('analysisPending'));
       analyzeBtn.disabled = false;
       analyzeBtn.textContent = 'Explain';
-      if (msg.highlightId) lastHighlightId = msg.highlightId;
-      analysisForSelection = distillNormalizeSelection(lastSelectedText);
-      if (highlightNoteInput) highlightNoteInput.value = '';
+      if (msg.highlightId && distillNormalizeSelection(lastSelectedText)===distillNormalizeSelection(completedAnalysisSelection)) lastHighlightId = msg.highlightId;
+      analysisForSelection = distillNormalizeSelection(completedAnalysisSelection);
       show(highlightNoteWrap);
       showAnalyzePanelKeepingResult();
       showToast('Analysis saved.', 'success');
@@ -1303,6 +1310,8 @@ function handleMessage(msg) {
     }
 
     case 'ERROR':
+      if (msg.requestId && pendingAnalysis && pendingAnalysis.requestId !== msg.requestId) break;
+      pendingAnalysis=null;$('analysisPending').textContent='';hide($('analysisPending'));
       clearThinking();
       if (msg.code === 'BACKEND_DOWN') {
         backendDownTitle.textContent = "Can't reach Distill cloud.";
@@ -1540,8 +1549,9 @@ const thinkingStreams = new Set();
 function setThinking(key, on) {
   if (on) thinkingStreams.add(key); else thinkingStreams.delete(key);
   document.body.classList.toggle('is-thinking', thinkingStreams.size > 0);
+  $('paperStopBtn').classList.toggle('hidden', thinkingStreams.size === 0);
 }
-function clearThinking() { thinkingStreams.clear(); document.body.classList.remove('is-thinking'); }
+function clearThinking() { thinkingStreams.clear(); document.body.classList.remove('is-thinking'); hide($('paperStopBtn')); }
 
 function show(el) { if (!el) return; el.classList.remove('hidden'); }
 function hide(el) { if (!el) return; el.classList.add('hidden'); }

@@ -249,6 +249,8 @@
           </div>
         </div>
         <blockquote id="selectedPreview" class="selected-preview"></blockquote>
+        <p id="analysisContext" class="hint hidden"></p>
+        <div id="analysisPending" class="body-text hidden" aria-live="polite"></div>
         <div id="analysisText" class="body-text analysis-text hidden"></div>
         <div id="highlightNoteWrap" class="highlight-note-wrap hidden">
           <label class="highlight-note-label">Your note</label>
@@ -262,6 +264,7 @@
 
     <div id="viewAsk" class="panel-view hidden">
       <section class="section">
+        <button id="returnReadingBtn" type="button" class="paper-link-btn hidden">Return to reading</button>
         <div id="askThread" class="ask-thread" aria-live="polite"></div>
         <div id="askStarters" class="ask-starters">
           <button type="button" class="ask-starter">What's the main takeaway?</button>

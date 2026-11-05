@@ -377,7 +377,14 @@
         distillUnmarkTerms(document.body);
         if (termCard) termCard.hidden = true;
         break;
+      case 'RETURN_TO_READING':
+        void Promise.resolve(globalThis.distillReadingNavigation?.returnToReading()).then(ok=>sendResponse({ok:!!ok})).catch(()=>sendResponse({ok:false}));
+        return true;
       case 'SCROLL_TO_PASSAGE': {
+        if (globalThis.distillReadingNavigation) {
+          void globalThis.distillReadingNavigation.jump(String(msg.text||'')).then(ok=>sendResponse({ok})).catch(()=>sendResponse({ok:false}));
+          return true;
+        }
         const quote = String(msg.text || '').replace(/\s+/g, ' ').trim();
         if (!quote) break;
         const target = [...(articleEl || document.body).querySelectorAll('p, li')]

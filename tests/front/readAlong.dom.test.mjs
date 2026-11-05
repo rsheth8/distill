@@ -1,5 +1,6 @@
 import { beforeEach, afterEach, it, expect, vi } from 'vitest';
 import '../../extension/utils/readAlong.js';
+import '../../extension/utils/sourceReturn.js';
 import '../../extension/readAlong.js';
 let utterances, local, remote;
 beforeEach(() => {
@@ -32,4 +33,17 @@ it('requires an explicit voice choice when only remote voices exist',async()=>{
  ui.querySelector('#mode').value='voice';ui.querySelector('#mode').dispatchEvent(new Event('change'));ui.querySelector('#play').click();
  expect(utterances.length).toBe(0);
  ui.querySelector('#voice').value='remote';ui.querySelector('#voice').dispatchEvent(new Event('change'));ui.querySelector('#play').click();expect(utterances[0].voice).toBe(remote);
+});
+it('captures visible reading location independently from playback and rejects a changed source',async()=>{
+ const first=document.querySelector('p');first.getBoundingClientRect=()=>({top:-800,bottom:-700,height:100});
+ const second=document.createElement('p');second.textContent='A much later passage with a distinct result and a qualifying caveat.';
+ second.getBoundingClientRect=()=>({top:200,bottom:500,height:300});document.querySelector('article').append(second);
+ await setup();
+ const navigation=globalThis.distillReadingNavigation;
+ expect(typeof navigation?.capture).toBe('function');
+ const anchor=await navigation.capture();
+ expect(anchor.blockIndex).toBe(1);expect(anchor.charOffset).toBe(first.textContent.length+2);
+ expect(navigation.playbackPosition()).toBe(0);
+ first.textContent=first.textContent.replace('2.5','9.5');
+ expect(await navigation.returnToReading()).toBe(false);
 });

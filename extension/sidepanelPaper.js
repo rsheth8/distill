@@ -43,7 +43,7 @@ function bulletLines(text) {
 }
 
 function overviewText() {
-  return paperView.streams['overview:overview'] ?? paperView.state?.overview?.text ?? '';
+  return paperView.state?.overview?.text || paperView.streams['overview:overview'] || '';
 }
 
 // sidepanel.js owns whether the card is shown; this only fills it.
@@ -141,6 +141,8 @@ function renderGlossary() {
 }
 
 let lastAskQuestion = '';
+let lastSourceAction = '';
+$('returnReadingBtn').addEventListener('click',()=>sendPaper({type:'RETURN_TO_READING'}));
 
 /** scroll: only when ask activity changed the thread, not on every unrelated render. */
 function renderAsk(scroll = false) {
@@ -162,7 +164,8 @@ function renderAsk(scroll = false) {
       addText(details, 'blockquote', source.text);
       const jump = addText(details, 'button', 'Open source passage', 'paper-link-btn');
       jump.type = 'button';
-      jump.addEventListener('click', () => sendPaper({ type: 'JUMP_TO_PASSAGE', entryIndex: i, passageId: source.id }));
+      jump.dataset.sourceAction = `${i}:${source.id}`;
+      jump.addEventListener('click', () => {lastSourceAction=jump.dataset.sourceAction;sendPaper({ type: 'JUMP_TO_PASSAGE', entryIndex: i, passageId: source.id });});
       item.append(details);
     }
     if (!sources.length && parsed.FROM) addText(item, 'p', 'No supplied passage citation to verify.', 'ask-meta');
@@ -199,7 +202,7 @@ function renderAll(scrollAsk = false) {
 
 // A stream event only changes its own view; rendering the rest on every chunk is wasted work.
 function renderKind(kind) {
-  $('paperStopBtn').classList.toggle('hidden', paperView.live.size === 0);
+  $('paperStopBtn').classList.toggle('hidden', paperView.live.size === 0 && thinkingStreams.size === 0);
   if (kind === 'overview') renderOverview();
   else if (kind === 'guide') renderGuide();
   else if (kind === 'ask') renderAsk(true);
@@ -213,13 +216,21 @@ function resetPaperView() {
   paperView.streams = {};
   paperView.live = new Set();
   hide($('paperStopBtn'));
+  hide($('returnReadingBtn'));
   for (const id of ['overviewCard', 'trustCard', 'guideCard']) hide($(id));
 }
 
 function handlePaperMessage(msg) {
   const k = `${msg.kind}:${msg.key}`;
   switch (msg.type) {
+    case 'SOURCE_RETURN_RESULT': {
+      setStatus('askStatus',msg.ok ? '' : 'Your saved location no longer matches this view. Return using the paper’s section map.',msg.ok?'':'error');
+      hide($('returnReadingBtn'));
+      [...$('askThread').querySelectorAll('[data-source-action]')].find(el=>el.dataset.sourceAction===lastSourceAction)?.focus();
+      break;
+    }
     case 'SOURCE_NAVIGATION_RESULT':
+      $('returnReadingBtn').classList.toggle('hidden',!msg.ok);
       setStatus('askStatus', msg.ok ? '' : 'The source page may have changed. The supplied passage is still shown above; reopen the paper to locate it.', msg.ok ? '' : 'error');
       break;
     case 'PAPER_HELP_STATE': {

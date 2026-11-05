@@ -128,6 +128,92 @@
       if (speaking) synth?.cancel(); speaking = false;
       $('play').textContent = 'Play'; save();
     }
+    let returnAnchor = null;
+    const sourceVersion = globalThis.DistillSourceReturn?.distillSourceVersion(m.text);
+    function currentView() { return document.getElementById('reading') ? (document.getElementById('reading').hidden ? 'pdf' : 'reading') : 'html'; }
+    function offsetForRange(range) {
+      const i = elements.findIndex(el => el.contains(range.startContainer));
+      if (i < 0) return null;
+      const prefix = document.createRange(); prefix.selectNodeContents(elements[i]); prefix.setEnd(range.startContainer, range.startOffset);
+      return {blockIndex:i,charOffset:m.blocks[i].start + prefix.toString().length};
+    }
+    async function captureReturn() {
+      pause(); follow = false;
+      if (!sourceVersion || elements.map(el=>el.textContent).join('\n\n') !== m.text) { returnAnchor = null; return null; }
+      const view = currentView();
+      const base = {schemaVersion:1,paperKey:key,sourceVersion:await sourceVersion,view,focusTarget:'ask-source'};
+      let found = null;
+      const selection = getSelection();
+      if (selection?.rangeCount && !selection.isCollapsed) {
+        const range = selection.getRangeAt(0), rect = range.getBoundingClientRect();
+        if (rect.height && rect.bottom > 0 && rect.top < innerHeight) {
+          found = offsetForRange(range);
+          if (!found && view === 'pdf') { const aligned = core.align(m.text,selection.toString()); if (aligned) found = {charOffset:aligned.start,blockIndex:m.blocks.findIndex(b=>aligned.start>=b.start&&aligned.start<b.end)}; }
+        }
+      }
+      const y = innerHeight * 0.35;
+      if (!found && view !== 'pdf') {
+        const visible = elements.map((el,i)=>({el,i,r:el.getBoundingClientRect()})).filter(x=>x.r.bottom>0&&x.r.top<innerHeight);
+        const nearest = visible.sort((a,b)=>Math.abs(Math.max(a.r.top,Math.min(y,a.r.bottom))-y)-Math.abs(Math.max(b.r.top,Math.min(y,b.r.bottom))-y))[0];
+        if (nearest) {
+          const r = nearest.r;
+          const caret = document.caretRangeFromPoint?.(Math.max(1,r.left+4),Math.max(r.top+1,Math.min(y,r.bottom-1)));
+          found = caret && offsetForRange(caret);
+          if (!found) found={blockIndex:nearest.i,charOffset:m.blocks[nearest.i].start};
+        }
+      }
+      let fallback = null;
+      if (!found && view === 'pdf') {
+        const slots=[...document.querySelectorAll('#pages .page')].map(el=>({el,r:el.getBoundingClientRect()})).filter(x=>x.r.bottom>0&&x.r.top<innerHeight);
+        const slot=slots.sort((a,b)=>Math.abs(a.r.top-y)-Math.abs(b.r.top-y))[0];
+        if (slot) {
+          const spans=[...slot.el.querySelectorAll('.textLayer span')].filter(el=>el.textContent.trim().length>25);
+          const span=spans.sort((a,b)=>Math.abs(a.getBoundingClientRect().top-y)-Math.abs(b.getBoundingClientRect().top-y))[0];
+          const aligned=span&&core.align(m.text,span.textContent);
+          if (aligned) found={charOffset:aligned.start,blockIndex:m.blocks.findIndex(b=>aligned.start>=b.start&&aligned.start<b.end)};
+          fallback={paperKey:key,sourceVersion:base.sourceVersion,page:Number(slot.el.dataset.page),relativeY:-slot.r.top};
+        }
+      }
+      if (!found && !fallback) {returnAnchor=null;return null;}
+      returnAnchor={canonical:found ? {...base,...found} : null,pdf:fallback,playback:position};
+      return returnAnchor.canonical || fallback;
+    }
+    async function returnToReading() {
+      const saved=returnAnchor;
+      if (!saved || elements.map(el=>el.textContent).join('\n\n')!==m.text) {returnAnchor=null;return false;}
+      const version=await sourceVersion;
+      pause();follow=false;
+      if (saved.canonical) {
+        const anchor=saved.canonical;
+        if (!globalThis.DistillSourceReturn.distillValidSourceReturn(anchor,{paperKey:key,sourceVersion:version,textLength:m.text.length})) return false;
+        if (anchor.view !== currentView()) document.dispatchEvent(new CustomEvent(anchor.view==='pdf'?'distill-show-pdf':'distill-show-reading'));
+        if (anchor.view==='pdf') document.dispatchEvent(new CustomEvent('distill-pdf-source',{detail:{text:m.text.slice(m.blocks[anchor.blockIndex].start,m.blocks[anchor.blockIndex].end)}}));
+        const range=sourceRange(anchor.charOffset,Math.min(anchor.charOffset+1,m.blocks[anchor.blockIndex].end));
+        const target=range?.startContainer.parentElement || (anchor.view!=='pdf' ? elements[anchor.blockIndex] : null);
+        if (target) {target.scrollIntoView({block:'center',behavior:'instant'});target.setAttribute('tabindex','-1');target.focus({preventScroll:true});}
+        else if(anchor.view==='pdf') status('Returning to the saved PDF page. Use Reading view if text alignment is unavailable.');
+      } else {
+        if(currentView()!=='pdf'||saved.pdf.paperKey!==key||saved.pdf.sourceVersion!==version)return false;
+        const page=document.querySelector(`#pages [data-page="${saved.pdf.page}"]`);
+        if(!page)return false;
+        window.scrollTo({top:scrollY+page.getBoundingClientRect().top+saved.pdf.relativeY,behavior:'instant'});
+      }
+      position=saved.playback;restoreTouched=true;save();returnAnchor=null;
+      CSS?.highlights?.delete('distill-word');CSS?.highlights?.delete('distill-sentence');
+      status('Returned to your reading place. Playback remains paused.');return true;
+    }
+    globalThis.distillReadingNavigation = {
+      capture:captureReturn, returnToReading, playbackPosition:()=>position,
+      jump:async text=>{
+        const aligned=core.align(m.text,text);
+        if(!aligned)return false;
+        if(!await captureReturn())return false;
+        if(currentView()==='pdf' && !globalThis.distillPdfResolve?.(text))document.dispatchEvent(new CustomEvent('distill-show-reading'));
+        seek(aligned.start);
+        if(currentView()==='pdf')document.dispatchEvent(new CustomEvent('distill-pdf-source',{detail:{text}}));
+        return true;
+      }
+    };
     function play() {
       restoreTouched = true;
       pause();

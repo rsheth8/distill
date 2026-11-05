@@ -9,7 +9,7 @@ const extGlobals = {
 
 /** CI lint scope: service worker, side panel, shared utils, tests, and the smoke runner. */
 export default [
-  { files: ['extension/utils/readingAssistance.js', 'extension/utils/localConnection.js'], languageOptions: {sourceType:'script',globals:{module:'readonly'}}, rules:{'no-unused-vars':'off'} },
+  { files: ['extension/utils/readingAssistance.js', 'extension/utils/localConnection.js', 'extension/utils/sourceReturn.js'], languageOptions: {sourceType:'script',globals:{module:'readonly',crypto:'readonly',TextEncoder:'readonly'}}, rules:{'no-unused-vars':'off'} },
   { ignores: ['node_modules/**', 'backend/node_modules/**'] },
   js.configs.recommended,
   {
@@ -91,7 +91,7 @@ export default [
       sourceType: 'script',
       globals: {
         ...extGlobals,
-        $: 'readonly', port: 'readonly', currentTabId: 'readonly', show: 'readonly', hide: 'readonly',
+        $: 'readonly', thinkingStreams:'readonly', port: 'readonly', currentTabId: 'readonly', show: 'readonly', hide: 'readonly',
         setStatus: 'readonly', setThinking: 'readonly', setPanel: 'readonly', lastSelectedText: 'readonly',
         distillParseLabelled: 'readonly', distillParseTerms: 'readonly',
         distillBrowserModelAvailability: 'readonly', distillCitedPassages: 'readonly', distillSectionMap: 'readonly', distillRenderSectionMap: 'readonly'

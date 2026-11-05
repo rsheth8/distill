@@ -274,6 +274,7 @@ const PAGE_STATE_KEY_PREFIX = DISTILL_PAGE_STATE_PREFIX;
 
 let sidePanelPort = null;
 const autoAiWork = new Map();
+const analysisWork = new Map();
 let assistanceEpoch = 0;
 const summaryCadenceState = new Map();
 // Tabs whose state was just loaded from persistent (chrome.storage.local) save-state,
@@ -383,6 +384,9 @@ async function clearAllSavedHistory() {
 const pdfTabs = new Map(); // tabId → reader.html URL for a PDF open in Chrome's viewer
 
 function clearTab(tabId) {
+  analysisWork.get(tabId)?.ctrl.abort();
+  analysisWork.delete(tabId);
+  for (const work of autoAiWork.values()) if (work.tabId===tabId) work.ctrl.abort();
   tabState.delete(tabId);
   clearPaperHelp(tabId);
   pdfTabs.delete(tabId);
@@ -814,6 +818,8 @@ chrome.runtime.onConnect.addListener(port => {
         break;
       case 'CANCEL_PAPER_HELP':
         clearPaperHelp(msg.tabId, true);
+        analysisWork.get(msg.tabId)?.ctrl.abort();
+        for (const work of autoAiWork.values()) if (work.tabId === msg.tabId) work.ctrl.abort();
         break;
       case 'LIST_LOCAL_MODELS':
         void listLocalModels(msg.baseUrl).then(result => toPanel({ type: 'LOCAL_MODELS_RESULT', baseUrl: String(msg.baseUrl || ''), ...result }));
@@ -935,6 +941,11 @@ chrome.runtime.onConnect.addListener(port => {
           await ensureTabHydrated(msg.tabId);
           void runAsk(msg.tabId, msg.question);
         })();
+        break;
+      case 'RETURN_TO_READING':
+        chrome.tabs.sendMessage(msg.tabId,{type:'RETURN_TO_READING'})
+          .then(result=>toPanel({type:'SOURCE_RETURN_RESULT',tabId:msg.tabId,ok:!!result?.ok}))
+          .catch(()=>toPanel({type:'SOURCE_RETURN_RESULT',tabId:msg.tabId,ok:false}));
         break;
       case 'JUMP_TO_PASSAGE': {
         const entry = tabState.get(msg.tabId)?.askThread?.[Number(msg.entryIndex)];
@@ -1437,6 +1448,14 @@ async function generateSkippedReview(tabId, question) {
 // ── Highlight analysis ────────────────────────────────────────────────────────
 
 async function runAnalyzeStream(tabId, s, ctx, rawSelection, opts = {}) {
+  analysisWork.get(tabId)?.ctrl.abort();
+  const ctrl = new AbortController();
+  const requestId = `${Date.now()}-${Math.random()}`;
+  analysisWork.set(tabId,{ctrl,requestId});
+  const stale = () => ctrl.signal.aborted || tabState.get(tabId) !== s || analysisWork.get(tabId)?.requestId !== requestId;
+  ctrl.signal.addEventListener('abort',()=>{
+    if (tabState.get(tabId)===s) toPanel({type:'ERROR',code:'CANCELLED',message:'Explanation stopped. Your previous result is kept.',tabId,requestId});
+  },{once:true});
   const allowEnqueue = opts.allowEnqueue !== false;
   const selectedText = clampText(rawSelection, MAX_SELECTION_CHARS);
   const opener = ctx.opener || '';
@@ -1444,9 +1463,11 @@ async function runAnalyzeStream(tabId, s, ctx, rawSelection, opts = {}) {
   const recent = ctx.recent || '';
 
   let completed = false;
-  toPanel({ type: 'ANALYSIS_START', tabId });
+  toPanel({ type: 'ANALYSIS_START', tabId, requestId, selection:selectedText });
   let analysisText = '';
   const handleErr = err => {
+    if (stale()) return;
+    analysisWork.delete(tabId);
     if (allowEnqueue && isBackendUnreachableError(err)) {
       void enqueueOfflineJob({
         task: 'analysis',
@@ -1473,15 +1494,19 @@ async function runAnalyzeStream(tabId, s, ctx, rawSelection, opts = {}) {
     await streamTask({
       tabId,
       task: 'analysis',
+      signal:ctrl.signal,
       s,
       noAuthMessage: 'No API key set.',
       context: { title: s.title || '', opener, priorGist, recent, section: s.section },
       input: { selection: selectedText },
       onChunk: chunk => {
+        if (stale()) return;
         analysisText += chunk;
-        toPanel({ type: 'ANALYSIS_CHUNK', chunk, tabId });
+        toPanel({ type: 'ANALYSIS_CHUNK', chunk, tabId, requestId });
       },
       onDone:  ()    => {
+        if (stale()) return;
+        analysisWork.delete(tabId);
         completed = true;
         s.highlightHistory = Array.isArray(s.highlightHistory) ? s.highlightHistory : [];
         const existing = s.highlightHistory.find(h => h?.selection === selectedText);
@@ -1505,7 +1530,7 @@ async function runAnalyzeStream(tabId, s, ctx, rawSelection, opts = {}) {
         schedulePersistTab(tabId);
         persistHistorySnapshot(tabId);
         broadcastHighlightHistory(tabId);
-        toPanel({ type: 'ANALYSIS_DONE', tabId, highlightId: item.id });
+        toPanel({ type: 'ANALYSIS_DONE', tabId, requestId, selection:selectedText, highlightId: item.id });
       },
       onError: handleErr
     });

@@ -124,4 +124,20 @@ describe('side panel', () => {
     expect(document.getElementById('highlightSection').classList.contains('hidden')).toBe(true);
     expect(inPanel('paperView.state')).toBeNull();
   });
+
+  it('retains a completed explanation and its original quote while another is pending or canceled', async () => {
+    await boot();
+    inPanel('wireActiveTab(7)');
+    onPortMessage({type:'ARTICLE_DETECTED',tabId:TAB,title:'Paper'});
+    onPortMessage({type:'ANALYSIS_CACHED',tabId:TAB,selection:'The original selected passage.',analysis:'The completed explanation.',highlightId:'old'});
+    onPortMessage({type:'SELECTION_CHANGED',tabId:TAB,selectedText:'A different selected passage.'});
+    onPortMessage({type:'ANALYSIS_START',tabId:TAB,requestId:'new',selection:'A different selected passage.'});
+    onPortMessage({type:'ANALYSIS_CHUNK',tabId:TAB,requestId:'new',chunk:'A partial replacement.'});
+    expect(document.getElementById('analysisText').textContent).toBe('The completed explanation.');
+    expect(document.getElementById('analysisContext').textContent).toContain('The original selected passage.');
+    onPortMessage({type:'ERROR',tabId:TAB,code:'CANCELLED',message:'Stopped.'});
+    onPortMessage({type:'ANALYSIS_CHUNK',tabId:TAB,requestId:'new',chunk:'stale'});
+    expect(document.getElementById('analysisText').textContent).toBe('The completed explanation.');
+    expect(document.getElementById('analysisPending').textContent).not.toContain('stale');
+  });
 });
