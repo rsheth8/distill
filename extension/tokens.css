@@ -19,3 +19,24 @@
     --marker:     rgba(250, 204, 21, 0.28);
   }
 }
+
+/* Per-site forced theme: beats :root inside the media query above. */
+html[data-theme="light"] {
+  color-scheme: light;
+  --paper-bg:   #e8e6e1;
+  --paper:      #faf9f6;
+  --ink:        #2b2a27;
+  --ink-muted:  #6b6860;
+  --paper-line: #d4d1c9;
+  --marker:     rgba(250, 204, 21, 0.38);
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --paper-bg:   #1f1e1c;
+  --paper:      #272624;
+  --ink:        #ece9e2;
+  --ink-muted:  #a29e94;
+  --paper-line: #3a3835;
+  --marker:     rgba(250, 204, 21, 0.28);
+}

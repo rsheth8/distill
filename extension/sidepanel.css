@@ -1713,34 +1713,7 @@ header {
   zoom: var(--panel-zoom, 1);
 }
 
-/* Per-site theme override (system = omit attribute, handled by :root + prefers-color-scheme) */
-html[data-theme="light"] {
-  color-scheme: light;
-  --bg:          #ffffff;
-  --bg-surface:  #f8fafc;
-  --bg-elevated: #f1f5f9;
-  --border-sub:  #e8edf2;
-  --border-mid:  #d1d9e0;
-  --text-pri:    #0f172a;
-  --text-sec:    #475569;
-  --text-muted:  #94a3b8;
-  --text-dim:    #cbd5e1;
-  --shadow:      0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-}
-
-html[data-theme="dark"] {
-  color-scheme: dark;
-  --bg:          #0d1117;
-  --bg-surface:  #161b22;
-  --bg-elevated: #21262d;
-  --border-sub:  #21262d;
-  --border-mid:  #30363d;
-  --text-pri:    #e6edf3;
-  --text-sec:    #8b949e;
-  --text-muted:  #484f58;
-  --text-dim:    #30363d;
-  --shadow:      0 1px 3px rgba(0,0,0,0.3);
-}
+/* Per-site theme override: colours come from tokens.css (html[data-theme]) */
 
 .hidden { display: none !important; }
 
