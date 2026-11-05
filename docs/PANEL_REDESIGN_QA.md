@@ -65,3 +65,12 @@ real local model and paper, not a broad evaluation of explanation quality.
 Figures / vision and Chrome's built-in Gemini Nano remain follow-ups. The existing
 paper-reader follow-ups (Escape dismissal for word cards, duplicated abstract in Ask
 context, and first-definition glossary behavior) are unchanged.
+
+## Readiness continuation (November 5, 2026)
+
+The subsequent research-reader evaluation and engineering evidence lives in
+[`evaluation/STATUS.md`](evaluation/STATUS.md). The earlier counts and relay-based
+inference above describe the cd163b1 baseline, not a broad quality evaluation.
+The continuation separately records ordinary direct setup failures, provisional
+source references, model outputs, production PDF extraction, native-container
+checks, installed-package fixtures and the pending human pilot.

@@ -1,0 +1,117 @@
+{
+  "guardAuditSourceSha256": "a9bf2dc18b48b54a4d11aa048d4449386a0d306b47d72bd6a2e6f8403d4e3474",
+  "run": "current-35b",
+  "generated": "2026-11-05T06:45:53.115Z",
+  "metadata": {
+    "date": "2026-11-05T06:30:22.231Z",
+    "provider": "Ollama OpenAI-compatible API; Node direct, NOT extension origin verification",
+    "models": [
+      "qwen3.6:35b"
+    ],
+    "modelVersions": [
+      {
+        "name": "qwen3.6:35b",
+        "digest": "096fdbd02fe620fc10cbeb6537e080f8041aece851e5d696aed024d4f70f2e47",
+        "parameterSize": "35.5B",
+        "quantization": "Q4_K_M"
+      }
+    ],
+    "gitRevision": "8bfd0c23f808c76986e1ef53a63fe83dde5fc4d5",
+    "hardware": {
+      "cpu": "Apple M2 Max",
+      "logicalCpus": 12,
+      "memoryBytes": 34359738368
+    },
+    "promptSha256": "ca1e42abaf7428e92bce136325c266876716ebad9ed457d92a819babdce0507d",
+    "promptVersion": "working-tree",
+    "temperature": 0.5,
+    "maxTokens": {
+      "overview": 420,
+      "section_guide": 380,
+      "analysis": 260,
+      "ask": 320
+    },
+    "budgetMode": "production-balanced",
+    "platform": "darwin",
+    "architecture": "arm64",
+    "server": {
+      "version": "0.40.14"
+    }
+  },
+  "qualityScoring": "NOT SCORED: human source verification and independent review pending",
+  "total": 3,
+  "papers": [
+    "attention"
+  ],
+  "groups": {
+    "qwen3.6:35b / expert / close / overview": {
+      "count": 1,
+      "complete": 1,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 6116,
+      "firstTokenMedianMs": 1870
+    },
+    "qwen3.6:35b / expert / everyday / overview": {
+      "count": 1,
+      "complete": 1,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 4426,
+      "firstTokenMedianMs": 1790
+    },
+    "qwen3.6:35b / expert / simple / overview": {
+      "count": 1,
+      "complete": 1,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 26442,
+      "firstTokenMedianMs": 22988
+    }
+  },
+  "extraction": [
+    {
+      "paper": "attention",
+      "status": "extracted",
+      "cached": true,
+      "paperSha256": "0bb996e9345100ec55d6242455f8a6b2e4550b8e31344ea41d7b10d6c0da4993",
+      "sections": [
+        {
+          "heading": "Introduction",
+          "chars": 1918
+        },
+        {
+          "heading": "Background",
+          "chars": 1816
+        },
+        {
+          "heading": "Model Architecture",
+          "chars": 9613
+        },
+        {
+          "heading": "Why Self-Attention",
+          "chars": 3248
+        },
+        {
+          "heading": "Training",
+          "chars": 2173
+        },
+        {
+          "heading": "Results",
+          "chars": 4614
+        },
+        {
+          "heading": "Conclusion",
+          "chars": 1202
+        },
+        {
+          "heading": "Attention Visualizations",
+          "chars": 0
+        }
+      ]
+    }
+  ]
+}

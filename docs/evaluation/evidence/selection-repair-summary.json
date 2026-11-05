@@ -1,0 +1,128 @@
+{
+  "guardAuditSourceSha256": "a9bf2dc18b48b54a4d11aa048d4449386a0d306b47d72bd6a2e6f8403d4e3474",
+  "run": "selection-repair",
+  "generated": "2026-11-05T06:45:53.281Z",
+  "metadata": {
+    "date": "2026-11-05T06:31:44.240Z",
+    "provider": "Ollama OpenAI-compatible API; Node direct, NOT extension origin verification",
+    "models": [
+      "qwen2.5:7b"
+    ],
+    "modelVersions": [
+      {
+        "name": "qwen2.5:7b",
+        "digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+        "parameterSize": "7.6B",
+        "quantization": "Q4_K_M"
+      }
+    ],
+    "gitRevision": "8bfd0c23f808c76986e1ef53a63fe83dde5fc4d5",
+    "hardware": {
+      "cpu": "Apple M2 Max",
+      "logicalCpus": 12,
+      "memoryBytes": 34359738368
+    },
+    "promptSha256": "92ef2c1ddc2207d98162fd32d180e8530d341b335220783525c41e0384bcf0d6",
+    "promptVersion": "working-tree",
+    "temperature": 0.5,
+    "maxTokens": {
+      "overview": 420,
+      "section_guide": 380,
+      "analysis": 260,
+      "ask": 320
+    },
+    "budgetMode": "production-balanced",
+    "platform": "darwin",
+    "architecture": "arm64",
+    "server": {
+      "version": "0.40.14"
+    }
+  },
+  "qualityScoring": "NOT SCORED: human source verification and independent review pending",
+  "total": 6,
+  "papers": [
+    "handwashing"
+  ],
+  "groups": {
+    "qwen2.5:7b / expert / close / analysis": {
+      "count": 1,
+      "complete": 1,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 4246,
+      "firstTokenMedianMs": 1443
+    },
+    "qwen2.5:7b / newcomer / close / analysis": {
+      "count": 1,
+      "complete": 1,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 3247,
+      "firstTokenMedianMs": 1415
+    },
+    "qwen2.5:7b / expert / everyday / analysis": {
+      "count": 1,
+      "complete": 1,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 3446,
+      "firstTokenMedianMs": 1393
+    },
+    "qwen2.5:7b / newcomer / everyday / analysis": {
+      "count": 1,
+      "complete": 1,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 3981,
+      "firstTokenMedianMs": 1388
+    },
+    "qwen2.5:7b / expert / simple / analysis": {
+      "count": 1,
+      "complete": 1,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 4258,
+      "firstTokenMedianMs": 1386
+    },
+    "qwen2.5:7b / newcomer / simple / analysis": {
+      "count": 1,
+      "complete": 1,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 3291,
+      "firstTokenMedianMs": 1402
+    }
+  },
+  "extraction": [
+    {
+      "paper": "handwashing",
+      "status": "extracted",
+      "cached": true,
+      "paperSha256": "cb3a91949542524478e3100f9f7144254bdb20602b7c025821578011dc7b00d1",
+      "sections": [
+        {
+          "heading": "Introduction",
+          "chars": 3709
+        },
+        {
+          "heading": "Materials and Methods",
+          "chars": 14160
+        },
+        {
+          "heading": "Results",
+          "chars": 6690
+        },
+        {
+          "heading": "Discussion",
+          "chars": 12290
+        }
+      ]
+    }
+  ]
+}

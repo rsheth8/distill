@@ -1,0 +1,132 @@
+{
+  "guardAuditSourceSha256": "a9bf2dc18b48b54a4d11aa048d4449386a0d306b47d72bd6a2e6f8403d4e3474",
+  "run": "fidelity-repair",
+  "generated": "2026-11-05T06:45:53.158Z",
+  "metadata": {
+    "date": "2026-11-05T06:31:02.387Z",
+    "provider": "Ollama OpenAI-compatible API; Node direct, NOT extension origin verification",
+    "models": [
+      "qwen2.5:7b"
+    ],
+    "modelVersions": [
+      {
+        "name": "qwen2.5:7b",
+        "digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+        "parameterSize": "7.6B",
+        "quantization": "Q4_K_M"
+      }
+    ],
+    "gitRevision": "8bfd0c23f808c76986e1ef53a63fe83dde5fc4d5",
+    "hardware": {
+      "cpu": "Apple M2 Max",
+      "logicalCpus": 12,
+      "memoryBytes": 34359738368
+    },
+    "promptSha256": "92ef2c1ddc2207d98162fd32d180e8530d341b335220783525c41e0384bcf0d6",
+    "promptVersion": "working-tree",
+    "temperature": 0.5,
+    "maxTokens": {
+      "overview": 420,
+      "section_guide": 380,
+      "analysis": 260,
+      "ask": 320
+    },
+    "budgetMode": "production-balanced",
+    "platform": "darwin",
+    "architecture": "arm64",
+    "server": {
+      "version": "0.40.14"
+    }
+  },
+  "qualityScoring": "NOT SCORED: human source verification and independent review pending",
+  "total": 12,
+  "papers": [
+    "facebook"
+  ],
+  "groups": {
+    "qwen2.5:7b / expert / close / ask": {
+      "count": 2,
+      "complete": 2,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 4403,
+      "firstTokenMedianMs": 2152
+    },
+    "qwen2.5:7b / newcomer / close / ask": {
+      "count": 2,
+      "complete": 2,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 3251,
+      "firstTokenMedianMs": 2115
+    },
+    "qwen2.5:7b / expert / everyday / ask": {
+      "count": 2,
+      "complete": 2,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 4606,
+      "firstTokenMedianMs": 2114
+    },
+    "qwen2.5:7b / newcomer / everyday / ask": {
+      "count": 2,
+      "complete": 2,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 3126,
+      "firstTokenMedianMs": 2085
+    },
+    "qwen2.5:7b / expert / simple / ask": {
+      "count": 2,
+      "complete": 2,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 3594,
+      "firstTokenMedianMs": 2114
+    },
+    "qwen2.5:7b / newcomer / simple / ask": {
+      "count": 2,
+      "complete": 2,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 6197,
+      "firstTokenMedianMs": 4409
+    }
+  },
+  "extraction": [
+    {
+      "paper": "facebook",
+      "status": "extracted",
+      "cached": true,
+      "paperSha256": "a806254168e3aab8ee4b2f3930cf66734fd3c09b978d9e622dc30f4521c6b828",
+      "sections": [
+        {
+          "heading": "Introduction",
+          "chars": 2791
+        },
+        {
+          "heading": "Methods",
+          "chars": 3463
+        },
+        {
+          "heading": "Results",
+          "chars": 8720
+        },
+        {
+          "heading": "Discussion",
+          "chars": 6019
+        },
+        {
+          "heading": "Concluding Comment",
+          "chars": 503
+        }
+      ]
+    }
+  ]
+}

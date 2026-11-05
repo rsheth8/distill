@@ -931,19 +931,20 @@
           "question": "What is the study design and population or data?",
           "reference": {
             "status": "agent-source-inspected-draft",
-            "answerCriterion": "Experience sampling in young adults; observational, five texts daily for two weeks. Verify enrolled versus analyzed counts in Methods.",
+            "answerCriterion": "82 people recruited in Ann Arbor; young adults with Facebook and a touch-screen smartphone. Observational experience sampling: five texts daily for 14 days. Separate recruitment count from analyzed denominators.",
             "humanVerified": false,
             "sourceUrl": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0069841",
             "version": "published 2013",
-            "section": "Abstract",
-            "extractedParagraphIndex": 0,
+            "section": "Methods",
+            "extractedParagraphIndex": 1,
             "exactPassage": {
               "startChar": 0,
-              "endChar": 1281,
-              "sha256": "064eebb83cd8adfc17bf4bc02196a274d976f627e0dfe0784f70b12e1ccf2b08",
-              "preview": "five times per day"
+              "endChar": 407,
+              "sha256": "19e8c07ec4732959970b63b9efb27c4e7e48fcda4fdc1e79663e89483ab08837",
+              "preview": "Eighty-two people"
             },
-            "locationNote": "Confirm paragraph against publisher source before scoring."
+            "locationNote": "Confirm paragraph against publisher source before scoring.",
+            "revisionNote": "Draft reference clarified from source inspection after a detected background-population/sample confusion. No acceptance threshold or quality score changed; human sign-off still pending."
           },
           "humanVerified": false
         },

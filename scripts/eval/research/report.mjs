@@ -28,7 +28,9 @@ const groups={};for(const r of records){const k=[r.model,r.expertise,r.level,r.t
 const median=a=>{a=a.filter(Number.isFinite).sort((x,y)=>x-y);return a.length?a[Math.floor(a.length/2)]:null;};
 for(const g of Object.values(groups)){g.completionMedianMs=median(g.completionMs);g.firstTokenMedianMs=median(g.firstTokenMs);delete g.completionMs;delete g.firstTokenMs;}
 const {date,provider,models,promptSha256,promptVersion,temperature,maxTokens,budgetMode,platform,architecture,server,gitRevision,hardware}=meta;
-const summary={run,generated:new Date().toISOString(),metadata:{date,provider,models,gitRevision,hardware,promptSha256,promptVersion,temperature,maxTokens,budgetMode:budgetMode||'exploratory-700; differs from production limits',platform,architecture,server},qualityScoring:'NOT SCORED: human source verification and independent review pending',total:records.length,papers:[...new Set(records.map(r=>r.paper))],groups,extraction};
+const modelVersions=(meta.installedModels||[]).filter(m=>models?.includes(m.name)).map(m=>({name:m.name,digest:m.digest,parameterSize:m.details?.parameter_size,quantization:m.details?.quantization_level}));
+const guardAuditSourceSha256=createHash('sha256').update(await fs.readFile(`${root}/extension/utils/paperHelp.js`)).digest('hex');
+const summary={guardAuditSourceSha256,run,generated:new Date().toISOString(),metadata:{date,provider,models,modelVersions,gitRevision,hardware,promptSha256,promptVersion,temperature,maxTokens,budgetMode:budgetMode||'exploratory-700; differs from production limits',platform,architecture,server},qualityScoring:'NOT SCORED: human source verification and independent review pending',total:records.length,papers:[...new Set(records.map(r=>r.paper))],groups,extraction};
 await fs.writeFile(`${out}/${run}-outputs.jsonl`,records.map(r=>JSON.stringify(r)).join('\n')+'\n');
 await fs.writeFile(`${out}/${run}-summary.json`,JSON.stringify(summary,null,2)+'\n');
 console.log(run,records.length,'outputs',Object.fromEntries(['complete','empty','truncated','failed'].map(s=>[s,records.filter(r=>r.status===s).length])));

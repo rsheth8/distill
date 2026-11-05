@@ -1,0 +1,52 @@
+[
+  {
+    "url": "http://127.0.0.1:59406/v1/chat/completions",
+    "method": "POST",
+    "hasPaper": true
+  },
+  {
+    "url": "http://127.0.0.1:59406/v1/chat/completions",
+    "method": "POST",
+    "hasPaper": true
+  },
+  {
+    "url": "http://127.0.0.1:59406/v1/chat/completions",
+    "method": "POST",
+    "hasPaper": true
+  },
+  {
+    "url": "http://127.0.0.1:59406/v1/chat/completions",
+    "method": "POST",
+    "hasPaper": true
+  },
+  {
+    "url": "http://127.0.0.1:59406/v1/chat/completions",
+    "method": "POST",
+    "hasPaper": true
+  },
+  {
+    "url": "http://127.0.0.1:59406/v1/chat/completions",
+    "method": "POST",
+    "hasPaper": true
+  },
+  {
+    "url": "http://127.0.0.1:59406/v1/chat/completions",
+    "method": "POST",
+    "hasPaper": true
+  },
+  {
+    "url": "http://127.0.0.1:59406/v1/chat/completions",
+    "method": "POST",
+    "hasPaper": true
+  },
+  {
+    "url": "http://127.0.0.1:59406/api/tags",
+    "method": "GET",
+    "hasPaper": false
+  },
+  {
+    "url": "http://127.0.0.1:59406/v1/models",
+    "method": "GET",
+    "hasPaper": false
+  }
+]

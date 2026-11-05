@@ -1,0 +1,19 @@
+{
+  "date": "2026-11-05T06:40:14.599Z",
+  "openApiResult": "opened",
+  "nativePageAttached": false,
+  "scope": "Actual sidePanel.open from user gesture; OS shortcut dispatch and screen reader not tested.",
+  "nativeTargetAttached": true,
+  "initialLayout": {
+    "width": 360,
+    "height": 711,
+    "overflow": false,
+    "title": "Distill"
+  },
+  "paper": "Attention Is All You Need",
+  "nativeState": {
+    "paper": "Attention Is All You Need",
+    "overviewStatus": "Can’t reach your local model at http://127.0.0.1:1. Is Ollama or LM Studio running?",
+    "retryVisible": true
+  }
+}

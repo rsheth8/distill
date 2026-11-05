@@ -1,0 +1,76 @@
+{
+  "date": "2026-11-05T06:20:13.895Z",
+  "freshProfile": true,
+  "relay": false,
+  "network": [
+    {
+      "url": "https://distill-api.fly.dev/v1/config",
+      "method": "GET"
+    },
+    {
+      "url": "http://localhost:11434/v1/chat/completions",
+      "method": "POST"
+    },
+    {
+      "url": "http://localhost:11434/v1/chat/completions",
+      "method": "POST"
+    },
+    {
+      "url": "http://127.0.0.1:1/v1/chat/completions",
+      "method": "POST"
+    },
+    {
+      "url": "http://localhost:1234/v1/chat/completions",
+      "method": "POST"
+    },
+    {
+      "url": "http://localhost:11434/v1/chat/completions",
+      "method": "POST"
+    }
+  ],
+  "checks": [
+    {
+      "name": "ordinary-ollama",
+      "baseUrl": "http://localhost:11434",
+      "model": "qwen2.5:7b",
+      "result": {
+        "ok": false,
+        "message": "Ollama blocked Distill. Allow it with OLLAMA_ORIGINS=chrome-extension://lpcmhacbmfdhnkcicijjmodidoeliihg, then restart Ollama (see Settings)."
+      }
+    },
+    {
+      "name": "wrong-model",
+      "baseUrl": "http://localhost:11434",
+      "model": "distill-missing-eval-model",
+      "result": {
+        "ok": false,
+        "message": "Ollama blocked Distill. Allow it with OLLAMA_ORIGINS=chrome-extension://lpcmhacbmfdhnkcicijjmodidoeliihg, then restart Ollama (see Settings)."
+      }
+    },
+    {
+      "name": "unreachable",
+      "baseUrl": "http://127.0.0.1:1",
+      "model": "qwen2.5:7b",
+      "result": {
+        "ok": false,
+        "message": "Can’t reach your local model at http://127.0.0.1:1. Is Ollama or LM Studio running?"
+      }
+    },
+    {
+      "name": "lmstudio",
+      "baseUrl": "http://localhost:1234",
+      "model": "actual-model-unknown",
+      "result": {
+        "ok": false,
+        "message": "Can’t reach your local model at http://localhost:1234. Is Ollama or LM Studio running?"
+      }
+    }
+  ],
+  "extensionOrigin": "chrome-extension://lpcmhacbmfdhnkcicijjmodidoeliihg",
+  "browserVersion": "156.0.8078.4",
+  "freshSettingsResult": "Ollama blocked Distill. Allow it with OLLAMA_ORIGINS=chrome-extension://lpcmhacbmfdhnkcicijjmodidoeliihg, then restart Ollama (see Settings).",
+  "chromeBuiltIn": {
+    "apiPresent": true,
+    "availability": "unavailable"
+  }
+}

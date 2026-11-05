@@ -1,0 +1,33 @@
+{
+  "date": "2026-11-05",
+  "sourceCommit": "4d92505",
+  "npmTest": {
+    "passed": true,
+    "tests": 275,
+    "files": 24,
+    "includes": [
+      "lint",
+      "smoke",
+      "API documentation",
+      "coverage"
+    ]
+  },
+  "package": {
+    "version": "3.0.0",
+    "sha256": "0862b511b644444a921ae8a4949e318ce9613506ac03f7cd4de150ee9057cdf8",
+    "zipIntegrity": "passed",
+    "sourceBytesMatchExceptProductionConfig": true,
+    "fileCount": 70,
+    "installedFixtureChecksPassed": 27
+  },
+  "browser": {
+    "chrome": "156.0.8078.4",
+    "playwright": "1.65.0-alpha-2026-10-30",
+    "freshTemporaryProfiles": true,
+    "nativeContainerChecked": true,
+    "osShortcutsChecked": false,
+    "realScreenReaderChecked": false
+  },
+  "quality": "NOT PASSED: observed critical failures retained; human adjudication pending",
+  "humanSessions": 0
+}

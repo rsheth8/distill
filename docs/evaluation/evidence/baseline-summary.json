@@ -1,0 +1,786 @@
+{
+  "guardAuditSourceSha256": "a9bf2dc18b48b54a4d11aa048d4449386a0d306b47d72bd6a2e6f8403d4e3474",
+  "run": "baseline",
+  "generated": "2026-11-05T06:45:52.961Z",
+  "metadata": {
+    "date": "2026-11-05T06:14:04.514Z",
+    "provider": "Ollama OpenAI-compatible API; Node direct, NOT extension origin verification",
+    "models": [
+      "qwen2.5:7b",
+      "qwen2.5-coder:1.5b-base"
+    ],
+    "modelVersions": [
+      {
+        "name": "qwen2.5:7b",
+        "digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+        "parameterSize": "7.6B",
+        "quantization": "Q4_K_M"
+      },
+      {
+        "name": "qwen2.5-coder:1.5b-base",
+        "digest": "02e0f2817a890a6de385d534465c04c5d0980abddc83615c09e79cee2c094446",
+        "parameterSize": "1.5B",
+        "quantization": "Q4_K_M"
+      }
+    ],
+    "promptSha256": "fa2e647581c3fb03068154cb445936575f7a0884c9973315970c2f9b617eef74",
+    "promptVersion": "cd163b1",
+    "temperature": 0.5,
+    "maxTokens": 700,
+    "budgetMode": "exploratory-700; differs from shipped task limits",
+    "platform": "darwin",
+    "architecture": "arm64",
+    "server": {
+      "version": "0.40.14"
+    }
+  },
+  "qualityScoring": "NOT SCORED: human source verification and independent review pending",
+  "total": 594,
+  "papers": [
+    "attention",
+    "facebook",
+    "false-findings",
+    "gan",
+    "handwashing",
+    "ligo",
+    "llama",
+    "planck",
+    "problematic",
+    "relationships",
+    "sanitiser"
+  ],
+  "groups": {
+    "qwen2.5-coder:1.5b-base / newcomer / close / analysis": {
+      "count": 11,
+      "complete": 7,
+      "empty": 2,
+      "truncated": 2,
+      "failed": 0,
+      "completionMedianMs": 581,
+      "firstTokenMedianMs": 17
+    },
+    "qwen2.5-coder:1.5b-base / newcomer / close / ask": {
+      "count": 66,
+      "complete": 11,
+      "empty": 35,
+      "truncated": 20,
+      "failed": 0,
+      "completionMedianMs": 202,
+      "firstTokenMedianMs": 21
+    },
+    "qwen2.5-coder:1.5b-base / newcomer / close / overview": {
+      "count": 11,
+      "complete": 5,
+      "empty": 1,
+      "truncated": 5,
+      "failed": 0,
+      "completionMedianMs": 143,
+      "firstTokenMedianMs": 19
+    },
+    "qwen2.5-coder:1.5b-base / newcomer / close / section_guide": {
+      "count": 11,
+      "complete": 3,
+      "empty": 0,
+      "truncated": 8,
+      "failed": 0,
+      "completionMedianMs": 3940,
+      "firstTokenMedianMs": 21
+    },
+    "qwen2.5-coder:1.5b-base / newcomer / everyday / analysis": {
+      "count": 11,
+      "complete": 5,
+      "empty": 1,
+      "truncated": 5,
+      "failed": 0,
+      "completionMedianMs": 2694,
+      "firstTokenMedianMs": 19
+    },
+    "qwen2.5-coder:1.5b-base / newcomer / everyday / ask": {
+      "count": 66,
+      "complete": 12,
+      "empty": 40,
+      "truncated": 14,
+      "failed": 0,
+      "completionMedianMs": 192,
+      "firstTokenMedianMs": 24
+    },
+    "qwen2.5-coder:1.5b-base / newcomer / everyday / overview": {
+      "count": 11,
+      "complete": 2,
+      "empty": 3,
+      "truncated": 6,
+      "failed": 0,
+      "completionMedianMs": 3837,
+      "firstTokenMedianMs": 26
+    },
+    "qwen2.5-coder:1.5b-base / newcomer / everyday / section_guide": {
+      "count": 11,
+      "complete": 0,
+      "empty": 0,
+      "truncated": 11,
+      "failed": 0,
+      "completionMedianMs": 3957,
+      "firstTokenMedianMs": 24
+    },
+    "qwen2.5-coder:1.5b-base / newcomer / simple / analysis": {
+      "count": 11,
+      "complete": 6,
+      "empty": 1,
+      "truncated": 4,
+      "failed": 0,
+      "completionMedianMs": 1961,
+      "firstTokenMedianMs": 187
+    },
+    "qwen2.5-coder:1.5b-base / newcomer / simple / ask": {
+      "count": 66,
+      "complete": 11,
+      "empty": 44,
+      "truncated": 11,
+      "failed": 0,
+      "completionMedianMs": 415,
+      "firstTokenMedianMs": 395
+    },
+    "qwen2.5-coder:1.5b-base / newcomer / simple / overview": {
+      "count": 11,
+      "complete": 7,
+      "empty": 3,
+      "truncated": 1,
+      "failed": 0,
+      "completionMedianMs": 723,
+      "firstTokenMedianMs": 534
+    },
+    "qwen2.5-coder:1.5b-base / newcomer / simple / section_guide": {
+      "count": 11,
+      "complete": 0,
+      "empty": 1,
+      "truncated": 10,
+      "failed": 0,
+      "completionMedianMs": 4434,
+      "firstTokenMedianMs": 508
+    },
+    "qwen2.5:7b / newcomer / close / analysis": {
+      "count": 11,
+      "complete": 11,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 4241,
+      "firstTokenMedianMs": 933
+    },
+    "qwen2.5:7b / newcomer / close / ask": {
+      "count": 66,
+      "complete": 66,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 2577,
+      "firstTokenMedianMs": 1534
+    },
+    "qwen2.5:7b / newcomer / close / overview": {
+      "count": 11,
+      "complete": 11,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 6643,
+      "firstTokenMedianMs": 2175
+    },
+    "qwen2.5:7b / newcomer / close / section_guide": {
+      "count": 11,
+      "complete": 10,
+      "empty": 0,
+      "truncated": 1,
+      "failed": 0,
+      "completionMedianMs": 7110,
+      "firstTokenMedianMs": 2270
+    },
+    "qwen2.5:7b / newcomer / everyday / analysis": {
+      "count": 11,
+      "complete": 11,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 3951,
+      "firstTokenMedianMs": 860
+    },
+    "qwen2.5:7b / newcomer / everyday / ask": {
+      "count": 66,
+      "complete": 66,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 2586,
+      "firstTokenMedianMs": 1549
+    },
+    "qwen2.5:7b / newcomer / everyday / overview": {
+      "count": 11,
+      "complete": 11,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 6681,
+      "firstTokenMedianMs": 2198
+    },
+    "qwen2.5:7b / newcomer / everyday / section_guide": {
+      "count": 11,
+      "complete": 11,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 6266,
+      "firstTokenMedianMs": 2315
+    },
+    "qwen2.5:7b / newcomer / simple / analysis": {
+      "count": 11,
+      "complete": 11,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 3442,
+      "firstTokenMedianMs": 830
+    },
+    "qwen2.5:7b / newcomer / simple / ask": {
+      "count": 66,
+      "complete": 66,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 2617,
+      "firstTokenMedianMs": 1528
+    },
+    "qwen2.5:7b / newcomer / simple / overview": {
+      "count": 11,
+      "complete": 11,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 6672,
+      "firstTokenMedianMs": 2265
+    },
+    "qwen2.5:7b / newcomer / simple / section_guide": {
+      "count": 11,
+      "complete": 11,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 5998,
+      "firstTokenMedianMs": 2234
+    }
+  },
+  "extraction": [
+    {
+      "paper": "attention",
+      "status": "extracted",
+      "title": "Attention Is All You Need",
+      "abstractChars": 1139,
+      "textChars": 24584,
+      "sections": [
+        {
+          "heading": "Introduction",
+          "chars": 1918
+        },
+        {
+          "heading": "Background",
+          "chars": 1816
+        },
+        {
+          "heading": "Model Architecture",
+          "chars": 9613
+        },
+        {
+          "heading": "Why Self-Attention",
+          "chars": 3248
+        },
+        {
+          "heading": "Training",
+          "chars": 2173
+        },
+        {
+          "heading": "Results",
+          "chars": 4614
+        },
+        {
+          "heading": "Conclusion",
+          "chars": 1202
+        },
+        {
+          "heading": "Attention Visualizations",
+          "chars": 0
+        }
+      ],
+      "sourceSha256": "c684a12dd9c14515dfeda9123f21787139d81bb87780562f62b3e58efe9469f4",
+      "missingExpected": []
+    },
+    {
+      "paper": "chobi7",
+      "status": "incomplete",
+      "abstractChars": 0,
+      "textChars": 0,
+      "sourceSha256": "53fa06c076d32ba27f26efea54c2ea02e67d822d312f43a61f53d90636bb292f",
+      "missingExpected": [
+        "Introduction",
+        "Methods",
+        "Results",
+        "Discussion"
+      ]
+    },
+    {
+      "paper": "facebook",
+      "status": "extracted",
+      "title": "Facebook Use Predicts Declines in Subjective Well-Being in Young Adults",
+      "abstractChars": 1281,
+      "textChars": 21496,
+      "sections": [
+        {
+          "heading": "Introduction",
+          "chars": 2791
+        },
+        {
+          "heading": "Methods",
+          "chars": 3463
+        },
+        {
+          "heading": "Results",
+          "chars": 8720
+        },
+        {
+          "heading": "Discussion",
+          "chars": 6019
+        },
+        {
+          "heading": "Concluding Comment",
+          "chars": 503
+        }
+      ],
+      "sourceSha256": "58d0f94cb99d068e0ed1877312b31267a18cfaa5a3b655a09859170a6a552247",
+      "missingExpected": []
+    },
+    {
+      "paper": "false-findings",
+      "status": "extracted",
+      "title": "Why Most Published Research Findings Are False",
+      "abstractChars": 1178,
+      "textChars": 25716,
+      "sections": [
+        {
+          "heading": "Correction",
+          "chars": 185
+        },
+        {
+          "heading": "Modeling the Framework for False Positive Findings",
+          "chars": 3509
+        },
+        {
+          "heading": "Bias",
+          "chars": 2245
+        },
+        {
+          "heading": "Testing by Several Independent Teams",
+          "chars": 1174
+        },
+        {
+          "heading": "Corollaries",
+          "chars": 9681
+        },
+        {
+          "heading": "Most Research Findings Are False for Most Research Designs and for Most Fields",
+          "chars": 1628
+        },
+        {
+          "heading": "Claimed Research Findings May Often Be Simply Accurate Measures of the Prevailing Bias",
+          "chars": 2808
+        },
+        {
+          "heading": "How Can We Improve the Situation?",
+          "chars": 4486
+        }
+      ],
+      "sourceSha256": "73d4aaaad43a57a2cfd9c44cc91e72d718fcd131fa204e09126fa0493ea097c8",
+      "missingExpected": [
+        "Conclusions"
+      ]
+    },
+    {
+      "paper": "gan",
+      "status": "extracted",
+      "title": "Generative Adversarial NetsThanks: Sherjil Ozair is visiting Université de Montréal from Indian Institute of Technology DelhiThanks: Yoshua Bengio is a CIFAR Senior Fellow.",
+      "abstractChars": 1010,
+      "textChars": 18961,
+      "sections": [
+        {
+          "heading": "Introduction",
+          "chars": 2264
+        },
+        {
+          "heading": "Related work",
+          "chars": 3191
+        },
+        {
+          "heading": "Adversarial nets",
+          "chars": 2611
+        },
+        {
+          "heading": "Theoretical Results",
+          "chars": 5604
+        },
+        {
+          "heading": "Experiments",
+          "chars": 1673
+        },
+        {
+          "heading": "Advantages and disadvantages",
+          "chars": 1533
+        },
+        {
+          "heading": "Conclusions and future work",
+          "chars": 2085
+        }
+      ],
+      "sourceSha256": "dd102a37a8877d896987f4cfdefe351a75ab4b76b9b12e5ef932a71ce5adae55",
+      "missingExpected": []
+    },
+    {
+      "paper": "handwashing",
+      "status": "extracted",
+      "title": "Impact of Intensive Handwashing Promotion on Secondary Household Influenza-Like Illness in Rural Bangladesh: Findings from a Randomized Controlled Trial",
+      "abstractChars": 2178,
+      "textChars": 36849,
+      "sections": [
+        {
+          "heading": "Introduction",
+          "chars": 3709
+        },
+        {
+          "heading": "Materials and Methods",
+          "chars": 14160
+        },
+        {
+          "heading": "Results",
+          "chars": 6690
+        },
+        {
+          "heading": "Discussion",
+          "chars": 12290
+        }
+      ],
+      "sourceSha256": "ff613bb6e0c776a765de26c05110ee36813d803d0261be91a069dc852fa27c3a",
+      "missingExpected": []
+    },
+    {
+      "paper": "ligo",
+      "status": "extracted",
+      "cached": true,
+      "paperSha256": "55b102b87b0ebe3f0953c9a0cb2f09016d994638e052fd029195dfe0586994fc",
+      "sections": [
+        {
+          "heading": "INTRODUCTION",
+          "chars": 4029
+        },
+        {
+          "heading": "OBSERVATION",
+          "chars": 3658
+        },
+        {
+          "heading": "DETECTORS",
+          "chars": 5548
+        },
+        {
+          "heading": "DETECTOR VALIDATION",
+          "chars": 1722
+        },
+        {
+          "heading": "SEARCHES",
+          "chars": 9714
+        },
+        {
+          "heading": "SOURCE DISCUSSION",
+          "chars": 4676
+        },
+        {
+          "heading": "OUTLOOK",
+          "chars": 665
+        },
+        {
+          "heading": "CONCLUSION",
+          "chars": 478
+        }
+      ]
+    },
+    {
+      "paper": "ligo",
+      "date": "2026-11-05T05:55:33.626Z",
+      "status": "extracted",
+      "productionReader": true,
+      "source": "https://arxiv.org/pdf/1602.03837v1",
+      "latencyMs": 496,
+      "errors": [],
+      "statusText": "",
+      "sections": [
+        {
+          "heading": "INTRODUCTION",
+          "chars": 4029
+        },
+        {
+          "heading": "OBSERVATION",
+          "chars": 3658
+        },
+        {
+          "heading": "DETECTORS",
+          "chars": 5548
+        },
+        {
+          "heading": "DETECTOR VALIDATION",
+          "chars": 1722
+        },
+        {
+          "heading": "SEARCHES",
+          "chars": 9714
+        },
+        {
+          "heading": "SOURCE DISCUSSION",
+          "chars": 4676
+        },
+        {
+          "heading": "OUTLOOK",
+          "chars": 665
+        },
+        {
+          "heading": "CONCLUSION",
+          "chars": 478
+        }
+      ],
+      "abstractChars": 0
+    },
+    {
+      "paper": "llama",
+      "status": "extracted",
+      "title": "LLaMA: Open and Efficient Foundation Language Models",
+      "abstractChars": 514,
+      "textChars": 51589,
+      "sections": [
+        {
+          "heading": "Introduction",
+          "chars": 3043
+        },
+        {
+          "heading": "Approach",
+          "chars": 7109
+        },
+        {
+          "heading": "Main results",
+          "chars": 8114
+        },
+        {
+          "heading": "Instruction Finetuning",
+          "chars": 1231
+        },
+        {
+          "heading": "Bias, Toxicity and Misinformation",
+          "chars": 6641
+        },
+        {
+          "heading": "Carbon footprint",
+          "chars": 1849
+        },
+        {
+          "heading": "Related work",
+          "chars": 3290
+        },
+        {
+          "heading": "Conclusion",
+          "chars": 1043
+        },
+        {
+          "heading": "Appendix A Question Answering",
+          "chars": 1030
+        },
+        {
+          "heading": "Appendix B MMLU",
+          "chars": 0
+        },
+        {
+          "heading": "Appendix C Generations from LLaMA-65B",
+          "chars": 18239
+        },
+        {
+          "heading": "Appendix D Generations from LLaMA-I",
+          "chars": 0
+        }
+      ],
+      "sourceSha256": "60b07c029488b86c7a2d0056bf68d983a8fd10a89cddff05d200c941f6df4cbe",
+      "missingExpected": []
+    },
+    {
+      "paper": "planck",
+      "status": "extracted",
+      "cached": true,
+      "paperSha256": "19fb7f506ad8784e739247e5b8eb8958a780e44e489adfe2608d245be9cc0e10",
+      "sections": [
+        {
+          "heading": "Introduction",
+          "chars": 17407
+        },
+        {
+          "heading": "Model, parameters, and methodology",
+          "chars": 28588
+        },
+        {
+          "heading": "Constraints on the parameters of the base",
+          "chars": 13536
+        },
+        {
+          "heading": "Planck combined with high-resolution CMB",
+          "chars": 39258
+        },
+        {
+          "heading": "Comparison of the Planck base ΛCDM model",
+          "chars": 52632
+        },
+        {
+          "heading": "Extensions to the base ΛCDM model",
+          "chars": 79194
+        },
+        {
+          "heading": "Discussion and conclusions",
+          "chars": 13292
+        }
+      ]
+    },
+    {
+      "paper": "planck",
+      "date": "2026-11-05T05:55:38.111Z",
+      "status": "extracted",
+      "productionReader": true,
+      "source": "https://arxiv.org/pdf/1303.5076v3",
+      "latencyMs": 4357,
+      "errors": [],
+      "statusText": "",
+      "sections": [
+        {
+          "heading": "Introduction",
+          "chars": 17407
+        },
+        {
+          "heading": "Model, parameters, and methodology",
+          "chars": 28588
+        },
+        {
+          "heading": "Constraints on the parameters of the base",
+          "chars": 13536
+        },
+        {
+          "heading": "Planck combined with high-resolution CMB",
+          "chars": 39258
+        },
+        {
+          "heading": "Comparison of the Planck base ΛCDM model",
+          "chars": 52632
+        },
+        {
+          "heading": "Extensions to the base ΛCDM model",
+          "chars": 79194
+        },
+        {
+          "heading": "Discussion and conclusions",
+          "chars": 13292
+        }
+      ],
+      "abstractChars": 565
+    },
+    {
+      "paper": "problematic",
+      "status": "extracted",
+      "title": "Understanding Perceptions of Problematic Facebook Use",
+      "abstractChars": 1320,
+      "textChars": 47027,
+      "sections": [
+        {
+          "heading": "Introduction",
+          "chars": 3620
+        },
+        {
+          "heading": "Background",
+          "chars": 12675
+        },
+        {
+          "heading": "Method",
+          "chars": 9300
+        },
+        {
+          "heading": "Results",
+          "chars": 10663
+        },
+        {
+          "heading": "Discussion and Conclusion",
+          "chars": 10769
+        }
+      ],
+      "sourceSha256": "01d1ae07c42d1341fdc4c24f21abbf5c3c1b4e3bbc8b303b42d7c5077d674498",
+      "missingExpected": [
+        "Methods"
+      ]
+    },
+    {
+      "paper": "relationships",
+      "status": "extracted",
+      "title": "Social Relationships and Mortality Risk: A Meta-analytic Review",
+      "abstractChars": 1554,
+      "textChars": 40815,
+      "sections": [
+        {
+          "heading": "Editors' Summary",
+          "chars": 5263
+        },
+        {
+          "heading": "Introduction",
+          "chars": 6076
+        },
+        {
+          "heading": "Methods",
+          "chars": 7981
+        },
+        {
+          "heading": "Results",
+          "chars": 8191
+        },
+        {
+          "heading": "Discussion",
+          "chars": 13304
+        }
+      ],
+      "sourceSha256": "b6c9c6068fe7f529f4ba075a7c6aaeaafb0dd301b59e27a21426a5cd192b8941",
+      "missingExpected": []
+    },
+    {
+      "paper": "sanitiser",
+      "status": "extracted",
+      "title": "Hand Sanitiser Provision for Reducing Illness Absences in Primary School Children: A Cluster Randomised Trial",
+      "abstractChars": 3804,
+      "textChars": 43307,
+      "sections": [
+        {
+          "heading": "Editors' Summary",
+          "chars": 5576
+        },
+        {
+          "heading": "Introduction",
+          "chars": 4471
+        },
+        {
+          "heading": "Methods",
+          "chars": 13263
+        },
+        {
+          "heading": "Results",
+          "chars": 5683
+        },
+        {
+          "heading": "Discussion",
+          "chars": 14314
+        }
+      ],
+      "sourceSha256": "b65ffc3f2a1b7ae3bd6cd81e7c78dd3264c9d4d694ad165741fd0a2dee26e7ff",
+      "missingExpected": []
+    }
+  ]
+}
