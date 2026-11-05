@@ -129,6 +129,15 @@
       $('play').textContent = 'Play'; save();
     }
     let returnAnchor = null;
+    let pendingSourceFocus = null;
+    function focusSource(offset) {
+      const r=sourceRange(offset,offset+1);
+      const target=r?.startContainer.parentElement;
+      if(!target){pendingSourceFocus=offset;return false;}
+      target.scrollIntoView({block:'center',behavior:'instant'});
+      target.setAttribute('tabindex','-1');target.focus({preventScroll:true});pendingSourceFocus=null;return true;
+    }
+    document.addEventListener('distill-pdf-rendered',()=>{if(pendingSourceFocus!==null)focusSource(pendingSourceFocus);});
     const sourceVersion = globalThis.DistillSourceReturn?.distillSourceVersion(m.text);
     function currentView() { return document.getElementById('reading') ? (document.getElementById('reading').hidden ? 'pdf' : 'reading') : 'html'; }
     function offsetForRange(range) {
@@ -198,7 +207,7 @@
         if(!page)return false;
         window.scrollTo({top:scrollY+page.getBoundingClientRect().top+saved.pdf.relativeY,behavior:'instant'});
       }
-      position=saved.playback;restoreTouched=true;save();returnAnchor=null;
+      position=saved.playback;$('progress').value=position/m.text.length*100;restoreTouched=true;save();returnAnchor=null;
       CSS?.highlights?.delete('distill-word');CSS?.highlights?.delete('distill-sentence');
       status('Returned to your reading place. Playback remains paused.');return true;
     }
@@ -211,6 +220,7 @@
         if(currentView()==='pdf' && !globalThis.distillPdfResolve?.(text))document.dispatchEvent(new CustomEvent('distill-show-reading'));
         seek(aligned.start);
         if(currentView()==='pdf')document.dispatchEvent(new CustomEvent('distill-pdf-source',{detail:{text}}));
+        focusSource(aligned.start);
         return true;
       }
     };

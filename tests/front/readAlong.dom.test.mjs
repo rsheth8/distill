@@ -47,3 +47,15 @@ it('captures visible reading location independently from playback and rejects a 
  first.textContent=first.textContent.replace('2.5','9.5');
  expect(await navigation.returnToReading()).toBe(false);
 });
+it('source navigation focuses the destination and Return focuses the original visible passage',async()=>{
+ const first=document.querySelector('p');first.getBoundingClientRect=()=>({top:-800,bottom:-700,height:100});
+ const second=document.createElement('p');second.textContent='A distinct passage later in this paper, with an important caveat.';
+ second.getBoundingClientRect=()=>({top:200,bottom:500,height:300});document.querySelector('article').append(second);
+ Element.prototype.scrollIntoView=vi.fn();await setup();
+ const nav=globalThis.distillReadingNavigation;
+ expect(await nav.jump('The next sentence has a clear conclusion.')).toBe(true);
+ expect(document.activeElement).toBe(first);
+ expect(await nav.returnToReading()).toBe(true);
+ expect(document.activeElement).toBe(second);expect(nav.playbackPosition()).toBe(0);
+ expect(document.querySelector('#distill-read-along').shadowRoot.querySelector('#progress').value).toBe(0);
+});

@@ -1,9 +1,9 @@
 // Opens Chrome's actual native side-panel container in a headed temporary profile.
 import fs from 'node:fs/promises';import os from 'node:os';import path from 'node:path';
 const {chromium}=await import(process.env.DISTILL_PLAYWRIGHT||'playwright');
-const root=path.resolve(import.meta.dirname,'../../..'),out=root+'/dist/evaluation/native';await fs.mkdir(out,{recursive:true});
+const root=path.resolve(import.meta.dirname,'../../..'),out=process.env.DISTILL_NATIVE_OUT || root+'/dist/evaluation/native';await fs.mkdir(out,{recursive:true});
 const profile=await fs.mkdtemp(os.tmpdir()+'/distill-native-');
-const ctx=await chromium.launchPersistentContext(profile,{headless:false,executablePath:process.env.DISTILL_CHROME,args:[`--disable-extensions-except=${root}/extension`,`--load-extension=${root}/extension`]});
+const ctx=await chromium.launchPersistentContext(profile,{headless:false,executablePath:process.env.DISTILL_CHROME,args:[`--disable-extensions-except=${process.env.DISTILL_EXTENSION_DIR || root+'/extension'}`,`--load-extension=${process.env.DISTILL_EXTENSION_DIR || root+'/extension'}`]});
 try{
  const sw=ctx.serviceWorkers()[0]||await ctx.waitForEvent('serviceworker');const base=sw.url().split('/').slice(0,3).join('/');
  await sw.evaluate(async()=>{while(!(await chrome.storage.local.get('distillDefaultPrefsApplied')).distillDefaultPrefsApplied)await new Promise(r=>setTimeout(r,20));await chrome.storage.local.set({aiProvider:'local',localBaseUrl:'http://127.0.0.1:1',localModel:'unavailable-test',distillSetupHintDismissed:true});});

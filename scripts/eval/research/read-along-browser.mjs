@@ -64,6 +64,18 @@ try {
     document.dispatchEvent(new CustomEvent('distill-source-position',{detail:{element:target}}));
     return {status:'matched',highlight:CSS.highlights.has('distill-word'),text:target.textContent.slice(0,100)};
    });
+   const paragraphAlignment=await pdf.evaluate(async()=>{
+    const blocks=[...document.querySelectorAll('#reading p[data-air-id]')].filter(el=>el.textContent.length>100);
+    const target=blocks.find(el=>globalThis.distillPdfResolve(el.textContent));
+    if(!target)return {status:'no-unique-paragraph-match'};
+    const result=await globalThis.distillReadingNavigation.jump(target.textContent);
+    return {status:result?'requested':'failed',page:globalThis.distillPdfResolve(target.textContent),characters:target.textContent.length};
+   });
+   if(paragraphAlignment.status==='requested'){
+    await pdf.waitForFunction(()=>CSS.highlights.has('distill-word'),null,{timeout:15000});
+    paragraphAlignment.highlight=true;
+    paragraphAlignment.returned=await pdf.evaluate(()=>globalThis.distillReadingNavigation.returnToReading());
+   }
    before=await controls.locator('#progress').getAttribute('value');
    await pdf.setViewportSize({width:900,height:850});await pdf.waitForTimeout(900);
    await pdf.getByRole('button',{name:'Reading view',exact:true}).click();assert.equal(await controls.locator('#progress').getAttribute('value'),before);
@@ -71,7 +83,7 @@ try {
    await pdf.getByRole('button',{name:'Original PDF',exact:true}).click(); await pdf.locator('.textLayer span').first().waitFor();
    assert.ok(await pdf.locator('.page').first().evaluate(el=>el.getBoundingClientRect().width > 0));
    await pdf.getByRole('button',{name:'Reading view',exact:true}).click();
-   await pdf.screenshot({path:`${out}/pdf-${i}.png`});pdfResults.push({url:pdfs[i],status:'view-position-preserved',pages:await pdf.locator('.page').count(),alignment});
+   await pdf.screenshot({path:`${out}/pdf-${i}.png`});pdfResults.push({url:pdfs[i],status:'view-position-preserved',pages:await pdf.locator('.page').count(),alignment,paragraphAlignment});
   } catch(e) {pdfResults.push({url:pdfs[i],status:'failed',error:e.message});} finally {await pdf.close();}
  }
  await fs.writeFile(`${out}/results.json`,JSON.stringify({checks,errors,voices:voices.length,speechStatus,speechActive,pdfResults,requests,audioPerception:'Not evaluated: browser speaking status and boundary events do not establish perceived sound or naturalness.'},null,2));

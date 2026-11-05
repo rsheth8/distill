@@ -7,7 +7,7 @@ const root = path.resolve(import.meta.dirname,'../../..');
 const out = path.resolve(process.env.DISTILL_QA_OUT || `${root}/dist/evaluation/direct-setup`);
 await fs.mkdir(out,{recursive:true});
 const profile = await fs.mkdtemp(path.join(os.tmpdir(),'distill-direct-'));
-const context = await chromium.launchPersistentContext(profile,{headless:true,executablePath:process.env.DISTILL_CHROME,args:[`--disable-extensions-except=${root}/extension`,`--load-extension=${root}/extension`]});
+const context = await chromium.launchPersistentContext(profile,{headless:true,executablePath:process.env.DISTILL_CHROME,args:[`--disable-extensions-except=${process.env.DISTILL_EXTENSION_DIR || root+'/extension'}`,`--load-extension=${process.env.DISTILL_EXTENSION_DIR || root+'/extension'}`]});
 const evidence = {date:new Date().toISOString(),freshProfile:true,relay:false,network:[],checks:[]};
 try {
  const worker=context.serviceWorkers()[0]||await context.waitForEvent('serviceworker');
