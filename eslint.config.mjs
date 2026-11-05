@@ -4,12 +4,12 @@ import globals from 'globals';
 const extGlobals = {
   ...globals.browser,
   chrome: 'readonly',
-  distillReadingAssistance: 'readonly', distillMayAutoRun: 'readonly'
+  distillReadingAssistance: 'readonly', distillMayAutoRun: 'readonly', distillLocalConnectionSnapshot: 'readonly', distillSameLocalConnection: 'readonly'
 };
 
 /** CI lint scope: service worker, side panel, shared utils, tests, and the smoke runner. */
 export default [
-  { files: ['extension/utils/readingAssistance.js'], languageOptions: {sourceType:'script',globals:{module:'readonly'}}, rules:{'no-unused-vars':'off'} },
+  { files: ['extension/utils/readingAssistance.js', 'extension/utils/localConnection.js'], languageOptions: {sourceType:'script',globals:{module:'readonly'}}, rules:{'no-unused-vars':'off'} },
   { ignores: ['node_modules/**', 'backend/node_modules/**'] },
   js.configs.recommended,
   {
@@ -123,7 +123,7 @@ export default [
       globals: {
         ...globals.browser,
         chrome: 'readonly',
-  distillReadingAssistance: 'readonly', distillMayAutoRun: 'readonly',
+  distillReadingAssistance: 'readonly', distillMayAutoRun: 'readonly', distillLocalConnectionSnapshot: 'readonly', distillSameLocalConnection: 'readonly',
         browser: 'readonly',
         extractArticle: 'readonly',
         distillExtractPaper: 'readonly',
@@ -173,7 +173,7 @@ export default [
       globals: {
         ...globals.browser,
         chrome: 'readonly',
-  distillReadingAssistance: 'readonly', distillMayAutoRun: 'readonly',
+  distillReadingAssistance: 'readonly', distillMayAutoRun: 'readonly', distillLocalConnectionSnapshot: 'readonly', distillSameLocalConnection: 'readonly',
         module: 'readonly'
       }
     },

@@ -112,4 +112,44 @@ describe('onboarding', () => {
     expect($('localFields').classList.contains('hidden')).toBe(false);
     expect($('apiKeyInput').classList.contains('hidden')).toBe(true);
   });
+
+  it('distinguishes testing unsaved local fields from connecting the saved model', async () => {
+    await boot(); changeProvider('local');
+    saved.localModel='qwen3:4b';
+    $('localModelInput').value='qwen2.5:7b';
+    $('validateKeyBtn').click();
+    const request=posted.at(-1);
+    expect(request.local.model).toBe('qwen2.5:7b');
+    message({type:'KEY_VALIDATION_RESULT',provider:'local',requestId:request.requestId,ok:true});
+    await later();
+    expect(saved.localModel).toBe('qwen3:4b');
+    expect($('keyStatusLine').textContent).toContain('not saved');
+    $('saveKeyBtn').click();
+    const connect=posted.at(-1);
+    expect(connect.type).toBe('VALIDATE_AI_KEY');
+    expect(saved.localModel).toBe('qwen3:4b');
+    message({type:'KEY_VALIDATION_RESULT',provider:'local',requestId:connect.requestId,ok:true});
+    await later();expect(saved.localModel).toBe('qwen2.5:7b');
+  });
+
+  it('rejects a connection result if model or address changed during the test', async () => {
+    await boot();changeProvider('local');saved.localModel='qwen3:4b';
+    $('localModelInput').value='qwen2.5:7b';$('saveKeyBtn').click();
+    const request=posted.at(-1);
+    $('localModelInput').value='not-tested';$('localModelInput').dispatchEvent(new Event('input'));
+    message({type:'KEY_VALIDATION_RESULT',provider:'local',requestId:request.requestId,ok:true});
+    await later();expect(saved.localModel).toBe('qwen3:4b');
+    expect($('keyStatusLine').textContent).not.toContain('Connected');
+    expect($('saveKeyBtn').disabled).toBe(false);
+  });
+
+  it('recovers from a lost validation reply within 35 seconds', async () => {
+    await boot();changeProvider('local');vi.useFakeTimers();
+    try {
+      $('validateKeyBtn').click();expect($('validateKeyBtn').disabled).toBe(true);
+      await vi.advanceTimersByTimeAsync(35_000);
+      expect($('validateKeyBtn').disabled).toBe(false);
+      expect($('keyStatusLine').textContent).toMatch(/retry|again/i);
+    } finally { vi.useRealTimers(); }
+  });
 });

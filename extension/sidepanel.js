@@ -59,7 +59,7 @@ let currentTabId = null;
 function connect() {
   port = chrome.runtime.connect({ name: 'sidepanel' });
   port.onMessage.addListener(handleMessage);
-  port.onDisconnect.addListener(() => { port = null; clearThinking(); setTimeout(connect, 600); });
+  port.onDisconnect.addListener(() => { port = null; clearThinking(); failValidation('Connection interrupted. Reopen the panel or retry.'); setTimeout(connect, 600); });
 }
 connect();
 
@@ -201,15 +201,35 @@ const providerKeys = { groq: '', openai: '', gemini: '', anthropic: '' };
 let pendingValidation = null; // snapshot of the provider and key being checked
 let validationSequence = 0;
 
-function validateProvider(target, key = '') {
-  const requestId = ++validationSequence;
-  pendingValidation = { target, provider: currentProvider, key, requestId };
-  onboardConnectBtn.disabled = validateKeyBtn.disabled = true;
-  port?.postMessage({
-    type: 'VALIDATE_AI_KEY', provider: currentProvider, key, requestId,
-    ...(currentProvider === 'local' ? { local: localFieldValues() } : {})
-  });
+let validationTimer = null;
+function clearValidation() {
+  clearTimeout(validationTimer);
+  validationTimer = null;
+  pendingValidation = null;
+  onboardConnectBtn.disabled = validateKeyBtn.disabled = saveKeyBtn.disabled = false;
 }
+function failValidation(message) {
+  if (!pendingValidation) return;
+  const line = pendingValidation.target === 'onboard' ? onboardStatusLine : keyStatusLine;
+  clearValidation();
+  setKeyStatus(line, 'err', message);
+}
+function validateProvider(target, key = '', intent = 'test') {
+  if (!port) { setKeyStatus(target === 'onboard' ? onboardStatusLine : keyStatusLine, 'err', 'Connection unavailable. Reopen the panel and retry.'); return; }
+  const requestId = ++validationSequence;
+  const localSnapshot = currentProvider === 'local' ? distillLocalConnectionSnapshot(localFieldValues()) : null;
+  pendingValidation = { target, provider: currentProvider, key, requestId, intent, localSnapshot };
+  onboardConnectBtn.disabled = validateKeyBtn.disabled = saveKeyBtn.disabled = true;
+  clearTimeout(validationTimer);
+  validationTimer = setTimeout(() => failValidation('No connection result arrived. Check the server and retry.'), 35_000);
+  try {
+    port.postMessage({type:'VALIDATE_AI_KEY',provider:currentProvider,key,requestId,...(localSnapshot ? {local:localSnapshot} : {})});
+  } catch { failValidation('Connection interrupted. Reopen the panel and retry.'); }
+}
+for (const field of [localModelInput, localBaseUrlInput]) field?.addEventListener('input', () => {
+  if (pendingValidation?.provider === 'local') failValidation('Connection settings changed. Test or connect again.');
+  else if (currentProvider === 'local') setKeyStatus(keyStatusLine, '', 'Settings changed; Save & connect to use them.');
+});
 
 function normProvider(p) { return Object.prototype.hasOwnProperty.call(PROVIDER_META, p) ? p : DEFAULT_PROVIDER; }
 function providerMeta(p) { return PROVIDER_META[normProvider(p)]; }
@@ -520,15 +540,8 @@ for (const name of ['read', 'ask', 'glossary']) {
 /** Persist a key for the active provider and mark it the selected provider. */
 function saveProviderKey(key, { closePanel = false } = {}) {
   if (currentProvider === 'local') {
-    const { baseUrl, model } = localFieldValues();
-    chrome.storage.local.set({ localBaseUrl: baseUrl, localModel: model, aiProvider: 'local' }, () => {
-      if (localBaseUrlInput) localBaseUrlInput.value = baseUrl;
-      if (localModelInput) localModelInput.value = model;
-      setKeyStatus(keyStatusLine, 'ok', 'Local model saved.');
-      syncSetupHintCard();
-      if (closePanel) setPanel('read');
-      showToast('Local model saved!', 'success');
-    });
+    setKeyStatus(keyStatusLine, 'pending', 'Checking the selected model before connecting…');
+    validateProvider('settings', '', 'connect');
     return;
   }
   const trimmed = String(key || '').trim();
@@ -563,8 +576,7 @@ removeKeyBtn?.addEventListener('click', () => {
 });
 
 aiProviderSelect?.addEventListener('change', () => {
-  pendingValidation = null;
-  onboardConnectBtn.disabled = validateKeyBtn.disabled = false;
+  clearValidation();
   setKeyStatus(onboardStatusLine, '', '');
   const provider = normProvider(aiProviderSelect.value);
   applyProviderUi(provider);
@@ -1378,9 +1390,24 @@ function handleMessage(msg) {
     case 'KEY_VALIDATION_RESULT': {
       const validation = pendingValidation;
       if (!validation || msg.requestId !== validation.requestId || msg.provider !== validation.provider) break;
-      pendingValidation = null;
-      onboardConnectBtn.disabled = validateKeyBtn.disabled = false;
+      if (validation.provider === 'local' && !distillSameLocalConnection(validation.localSnapshot, localFieldValues())) {
+        failValidation('Connection settings changed. Test or connect again.');
+        break;
+      }
+      clearValidation();
       const { target, provider, key } = validation;
+      if (provider === 'local') {
+        if (!msg.ok) setKeyStatus(keyStatusLine, 'err', msg.message || 'Connection failed. Check the server and model, then retry.');
+        else if (validation.intent === 'test') setKeyStatus(keyStatusLine, 'ok', 'Test passed; connection settings are not saved. Use Save & connect to apply them.');
+        else {
+          const {baseUrl,model} = validation.localSnapshot;
+          chrome.storage.local.set({localBaseUrl:baseUrl,localModel:model,aiProvider:'local'}, () => {
+            setKeyStatus(keyStatusLine, 'ok', `Connected to ${model}.`);
+            syncSetupHintCard(); setPanel('read'); showToast(`Connected to ${model}.`, 'success');
+          });
+        }
+        break;
+      }
       if (target === 'onboard') {
         if (msg.ok) {
           providerKeys[provider] = key;
