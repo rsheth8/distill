@@ -2,11 +2,10 @@
   "manifest_version": 3,
   "name": "Distill",
   "version": "2.4.0",
-  "description": "Read long articles better: progressive summaries, highlight analysis, and reading time — powered by your own free AI key.",
+  "description": "Understand research papers without the jargon: plain-language summaries, explanations and check-ins as you read, in HTML or PDF.",
   "permissions": [
     "storage",
     "activeTab",
-    "scripting",
     "sidePanel",
     "tabs",
     "alarms"
@@ -33,7 +32,7 @@
         "https://meet.google.com/*",
         "https://chat.google.com/*"
       ],
-      "js": ["utils/articleExtractor.js", "content.js"],
+      "js": ["utils/articleExtractor.js", "utils/paperExtractor.js", "utils/termMarks.js", "content.js"],
       "run_at": "document_idle"
     }
   ],
@@ -69,13 +68,6 @@
         "mac": "Alt+Shift+F"
       },
       "description": "Toggle focus mode on the page"
-    },
-    "explain_page": {
-      "suggested_key": {
-        "default": "Alt+Shift+E",
-        "mac": "Alt+Shift+E"
-      },
-      "description": "Explain this page"
     },
     "analyze_selection": {
       "suggested_key": {

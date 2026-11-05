@@ -1,7 +1,8 @@
 (function () {
   'use strict';
 
-  if (window.location.protocol === 'chrome-extension:') return;
+  // Extension pages are skipped, except Distill's PDF reader, which hands over its paper.
+  if (window.location.protocol === 'chrome-extension:' && !globalThis.distillReaderPaper) return;
   if (window.__aiReaderActive) return;
   window.__aiReaderActive = true;
 
@@ -225,6 +226,56 @@
     return (text || '').trim().split(/\s+/).filter(Boolean).length;
   }
 
+  /** Paper section headings (h2) in page order; filled when a paper is detected. */
+  let sectionHeads = [];
+
+  /** Heading of the last section that starts before el, e.g. "Methods". */
+  function sectionOf(el) {
+    let heading = null;
+    for (const h of sectionHeads) {
+      if (!el || !(h.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING)) break;
+      heading = h;
+    }
+    return heading ? distillCleanHeading(distillNodeText(heading)).slice(0, 120) : '';
+  }
+
+  /** The tracked paragraphs between this section's h2 and the next one. */
+  function sectionParagraphs(heading) {
+    const want = String(heading || '').trim().toLowerCase();
+    const i = sectionHeads.findIndex(h => distillCleanHeading(distillNodeText(h)).slice(0, 120).toLowerCase() === want);
+    if (i === -1) return [];
+    const start = sectionHeads[i];
+    const end = sectionHeads[i + 1];
+    return paragraphs.filter(p => (start.compareDocumentPosition(p) & Node.DOCUMENT_POSITION_FOLLOWING) &&
+      (!end || (end.compareDocumentPosition(p) & Node.DOCUMENT_POSITION_PRECEDING)));
+  }
+
+  let termCard = null;
+  function showTermCard(span) {
+    if (!termCard) {
+      termCard = document.createElement('div');
+      termCard.className = 'distill-term-card';
+      termCard.setAttribute('role', 'tooltip');
+      document.body.append(termCard);
+    }
+    termCard.textContent = `${span.dataset.term}: ${span.dataset.definition}`;
+    const r = span.getBoundingClientRect();
+    termCard.style.left = `${Math.max(8, Math.min(r.left, innerWidth - 300)) + scrollX}px`;
+    termCard.style.top = `${r.bottom + scrollY + 6}px`;
+    termCard.hidden = false;
+  }
+  const onTermPointer = e => {
+    const span = e.target.closest?.('.distill-term');
+    if (span) showTermCard(span);
+    else if (termCard) termCard.hidden = true;
+  };
+  document.addEventListener('mouseover', onTermPointer);
+  document.addEventListener('focusin', onTermPointer);
+
+  function sendActiveParagraph(idx) {
+    safeSend({ type: 'ACTIVE_PARAGRAPH', text: getParagraphUnitText(idx), section: sectionOf(paragraphs[idx]) });
+  }
+
   function getParagraphUnitText(startIdx) {
     if (startIdx < 0 || startIdx >= paragraphs.length) return '';
     const first = paragraphs[startIdx]?.innerText?.trim() || '';
@@ -310,7 +361,7 @@
       next.classList.remove('air-read', 'air-dim');
       next.classList.add('air-active');
       if (focusMode) setFocusMode(true);
-      safeSend({ type: 'ACTIVE_PARAGRAPH', text: getParagraphUnitText(wordParaIdx) });
+      sendActiveParagraph(wordParaIdx);
       wordParaSpans = wrapWords(next);
       wordIdx       = 0;
       if (!wordParaSpans.length) { advanceWord(); return; }
@@ -443,9 +494,6 @@
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     switch (msg.type) {
-      case 'GET_PAGE_TEXT':
-        sendResponse({ text: document.body.innerText.trim().slice(0, 12000) });
-        break;
       case 'ACCENT_CHANGED':
         applyArticleAccent(msg.accentId);
         break;
@@ -505,6 +553,22 @@
               }
             } catch {}
           }
+        }
+        break;
+      }
+      case 'SHOW_TERMS':
+        distillMarkTerms(sectionParagraphs(msg.heading), Array.isArray(msg.terms) ? msg.terms : []);
+        break;
+      case 'CLEAR_TERMS':
+        distillUnmarkTerms(document.body);
+        if (termCard) termCard.hidden = true;
+        break;
+      case 'SCROLL_TO_TERM': {
+        const want = String(msg.term || '').toLowerCase();
+        const span = [...document.querySelectorAll('.distill-term')].find(s => s.dataset.term.toLowerCase() === want);
+        if (span) {
+          span.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          span.focus({ preventScroll: true });
         }
         break;
       }
@@ -689,6 +753,11 @@
         100% { transform: translateY(0) scale(1); opacity: 1; }
       }
       #air-anno-popup { display: none !important; }
+      .distill-term { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
+      .distill-term:focus { outline: 2px solid var(--air-a95); outline-offset: 1px; }
+      .distill-term-card { position: absolute; z-index: 2147483647; max-width: 280px; padding: 8px 10px;
+        background: #fff; color: #222; border: 1px solid rgba(0,0,0,.15); border-radius: 8px;
+        box-shadow: 0 4px 16px rgba(0,0,0,.15); font: 13px/1.4 system-ui, sans-serif; }
     `;
     document.head.appendChild(s);
 
@@ -739,63 +808,41 @@
     }
   })();
 
-  function isLikelyResultPage(urlString) {
-    try {
-      const u = new URL(urlString);
-      const host = (u.hostname || '').toLowerCase();
-      const path = (u.pathname || '').toLowerCase();
-      const q = (u.searchParams.get('q') || '').trim();
-
-      // Google Search / News / Discover-ish result pages are usually not "articles"
-      // and should be handled via "Explain this page" instead of NO_ARTICLE dead-end.
-      const isGoogle =
-        host === 'www.google.com' ||
-        host.endsWith('.google.com') ||
-        host === 'news.google.com';
-
-      if (!isGoogle) return false;
-
-      // Common Google Search SERPs.
-      if (path === '/search' || path.startsWith('/search/')) return true;
-      if (path === '/news' || path.startsWith('/news/')) return true;
-
-      // Google News result/topic pages.
-      if (host === 'news.google.com') {
-        if (path.startsWith('/search')) return true;
-        if (path.startsWith('/topics')) return true;
-        if (path.startsWith('/topstories')) return true;
-      }
-
-      // Fallback heuristic: "q=" present on a google host.
-      if (q && q.length >= 2) return true;
-      return false;
-    } catch {
-      return false;
-    }
-  }
-
   try {
     chrome.runtime.sendMessage({ type: 'TAB_NAVIGATING', pageUrl: pageUrlNorm }, () => { void chrome.runtime.lastError; });
   } catch (_) {}
 
-  const articleEl = extractArticle();
-  if (!articleEl || articleEl.innerText.trim().length < 500) {
-    if (isLikelyResultPage(pageUrlNorm)) {
-      safeSend({ type: 'NO_ARTICLE_SERP', pageUrl: pageUrlNorm });
-    } else {
-      safeSend({ type: 'NO_ARTICLE', pageUrl: pageUrlNorm });
-    }
+  let paper = null;
+  try { paper = globalThis.distillReaderPaper || distillExtractPaper(document, location.href); } catch (_) {}
+  // The article finder narrows tracking to the paper body; body is the fallback.
+  const articleEl = paper ? (extractArticle() || document.body) : null;
+  const readerUrl = pdf => `${chrome.runtime.getURL('reader.html')}?src=${encodeURIComponent(pdf)}`;
+  if (document.contentType === 'application/pdf') {
+    // Chrome's PDF viewer can't be read from here; the panel offers Distill's own reader instead.
+    safeSend({ type: 'PDF_DETECTED', pageUrl: location.href, readerUrl: readerUrl(location.href) });
+  } else if (!paper) {
+    safeSend({ type: 'NO_ARTICLE', pageUrl: pageUrlNorm });
   } else {
-    const articleText = articleEl.innerText.trim();
     paragraphs = Array.from(
       articleEl.querySelectorAll('h1, h2, h3, h4, p, li')
     ).filter(el => el.innerText.trim().length >= MIN_PARA_LEN);
+    sectionHeads = Array.from(articleEl.querySelectorAll('h2'));
 
     const titleEl = articleEl.querySelector('h1') || document.querySelector('h1');
-    const title   = (titleEl?.innerText.trim() || document.title || '').slice(0, 140);
-    const totalWords = articleText.split(/\s+/).filter(Boolean).length;
+    const title   = (paper.title || titleEl?.innerText.trim() || document.title || '').slice(0, 140);
+    const totalWords = distillPaperText(paper).split(/\s+/).filter(Boolean).length;
 
-    safeSend({ type: 'ARTICLE_DETECTED', articleText, paragraphCount: paragraphs.length, title, totalWords, pageUrl: pageUrlNorm });
+    safeSend({
+      type: 'PAPER_DETECTED',
+      paper,
+      // Abstract-only page (e.g. arXiv /abs/): point at the HTML version, else the PDF in Distill's reader.
+      fullTextUrl: paper.sections.length ? ''
+        : document.querySelector('#latexml-download-link')?.href || (paper.pdfUrl ? readerUrl(paper.pdfUrl) : ''),
+      paragraphCount: paragraphs.length,
+      title,
+      totalWords,
+      pageUrl: pageUrlNorm
+    });
     injectStyles();
     paragraphs.forEach((el, i) => { el.dataset.airId = `p-${i}`; });
 
@@ -804,7 +851,7 @@
       if (paragraphs.length > 0) {
         activeParagraphEl = paragraphs[0];
         paragraphs[0].classList.add('air-active');
-        safeSend({ type: 'ACTIVE_PARAGRAPH', text: getParagraphUnitText(0) });
+        sendActiveParagraph(0);
       }
       initialDone = true;
     }, 300);
@@ -856,7 +903,7 @@
         best.classList.remove('air-read', 'air-dim');
         best.classList.add('air-active');
         const idx = paragraphs.indexOf(best);
-        safeSend({ type: 'ACTIVE_PARAGRAPH', text: getParagraphUnitText(idx) });
+        sendActiveParagraph(idx);
       }
     }
   }

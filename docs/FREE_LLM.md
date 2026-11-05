@@ -23,7 +23,7 @@ sequenceDiagram
   Note over User,LLM: Key never sent to distill-api unless user enables hosted backend
   User->>Ext: Paste API key in Settings
   Ext->>Ext: Store in chrome.storage.local
-  User->>Ext: Read article / summary / explain
+  User->>Ext: Read paper / summary / explain
   Ext->>LLM: HTTPS + user's API key
   LLM-->>Ext: Streamed tokens (user's quota)
 ```

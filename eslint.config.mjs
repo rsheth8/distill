@@ -18,10 +18,11 @@ export default [
       globals: {
         ...extGlobals,
         distillPageUrlKey: 'readonly',
+        distillPaperText: 'readonly',
+        distillSectionKind: 'readonly',
+        distillBuildPrompt: 'readonly',
         distillResolveBackendBaseUrl: 'readonly',
         distillFormatExportCaptured: 'readonly',
-        distillBuildExplainExportMarkdown: 'readonly',
-        distillBuildExplainExportPlain: 'readonly',
         distillBuildAnalysisExportMarkdown: 'readonly',
         distillBuildAnalysisExportPlain: 'readonly',
         distillBuildPinnedAnalysisMarkdown: 'readonly',
@@ -46,13 +47,15 @@ export default [
         distillPagePayloadToState: 'readonly',
         distillHistoryPayloadToState: 'readonly',
         distillSelectPrunedKeys: 'readonly',
+        distillPaperHelpFields: 'readonly',
         DISTILL_INCLUDE_BACKEND: 'readonly',
         distillApplyAccentCssVars: 'readonly',
         distillNormalizeSelection: 'readonly',
-        distillStableStringHash: 'readonly',
-        distillExplainContentHash: 'readonly',
         distillFindCachedHighlight: 'readonly',
-        importScripts: 'readonly'
+        importScripts: 'readonly',
+        queuePaperHelp: 'readonly', runOverview: 'readonly', publishPaperHelp: 'readonly', clearPaperHelp: 'readonly',
+        runSectionGuide: 'readonly', runAsk: 'readonly', onSectionChanged: 'readonly', resendTerms: 'readonly', onReadingLevelChanged: 'readonly',
+        handlePaperMessage: 'readonly', resetPaperView: 'readonly', renderAll: 'readonly', distillTrustFacts: 'readonly', distillParseLabelled: 'readonly'
       }
     },
     rules: {
@@ -60,6 +63,51 @@ export default [
       'no-unused-vars': 'off',
       'no-useless-escape': 'error',
       'no-duplicate-case': 'error'
+    }
+  },
+  {
+    files: ['extension/paperFeatures.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script',
+      globals: {
+        ...extGlobals,
+        tabState: 'readonly', toPanel: 'readonly', streamTask: 'readonly', schedulePersistTab: 'readonly',
+        readingLevel: 'readonly', distillPaperExcerpt: 'readonly', distillTrustFacts: 'readonly',
+        distillParseLabelled: 'readonly', distillParseTerms: 'readonly', distillFindSection: 'readonly',
+        distillMergeGlossary: 'readonly', distillPickSections: 'readonly'
+      }
+    },
+    rules: { 'no-unused-vars': 'off' }
+  },
+  {
+    files: ['extension/sidepanelPaper.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script',
+      globals: {
+        ...extGlobals,
+        $: 'readonly', port: 'readonly', currentTabId: 'readonly', show: 'readonly', hide: 'readonly',
+        setStatus: 'readonly', setPanel: 'readonly',
+        distillParseLabelled: 'readonly', distillParseTerms: 'readonly'
+      }
+    },
+    rules: { 'no-unused-vars': 'off' }
+  },
+  {
+    files: ['extension/reader.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: { ...globals.browser, chrome: 'readonly', distillPdfPaper: 'readonly', distillPaperText: 'readonly' }
+    }
+  },
+  {
+    files: ['extension/utils/pdfPaper.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script',
+      globals: { ...globals.browser, module: 'writable', distillSectionKind: 'readonly', DISTILL_SKIP_SECTION_RE: 'readonly', DISTILL_PREPRINT_HOST_RE: 'readonly' }
     }
   },
   {
@@ -71,7 +119,13 @@ export default [
         ...globals.browser,
         chrome: 'readonly',
         browser: 'readonly',
-        extractArticle: 'readonly'
+        extractArticle: 'readonly',
+        distillExtractPaper: 'readonly',
+        distillPaperText: 'readonly',
+        distillCleanHeading: 'readonly',
+        distillNodeText: 'readonly',
+        distillMarkTerms: 'readonly',
+        distillUnmarkTerms: 'readonly'
       }
     },
     rules: {
@@ -120,7 +174,7 @@ export default [
     }
   },
   {
-    files: ['extension/utils/exportClip.js', 'extension/utils/accentColor.js', 'extension/utils/articleExtractor.js', 'extension/utils/geminiAdapter.js', 'extension/utils/openaiCompatAdapter.js', 'extension/utils/pageStore.js', 'extension/utils/buildConfig.js'],
+    files: ['extension/utils/exportClip.js', 'extension/utils/accentColor.js', 'extension/utils/articleExtractor.js', 'extension/utils/paperExtractor.js', 'extension/utils/prompts.js', 'extension/utils/paperHelp.js', 'extension/utils/geminiAdapter.js', 'extension/utils/openaiCompatAdapter.js', 'extension/utils/pageStore.js', 'extension/utils/buildConfig.js', 'extension/utils/termMarks.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',
@@ -148,6 +202,7 @@ export default [
     files: [
       'scripts/smoke.mjs',
       'scripts/check-api-doc.mjs',
+      'scripts/pack-extension.mjs',
       'tests/unit/**/*.test.mjs',
       'tests/backend/**/*.test.mjs',
       'vitest.config.mjs',
@@ -160,8 +215,7 @@ export default [
         ...globals.node,
         ...globals.vitest,
         distillNormalizeSelection: 'readonly',
-        distillFindCachedHighlight: 'readonly',
-        distillExplainContentHash: 'readonly'
+        distillFindCachedHighlight: 'readonly'
       }
     },
     rules: {

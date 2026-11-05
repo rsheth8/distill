@@ -1,6 +1,6 @@
 'use strict';
 
-importScripts('utils/buildConfig.js', 'utils/pageUrlKey.js', 'utils/backendEnv.js', 'utils/aiResultCache.js', 'utils/geminiAdapter.js', 'utils/openaiCompatAdapter.js', 'utils/pageStore.js');
+importScripts('utils/buildConfig.js', 'utils/pageUrlKey.js', 'utils/backendEnv.js', 'utils/aiResultCache.js', 'utils/geminiAdapter.js', 'utils/openaiCompatAdapter.js', 'utils/pageStore.js', 'utils/paperExtractor.js', 'utils/prompts.js', 'utils/paperHelp.js', 'paperFeatures.js');
 
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
 
@@ -108,10 +108,6 @@ chrome.commands.onCommand.addListener(command => {
       await openSidePanelForTab(tabId);
       await ensureTabHydrated(tabId);
 
-      if (command === 'explain_page') {
-        explainPage(tabId);
-        return;
-      }
       if (command === 'analyze_selection') {
         analyzeSelection(tabId);
         return;
@@ -218,7 +214,6 @@ const DEFAULT_AI_MODE = 'balanced';
 const MAX_READ_SO_FAR_CHARS = 12000;
 const MAX_CONTEXT_CHARS = 3200;
 const MAX_SELECTION_CHARS = 900;
-const MAX_PAGE_EXPLAIN_CHARS = 7000;
 // Full article text is only used for lightweight UI/heuristics; keep it bounded so
 // snapshots + memory stay stable on enormous pages.
 const MAX_ARTICLE_TEXT_CHARS = 240_000;
@@ -235,8 +230,10 @@ const AI_TUNING = {
       quiz_question: 90,
       quiz_feedback: 180,
       quiz_skipped_review: 170,
-      explain_page: 180,
-      analysis: 260
+      analysis: 260,
+      overview: 420,
+      section_guide: 380,
+      ask: 320
     }
   },
   'ultra-lean': {
@@ -246,8 +243,10 @@ const AI_TUNING = {
       quiz_question: 70,
       quiz_feedback: 130,
       quiz_skipped_review: 120,
-      explain_page: 130,
-      analysis: 180
+      analysis: 180,
+      overview: 300,
+      section_guide: 260,
+      ask: 220
     }
   }
 };
@@ -291,6 +290,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     void ensureBackendToken();
   }
   if (changes[USE_BACKEND_PROXY_KEY]?.newValue === true) void ensureBackendToken();
+  if (changes.readingLevel) onReadingLevelChanged();
 });
 
 function summaryCadenceForMode() {
@@ -406,8 +406,13 @@ async function clearAllSavedHistory() {
   return hashes.size;
 }
 
+// ponytail: in memory only, so a service-worker restart forgets PDF tabs until they reload.
+const pdfTabs = new Map(); // tabId → reader.html URL for a PDF open in Chrome's viewer
+
 function clearTab(tabId) {
   tabState.delete(tabId);
+  clearPaperHelp(tabId);
+  pdfTabs.delete(tabId);
   quizNextAt.delete(tabId);
   const t = persistTimers.get(tabId);
   if (t) clearTimeout(t);
@@ -440,6 +445,8 @@ function tabSnapshotPayload(tabId) {
     pageUrl: s.pageUrl || '',
     quizNextAt: quizNextAt.get(tabId) ?? QUIZ_EVERY,
     articleText: s.articleText,
+    paper: s.paper || null,
+    fullTextUrl: s.fullTextUrl || '',
     totalParagraphs: s.totalParagraphs,
     totalWords: s.totalWords,
     wordsRead: s.wordsRead,
@@ -456,7 +463,7 @@ function tabSnapshotPayload(tabId) {
     lastSummary: s.lastSummary,
     highlightHistory: s.highlightHistory || [],
     quiz: s.quiz || defaultQuizState(),
-    explainCache: s.explainCache || null
+    ...distillPaperHelpFields(s)
   };
 }
 
@@ -489,6 +496,8 @@ function snapshotToState(snap) {
   const quiz = snap.quiz || defaultQuizState();
   return {
     articleText: snap.articleText,
+    paper: snap.paper || null,
+    fullTextUrl: snap.fullTextUrl || '',
     totalParagraphs: snap.totalParagraphs,
     totalWords: snap.totalWords,
     wordsRead: snap.wordsRead,
@@ -512,7 +521,8 @@ function snapshotToState(snap) {
       answer: quiz.answer || '',
       feedback: quiz.feedback || '',
       history: Array.isArray(quiz.history) ? quiz.history : []
-    }
+    },
+    ...distillPaperHelpFields(snap)
   };
 }
 
@@ -535,6 +545,7 @@ function tailReadUnits(s, count = 3, maxChars = MAX_CONTEXT_CHARS) {
 }
 
 function firstParagraph(s) {
+  if (s?.paper?.abstract) return s.paper.abstract;
   if (!s?.articleText) return '';
   const chunks = s.articleText.split(/\n\s*\n/).map(t => t.trim()).filter(Boolean);
   return chunks[0] || '';
@@ -691,6 +702,11 @@ function getAiMode() {
   });
 }
 
+async function readingLevel() {
+  const { readingLevel: level } = await chrome.storage.local.get('readingLevel');
+  return ['simple', 'everyday', 'close'].includes(level) ? level : 'everyday';
+}
+
 function maxTokensForTask(task, mode) {
   const resolvedMode = mode === 'ultra-lean' ? 'ultra-lean' : DEFAULT_AI_MODE;
   return AI_TUNING[resolvedMode].taskMaxTokens[task] || 128;
@@ -804,6 +820,7 @@ const lastActiveParagraphByTab = new Map();
 
 chrome.runtime.onConnect.addListener(port => {
   if (port.name !== 'sidepanel') return;
+  if (!port.sender?.url?.startsWith(chrome.runtime.getURL('sidepanel.html'))) return; // only our own panel page
   sidePanelPort = port;
 
   port.onMessage.addListener(msg => {
@@ -812,6 +829,7 @@ chrome.runtime.onConnect.addListener(port => {
         void (async () => {
           await ensureTabHydratedFromPageState(msg.tabId);
           await restoreState(msg.tabId);
+          void runOverview(msg.tabId); // returns early when the overview is already at the current reading level
           await publishSitePrefs(msg.tabId);
           toPanel({ type: 'FOCUS_SYNC', tabId: msg.tabId, on: !!focusModeByTab.get(msg.tabId) });
         })();
@@ -957,16 +975,31 @@ chrome.runtime.onConnect.addListener(port => {
           toPanel({ type: 'HIGHLIGHT_NOTE_SAVED', tabId: msg.tabId, highlightId: id });
         })();
         break;
+      case 'RETRY_OVERVIEW':
+        void (async () => {
+          await ensureTabHydrated(msg.tabId);
+          void runOverview(msg.tabId);
+        })();
+        break;
+      case 'GUIDE_SECTION':
+        void (async () => {
+          await ensureTabHydrated(msg.tabId);
+          void runSectionGuide(msg.tabId, String(msg.heading || '').slice(0, 120));
+        })();
+        break;
+      case 'ASK_PAPER':
+        void (async () => {
+          await ensureTabHydrated(msg.tabId);
+          void runAsk(msg.tabId, msg.question);
+        })();
+        break;
+      case 'SCROLL_TO_TERM':
+        chrome.tabs.sendMessage(msg.tabId, { type: 'SCROLL_TO_TERM', term: String(msg.term || '') }).catch(() => {});
+        break;
       case 'ANALYZE_SELECTION':
         void (async () => {
           await ensureTabHydrated(msg.tabId);
           analyzeSelection(msg.tabId, { force: !!msg.force });
-        })();
-        break;
-      case 'EXPLAIN_PAGE':
-        void (async () => {
-          await ensureTabHydrated(msg.tabId);
-          explainPage(msg.tabId, { force: !!msg.force });
         })();
         break;
       case 'REQUEST_NOW_TIP':
@@ -1072,7 +1105,11 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
     await ensureTabHydrated(tabId);
 
     switch (msg.type) {
-      case 'ARTICLE_DETECTED': {
+      case 'PAPER_DETECTED': {
+        const paper = msg.paper || null;
+        // Until Part 3 reads the paper directly, older features read its text as articleText.
+        msg.articleText = paper ? distillPaperText(paper) : '';
+        const fullTextUrl = typeof msg.fullTextUrl === 'string' ? msg.fullTextUrl : '';
         const pageUrl = distillPageUrlKey(msg.pageUrl || '');
         const articleText = clampText(msg.articleText || '', MAX_ARTICLE_TEXT_CHARS);
 
@@ -1085,12 +1122,15 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
           (Array.isArray(existing.readUnits) && existing.readUnits.length > 0) ||
           (Array.isArray(existing.readParagraphs) && existing.readParagraphs.length > 0) ||
           (Array.isArray(existing.highlightHistory) && existing.highlightHistory.length > 0) ||
-          (existing.quiz && existing.quiz.status !== 'idle')
+          (existing.quiz && existing.quiz.status !== 'idle') ||
+          !!existing.overview || (Array.isArray(existing.askThread) && existing.askThread.length > 0)
         );
 
         if (hasSavedProgress) {
           // Same article with saved progress → refresh live fields, keep progress, republish.
           existing.articleText = articleText;
+          existing.paper = paper;
+          existing.fullTextUrl = fullTextUrl;
           existing.totalParagraphs = msg.paragraphCount || existing.totalParagraphs || 0;
           existing.totalWords = msg.totalWords || existing.totalWords || 0;
           if (msg.title) existing.title = msg.title;
@@ -1099,6 +1139,8 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
           persistTabSnapshot(tabId);
           persistHistorySnapshot(tabId);
           await restoreState(tabId); // republishes ARTICLE_DETECTED + progress + summary + quiz + highlights
+          void runOverview(tabId);
+          void resendTerms(tabId);
           void publishResume(tabId);
           void publishSitePrefs(tabId);
           break;
@@ -1106,8 +1148,11 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
 
         // Fresh article (new page or no saved progress) → reset.
         restoredFromStorageTabs.delete(tabId);
+        clearPaperHelp(tabId); // stop a stream still running for the previous paper
         tabState.set(tabId, {
           articleText,
+          paper,
+          fullTextUrl,
           totalParagraphs:  msg.paragraphCount,
           totalWords:       msg.totalWords || 0,
           wordsRead:        0,
@@ -1125,6 +1170,7 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
           lastSummary:      '',
           highlightHistory: [],
           pageUrl,
+          overview: null, guides: {}, glossary: [], askThread: [],
           quiz: defaultQuizState()
         });
         summaryCadenceState.set(tabId, { lastSummaryAt: 0 });
@@ -1134,9 +1180,12 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
           paragraphCount: msg.paragraphCount,
           title: msg.title || '',
           pageUrl,
+          fullTextUrl,
           tabId,
           paragraphsUntilNextQuiz: paragraphsUntilQuiz(tabId)
         });
+        publishPaperHelp(tabId);
+        void runOverview(tabId);
         persistTabSnapshot(tabId);
         persistHistorySnapshot(tabId);
         void publishResume(tabId);
@@ -1144,19 +1193,25 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
         break;
       }
 
+      case 'PDF_DETECTED':
+        clearTab(tabId);
+        pdfTabs.set(tabId, msg.readerUrl);
+        toPanel({ type: 'PDF_DETECTED', tabId, readerUrl: msg.readerUrl });
+        break;
+
       case 'NO_ARTICLE':
         clearTab(tabId);
         toPanel({ type: 'NO_ARTICLE', tabId });
         break;
 
-      case 'NO_ARTICLE_SERP':
-        clearTab(tabId);
-        toPanel({ type: 'NO_ARTICLE_SERP', tabId });
-        break;
-
       case 'ACTIVE_PARAGRAPH': {
         const para = (msg.text || '').trim();
         if (para) lastActiveParagraphByTab.set(tabId, para);
+        const st = tabState.get(tabId);
+        if (st && msg.section && st.section?.heading !== msg.section) {
+          st.section = { heading: msg.section, kind: distillSectionKind(msg.section) };
+          onSectionChanged(tabId, msg.section);
+        }
         scheduleMaybeAutoNow(tabId, para);
         void schedulePauseToExplain(tabId, para);
         break;
@@ -1394,17 +1449,10 @@ async function streamNowReading(tabId, paragraphText, opts = {}) {
       noAuthMessage: 'No API key set — click ⚙ to add your Anthropic API key.',
       context: {
         title: s.title || '',
-        recent: recentContext || '(start of article)'
+        recent: recentContext || '',
+        section: s.section
       },
       input: { paragraph: clampedParagraph },
-      systemPrompt: 'You are a reading companion. Give one crisp sentence that helps the reader keep momentum.',
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: `Recent context:\n\n${recentContext || '(start of article)'}` },
-          { type: 'text', text: `Current paragraph:\n\n"${clampedParagraph}"\n\nIn ONE plain sentence (max 22 words), say what this means and why it matters.` }
-        ]
-      }],
       onChunk: chunk => {
         nowText += chunk;
         toPanel({ type: 'NOW_CHUNK', chunk, tabId });
@@ -1479,25 +1527,11 @@ async function updateSummary(tabId) {
         priorGist: priorGist || '',
         recent: recent || '',
         fresh: freshText || '',
+        prevSummary: s.lastSummary || '',
+        section: s.section,
         readCount
       },
       input: { readSoFar: readText, freshRead: freshText },
-      systemPrompt: 'You are a reading companion. Summarize only what the reader has read so far — never hint at what comes next.',
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: `Article title: ${s.title || '(untitled)'}` },
-          { type: 'text', text: `Opening paragraph:\n\n${opener || '(not available)'}` },
-          !isFirstSummary ? { type: 'text', text: `Previous summary:\n\n${s.lastSummary}` } : null,
-          { type: 'text', text: `Most recent read context:\n\n${recent || '(none yet)'}` },
-          isFirstSummary
-            ? { type: 'text', text: `Read so far (${readCount} paragraph(s)):\n\n${readText}` }
-            : { type: 'text', text: `Newly read section since last update:\n\n${freshText || '(no significant change)'}` },
-          isFirstSummary
-            ? { type: 'text', text: 'Write only what was read. Format exactly: one line "The gist: ..." plus up to 3 short bullets. No headings. No markdown.' }
-            : { type: 'text', text: 'Continue the summary with 1-3 NEW bullets for the newly read section. Keep previous details intact, avoid repeated points, and do not add headings.' }
-        ].filter(Boolean)
-      }],
       onChunk: chunk => { summary += chunk; toPanel({ type: 'SUMMARY_CHUNK', chunk, tabId }); },
       onDone:  ()    => {
         const merged = isFirstSummary
@@ -1549,16 +1583,8 @@ async function generateQuestion(tabId) {
       task: 'quiz_question',
       s,
       noAuthMessage: 'No API key set — click ⚙ to add your Anthropic API key.',
-      context: { title: s.title || '', recent: recentText },
+      context: { title: s.title || '', recent: recentText, section: s.section },
       input: {},
-      systemPrompt: 'You generate single, focused comprehension questions to test reading understanding.',
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: `The reader just finished:\n\n${recentText}` },
-          { type: 'text', text: 'Ask ONE short, specific comprehension question about this section only. Output only the question.' }
-        ]
-      }],
       onChunk: chunk => { question += chunk; toPanel({ type: 'QUIZ_CHUNK', chunk, tabId }); },
       onDone:  ()    => {
         if (s) {
@@ -1620,14 +1646,6 @@ async function evaluateAnswer(tabId, question, answer) {
       noAuthMessage: 'No API key set — click ⚙ to add your Anthropic API key.',
       context: { title: s.title || '', recent },
       input: { question, answer: safeAnswer },
-      systemPrompt: 'You give brief, encouraging feedback on reading comprehension answers. Be warm and specific.',
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: `Recent section:\n\n${recent}` },
-          { type: 'text', text: `Question: ${question}\nReader answer: "${safeAnswer}"\n\nGive 2-3 supportive sentences: correctness + what was right/missed.` }
-        ]
-      }],
       onChunk: chunk => {
         feedbackText += chunk;
         if (s?.quiz) s.quiz.feedback = feedbackText;
@@ -1686,14 +1704,6 @@ async function generateSkippedReview(tabId, question) {
       noAuthMessage: '',
       context: { title: s.title || '', recent: tailReadUnits(s, 3, MAX_CONTEXT_CHARS) },
       input: { question, answer: 'Skipped' },
-      systemPrompt: 'You provide concise reading-comprehension coaching.',
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: `Recent section:\n\n${tailReadUnits(s, 3, MAX_CONTEXT_CHARS)}` },
-          { type: 'text', text: `Question: ${question}\n\nThe reader skipped this check-in.\nProvide a short model answer and one key takeaway in 2-3 sentences.` }
-        ]
-      }],
       onChunk: chunk => { feedbackText += chunk; },
       onDone: () => {
         pushQuizHistoryItem(s, {
@@ -1711,144 +1721,6 @@ async function generateSkippedReview(tabId, question) {
   } catch {
     authMissingFallback();
   }
-}
-
-// ── Explain this page ─────────────────────────────────────────────────────────
-
-async function runExplainStream(tabId, pageText, opts = {}) {
-  const allowEnqueue = opts.allowEnqueue !== false;
-  const s = tabState.get(tabId) || { pageUrl: '', title: '', totalParagraphs: 0 };
-  let completed = false;
-  let explainText = '';
-  const pageUrlKey = distillPageUrlKey(s.pageUrl || '');
-  const contentHash = distillExplainContentHash(pageText);
-  toPanel({ type: 'EXPLAIN_START', tabId });
-  const handleErr = err => {
-    if (allowEnqueue && isBackendUnreachableError(err)) {
-      void enqueueOfflineJob({
-        task: 'explain_page',
-        tabId,
-        payload: {
-          pageText: clampText(pageText, MAX_PAGE_EXPLAIN_CHARS),
-          pageUrl: s.pageUrl || ''
-        }
-      });
-      toPanel({
-        type: 'TOAST',
-        tabId,
-        message: 'Explain queued — will run when the backend is back.',
-        variant: 'success'
-      });
-    }
-    toPanel({ type: 'ERROR', code: err?.code, message: err?.message || String(err), tabId });
-  };
-  try {
-    await streamTask({
-      tabId,
-      task: 'explain_page',
-      s,
-      noAuthMessage: 'No API key set — click ⚙ to add your Anthropic API key.',
-      context: {},
-      input: { pageText },
-      systemPrompt: 'You explain web pages in plain, friendly language.',
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: `Page content:\n\n${pageText}`, cache_control: { type: 'ephemeral' } },
-          { type: 'text', text: 'Explain this web page in plain, friendly language. Cover what kind of page it is, what it\'s about (2–3 sentences), and who it\'s for. Under 120 words. No bullet points.' }
-        ]
-      }],
-      onChunk: chunk => {
-        explainText += chunk;
-        toPanel({ type: 'EXPLAIN_CHUNK', chunk, tabId });
-      },
-      onDone:  ()    => {
-        completed = true;
-        const text = explainText.trim();
-        if (text) {
-          s.explainCache = { pageUrl: pageUrlKey, contentHash, text };
-          schedulePersistTab(tabId);
-        }
-        toPanel({ type: 'EXPLAIN_DONE', tabId });
-      },
-      onError: handleErr
-    });
-  } catch (e) {
-    handleErr(e);
-  }
-  return completed;
-}
-
-function replayCachedExplain(tabId, s, cache) {
-  toPanel({ type: 'EXPLAIN_CACHED', tabId, text: cache.text, fromCache: true });
-}
-
-async function explainPage(tabId, opts = {}) {
-  const force = opts.force === true;
-  let tabUrl = '';
-  try {
-    const tab = await chrome.tabs.get(tabId);
-    tabUrl = tab?.url || '';
-  } catch {
-    tabUrl = '';
-  }
-
-  // Some pages are not scriptable by extensions (Chrome internal pages, Web Store, etc.).
-  // Give a clear error instead of the generic "Could not read page content."
-  if (!tabUrl) {
-    toPanel({ type: 'ERROR', code: 'TAB_URL_UNKNOWN', message: 'Could not read this tab’s URL.', tabId });
-    return;
-  }
-  const u = tabUrl.toLowerCase();
-  if (
-    u.startsWith('chrome://') ||
-    u.startsWith('edge://') ||
-    u.startsWith('about:') ||
-    u.startsWith('chrome-extension://') ||
-    u.startsWith('moz-extension://') ||
-    u.startsWith('safari-extension://') ||
-    u.startsWith('devtools://') ||
-    u.startsWith('view-source:') ||
-    u.includes('chrome.google.com/webstore')
-  ) {
-    toPanel({
-      type: 'ERROR',
-      code: 'PAGE_UNSUPPORTED',
-      message: 'Chrome does not allow extensions to read content on this kind of page. Try an http(s) article/page instead.',
-      tabId
-    });
-    return;
-  }
-
-  let pageText = '';
-  try {
-    const [result] = await chrome.scripting.executeScript({
-      target: { tabId },
-      func: maxChars => document.body.innerText.trim().slice(0, maxChars),
-      args: [MAX_PAGE_EXPLAIN_CHARS]
-    });
-    pageText = result.result || '';
-  } catch {
-    toPanel({
-      type: 'ERROR',
-      code: 'PAGE_READ_FAILED',
-      message: 'Could not read page content. This can happen on restricted pages, PDFs, or pages that block script injection.',
-      tabId
-    });
-    return;
-  }
-
-  if (!pageText) { toPanel({ type: 'ERROR', code: 'NO_READABLE_TEXT', message: 'No readable content found.', tabId }); return; }
-
-  const s = tabState.get(tabId) || {};
-  const pageUrlKey = distillPageUrlKey(tabUrl);
-  const contentHash = distillExplainContentHash(pageText);
-  if (!force && s.explainCache?.text && s.explainCache.pageUrl === pageUrlKey && s.explainCache.contentHash === contentHash) {
-    replayCachedExplain(tabId, s, s.explainCache);
-    return;
-  }
-
-  await runExplainStream(tabId, pageText, { allowEnqueue: true });
 }
 
 // ── Highlight analysis ────────────────────────────────────────────────────────
@@ -1892,19 +1764,8 @@ async function runAnalyzeStream(tabId, s, ctx, rawSelection, opts = {}) {
       task: 'analysis',
       s,
       noAuthMessage: 'No API key set.',
-      context: { title: s.title || '', opener, priorGist, recent },
+      context: { title: s.title || '', opener, priorGist, recent, section: s.section },
       input: { selection: selectedText },
-      systemPrompt: 'You add context and depth to highlighted text.',
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: `Article title: ${s.title || '(untitled)'}` },
-          { type: 'text', text: `Opening paragraph:\n\n${opener || '(not available)'}` },
-          priorGist ? { type: 'text', text: `Article gist so far:\n${priorGist}` } : null,
-          { type: 'text', text: `Recent reading context:\n\n${recent}` },
-          { type: 'text', text: `Highlighted:\n\n"${selectedText}"\n\nExplain in context in 3-5 conversational sentences.` }
-        ].filter(Boolean)
-      }],
       onChunk: chunk => {
         analysisText += chunk;
         toPanel({ type: 'ANALYSIS_CHUNK', chunk, tabId });
@@ -2006,17 +1867,7 @@ async function tryFlushOfflineQueue() {
   try {
   for (const job of q) {
     try {
-      if (job.task === 'explain_page' && job.payload?.pageText) {
-        try {
-          await chrome.tabs.get(job.tabId);
-        } catch {
-          processed++;
-          continue;
-        }
-        const ok = await runExplainStream(job.tabId, job.payload.pageText, { allowEnqueue: false });
-        if (ok) processed++;
-        else kept.push(job);
-      } else if (job.task === 'analysis' && job.payload?.selectedText) {
+      if (job.task === 'analysis' && job.payload?.selectedText) {
         try {
           await chrome.tabs.get(job.tabId);
         } catch {
@@ -2174,6 +2025,7 @@ async function restoreState(tabId) {
   await ensureTabHydrated(tabId);
   const s = tabState.get(tabId);
   if (!s) {
+    if (pdfTabs.has(tabId)) toPanel({ type: 'PDF_DETECTED', tabId, readerUrl: pdfTabs.get(tabId) });
     broadcastHighlightHistory(tabId);
     return;
   }
@@ -2181,9 +2033,11 @@ async function restoreState(tabId) {
     type: 'ARTICLE_DETECTED',
     paragraphCount: s.totalParagraphs,
     title: s.title,
+    fullTextUrl: s.fullTextUrl || '',
     tabId,
     paragraphsUntilNextQuiz: paragraphsUntilQuiz(tabId)
   });
+  publishPaperHelp(tabId);
   toPanel({
     type: 'PROGRESS_UPDATE',
     readCount: s.readParagraphs.length,
@@ -2235,14 +2089,14 @@ async function streamTask({
   noAuthMessage = 'No API key set.',
   context = {},
   input = {},
-  systemPrompt,
-  messages,
   onChunk,
   onDone,
-  onError
+  onError,
+  retry = true // false for background paper-help calls: they must not replace the Retry of the user's own request
 }) {
+  context = { ...context, level: context.level || await readingLevel() };
   // Allow the side panel to offer a "Retry" button for the last AI call.
-  if (tabId) {
+  if (tabId && retry) {
     lastAiRetryByTab.set(tabId, () => streamTask({
       tabId,
       task,
@@ -2251,13 +2105,13 @@ async function streamTask({
       noAuthMessage,
       context,
       input,
-      systemPrompt,
-      messages,
       onChunk,
       onDone,
       onError
     }));
   }
+  const { system: systemPrompt, blocks } = distillBuildPrompt(task, context, input);
+  const messages = [{ role: 'user', content: blocks.map(text => ({ type: 'text', text })) }];
   const aiMode = await getAiMode();
   const taskMaxTokens = maxTokensForTask(task, aiMode);
   const globalUseBackend = await useBackendProxy();

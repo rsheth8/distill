@@ -40,7 +40,7 @@ sequenceDiagram
   Google-->>Chrome: access_token
   Chrome-->>SW: token
   Note over SW: Never send token to distill-api.fly.dev for AI
-  User->>Panel: Read article / summary
+  User->>Panel: Read paper / summary
   SW->>API: streamGenerateContent + Bearer token
   API-->>SW: SSE chunks
 ```
@@ -164,7 +164,7 @@ Also send **`x-goog-user-project`** when using Bearer tokens, per Google’s RES
 
 Plan for:
 
-- Privacy policy explaining article text sent to Google’s API
+- Privacy policy explaining paper text sent to Google’s API
 - Domain / support email on consent screen
 - Possibly **100-user test cap** until verified
 
@@ -211,7 +211,7 @@ Backend `llmStream.js` Gemini adapter is a useful reference for request/response
 
 ### Phase 1 — Product UX
 
-- [ ] Setup screen: explain Google + article text.
+- [ ] Setup screen: explain Google + paper text.
 - [ ] Connected state: show account email, Sign out.
 - [ ] Wire `streamTask` to Gemini path when connected.
 - [ ] Error mapping: 401 → re-auth; 429 → “Google rate limit” with link to AI Studio quotas.

@@ -66,11 +66,12 @@ connect();
 function wireActiveTab(tabId) {
   if (tabId == null) return;
   currentTabId = tabId;
+  resetPaperView(); // the new tab may have no paper; GET_STATE republishes one if it does
+  renderAll();
   chrome.tabs.get(tabId, t => {
     try {
       const u = t?.url || '';
       currentBrowserTabUrl = (u.startsWith('http://') || u.startsWith('https://')) ? distillPageUrlKey(u) : '';
-      if (currentBrowserTabUrl) explainPageKey = currentBrowserTabUrl;
     } catch {
       currentBrowserTabUrl = '';
     }
@@ -80,9 +81,12 @@ function wireActiveTab(tabId) {
   port?.postMessage({ type: 'GET_RESUME', tabId: currentTabId });
 }
 
-chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-  if (!tabs[0]) return;
-  wireActiveTab(tabs[0].id);
+// wireActiveTab calls into sidepanelPaper.js, which loads after this file: wait until every script has run.
+document.addEventListener('DOMContentLoaded', () => {
+  chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+    if (!tabs[0]) return;
+    wireActiveTab(tabs[0].id);
+  });
 });
 
 chrome.tabs.onActivated.addListener(act => {
@@ -110,7 +114,6 @@ const settingsPanel    = $('settingsPanel');
 const viewRead         = $('viewRead');
 const viewSettings     = $('viewSettings');
 const tabReadBtn       = $('tabReadBtn');
-const tabSettingsBtn   = $('tabSettingsBtn');
 const apiKeyInput      = $('apiKeyInput');
 const aiProviderSelect = $('aiProviderSelect');
 const getKeyLink       = $('getKeyLink');
@@ -241,6 +244,13 @@ const timeLabel        = $('timeLabel');
 const usageLabel       = $('usageLabel');
 const articleTitleBar  = $('articleTitleBar');
 const articleTitle     = $('articleTitle');
+const fullTextLink     = $('fullTextLink');
+const pdfCard          = $('pdfCard');
+let fullTextUrl = '';
+let pdfReaderUrl = '';
+const openInTab = url => { if (url && currentTabId != null) chrome.tabs.update(currentTabId, { url }); };
+fullTextLink.addEventListener('click', () => openInTab(fullTextUrl));
+$('openInReaderBtn').addEventListener('click', () => openInTab(pdfReaderUrl));
 const nowSection       = $('nowSection');
 const nowText          = $('nowText');
 const nowStatus        = $('nowStatus');
@@ -258,12 +268,6 @@ const resumeMeta       = $('resumeMeta');
 const resumeText       = $('resumeText');
 const resumeClearBtn   = $('resumeClearBtn');
 const copyBtn          = $('copyBtn');
-const explainSection   = $('explainSection');
-const explainText      = $('explainText');
-const explainStatus    = $('explainStatus');
-const explainCloseBtn  = $('explainCloseBtn');
-const exportExplainMdBtn = $('exportExplainMdBtn');
-const exportExplainTxtBtn = $('exportExplainTxtBtn');
 const highlightSection = $('highlightSection');
 const selectedPreview  = $('selectedPreview');
 const analyzeBtn       = $('analyzeBtn');
@@ -278,8 +282,6 @@ let lastSelectedText = '';
 const recentCheckinsSection = $('recentCheckinsSection');
 const recentCheckinsList = $('recentCheckinsList');
 const toast            = $('toast');
-const explainBtnMain   = $('explainBtnMain');
-const explainRefreshBtn = $('explainRefreshBtn');
 const historyDetails   = $('historyDetails');
 const moreResumeBadge  = $('moreResumeBadge');
 const highlightPrompt  = $('highlightPrompt');
@@ -308,11 +310,13 @@ let sitePrefsSaveTimer = null;
 const SITE_PREFS_STORAGE_KEY = 'distillSitePrefsMap';
 
 function setPanel(panel) {
-  const isSettings = panel === 'settings';
-  viewRead?.classList.toggle('hidden', isSettings);
-  viewSettings?.classList.toggle('hidden', !isSettings);
-  tabReadBtn?.classList.toggle('tab-btn-active', !isSettings);
-  tabSettingsBtn?.classList.toggle('tab-btn-active', isSettings);
+  const views = { read: viewRead, ask: $('viewAsk'), glossary: $('viewGlossary'), settings: viewSettings };
+  const tabs = { read: tabReadBtn, ask: $('tabAskBtn'), glossary: $('tabGlossaryBtn') };
+  for (const [name, view] of Object.entries(views)) view?.classList.toggle('hidden', name !== panel);
+  for (const [name, btn] of Object.entries(tabs)) {
+    btn?.classList.toggle('tab-btn-active', name === panel);
+    btn?.setAttribute('aria-selected', String(name === panel));
+  }
 }
 
 setPanel('read');
@@ -513,11 +517,9 @@ settingsBtn.addEventListener('click', () => {
   if (!settingsOpen) void refreshSitePrefsUi();
 });
 
-tabReadBtn?.addEventListener('click', () => setPanel('read'));
-tabSettingsBtn?.addEventListener('click', () => {
-  setPanel('settings');
-  void refreshSitePrefsUi();
-});
+for (const name of ['read', 'ask', 'glossary']) {
+  $(`tab${name[0].toUpperCase()}${name.slice(1)}Btn`)?.addEventListener('click', () => setPanel(name));
+}
 
 /** Persist a key for the active provider and mark it the selected provider. */
 function saveProviderKey(key, { closePanel = false } = {}) {
@@ -862,75 +864,6 @@ copyNotesPlainBtn?.addEventListener('click', () => {
   port?.postMessage({ type: 'GET_NOTES', tabId: currentTabId, format: 'plain' });
 });
 
-// ── Explain this page ─────────────────────────────────────────────────────────
-
-let explainPageKey = '';
-
-function currentExplainPageKey() {
-  return explainPageKey || currentBrowserTabUrl || highlightPageMeta.pageUrl || '';
-}
-
-function explainPanelVisible() {
-  return explainSection && !explainSection.classList.contains('hidden');
-}
-
-function renderExplainFromBuffer() {
-  explainText.textContent = explainBuffer;
-  setExplainExportEnabled(!!explainBuffer.trim());
-}
-
-function requestExplain({ force = false } = {}) {
-  hideNowHintChip();
-  hide(noArticle);
-  hide(waiting);
-  show(mainContent);
-  show(explainSection);
-  setActionActive(explainBtnMain, true);
-  clearSuggestions();
-
-  const key = currentExplainPageKey();
-  if (!force && explainBuffer.trim() && explainPageKey && explainPageKey === key) {
-    renderExplainFromBuffer();
-    setStatus('explainStatus', '', '');
-    return;
-  }
-
-  explainBuffer = '';
-  explainText.textContent = '';
-  setExplainExportEnabled(false);
-  setStatus('explainStatus', '⟳ Reading page...', 'updating');
-  port?.postMessage({ type: 'EXPLAIN_PAGE', tabId: currentTabId, force: !!force });
-}
-
-function collapseExplainPanel() {
-  hide(explainSection);
-  setStatus('explainStatus', '', '');
-  setActionActive(explainBtnMain, false);
-}
-
-function exitExplainMode() {
-  collapseExplainPanel();
-}
-
-function enterExplainMode({ fetch = true, force = false } = {}) {
-  setActionActive(explainBtnMain, true);
-  if (fetch) requestExplain({ force });
-  else if (explainBuffer.trim()) {
-    show(explainSection);
-    renderExplainFromBuffer();
-  } else {
-    requestExplain({ force: false });
-  }
-}
-
-function toggleExplainPanel() {
-  if (explainPanelVisible()) {
-    collapseExplainPanel();
-    return;
-  }
-  enterExplainMode({ fetch: true, force: false });
-}
-
 function hideNowHintChip() {
   if (!nowHintChip) return;
   if (nowHintChipTimer) {
@@ -960,30 +893,6 @@ function requestNowTip({ force = false } = {}) {
   port?.postMessage({ type: 'REQUEST_NOW_TIP', tabId: currentTabId, force: !!force });
 }
 
-$('explainBtnNoArticle').addEventListener('click', () => enterExplainMode({ fetch: true, force: false }));
-$('explainBtnMain').addEventListener('click', toggleExplainPanel);
-
-explainCloseBtn?.addEventListener('click', exitExplainMode);
-explainRefreshBtn?.addEventListener('click', () => requestExplain({ force: true }));
-
-function buildExplainExportMarkdown() {
-  const capturedAt = distillFormatExportCaptured();
-  return distillBuildExplainExportMarkdown({
-    title: (articleTitle?.textContent || '').trim(),
-    body: (explainBuffer || '').trim(),
-    capturedAt
-  });
-}
-
-function buildExplainExportPlain() {
-  const capturedAt = distillFormatExportCaptured();
-  return distillBuildExplainExportPlain({
-    title: (articleTitle?.textContent || '').trim(),
-    body: (explainBuffer || '').trim(),
-    capturedAt
-  });
-}
-
 function buildAnalysisExportMarkdown() {
   const capturedAt = distillFormatExportCaptured();
   return distillBuildAnalysisExportMarkdown({
@@ -1004,27 +913,10 @@ function buildAnalysisExportPlain() {
   });
 }
 
-function setExplainExportEnabled(on) {
-  if (exportExplainMdBtn) exportExplainMdBtn.disabled = !on;
-  if (exportExplainTxtBtn) exportExplainTxtBtn.disabled = !on;
-}
-
 function setAnalysisExportEnabled(on) {
   if (exportAnalysisMdBtn) exportAnalysisMdBtn.disabled = !on;
   if (exportAnalysisTxtBtn) exportAnalysisTxtBtn.disabled = !on;
 }
-
-exportExplainMdBtn?.addEventListener('click', () => {
-  const t = buildExplainExportMarkdown();
-  if (!t) return;
-  navigator.clipboard.writeText(t).then(() => showToast('Explanation copied (Markdown)', 'success'));
-});
-
-exportExplainTxtBtn?.addEventListener('click', () => {
-  const t = buildExplainExportPlain();
-  if (!t) return;
-  navigator.clipboard.writeText(t).then(() => showToast('Explanation copied (plain text)', 'success'));
-});
 
 exportAnalysisMdBtn?.addEventListener('click', () => {
   const t = buildAnalysisExportMarkdown();
@@ -1263,7 +1155,6 @@ highlightNoteSaveBtn?.addEventListener('click', () => {
 let nowBuffer      = '';
 let summaryBuffer  = '';
 let analysisBuffer = '';
-let explainBuffer  = '';
 let summaryRenderScheduled = false;
 let summaryLastRenderAt = 0;
 const SUMMARY_RENDER_MIN_INTERVAL_MS = 120;
@@ -1285,6 +1176,7 @@ function scheduleSummaryRender() {
 
 function handleMessage(msg) {
   if (msg.tabId && msg.tabId !== currentTabId) return;
+  if (typeof handlePaperMessage === 'function') handlePaperMessage(msg); // connect() runs before sidepanelPaper.js loads
 
   switch (msg.type) {
 
@@ -1295,14 +1187,14 @@ function handleMessage(msg) {
       recentCheckins = [];
       highlightHistoryForPage = [];
       highlightPageMeta = { pageUrl: '', title: '' };
-      explainBuffer = '';
-      explainPageKey = '';
       analysisBuffer = '';
       analysisForSelection = '';
       renderPageAnalysesList();
       renderRecentCheckins();
       hide(articleTitleBar);
       articleTitle.textContent = '';
+      hide(fullTextLink);
+      hide(pdfCard);
       summaryText.innerHTML = '';
       summaryBuffer = '';
       hide(copyBtn);
@@ -1318,8 +1210,6 @@ function handleMessage(msg) {
       hide(highlightPrompt);
       hide(checkinsPrompt);
       clearSuggestions();
-      hide(explainSection);
-      setActionActive(explainBtnMain, false);
       hide(highlightSection);
       setActionActive(analyzeActionBtn, false);
       // No full-screen waiting page: keep main UI visible.
@@ -1327,15 +1217,19 @@ function handleMessage(msg) {
       break;
 
     case 'ARTICLE_DETECTED':
-      show(mainContent); hide(waiting); hide(noArticle);
+      show(mainContent); hide(waiting); hide(noArticle); hide(pdfCard);
       if (msg.title) { articleTitle.textContent = msg.title; show(articleTitleBar); }
-      if (msg.pageUrl) explainPageKey = distillPageUrlKey(msg.pageUrl);
+      fullTextUrl = msg.fullTextUrl || '';
+      fullTextLink.classList.toggle('hidden', !fullTextUrl);
       if (typeof msg.paragraphsUntilNextQuiz === 'number') {
         paragraphsUntilNextQuiz = msg.paragraphsUntilNextQuiz;
       }
       port?.postMessage({ type: 'GET_USAGE', tabId: currentTabId });
       break;
 
+    case 'PDF_DETECTED':
+      pdfReaderUrl = msg.readerUrl || '';
+    // falls through
     case 'NO_ARTICLE':
       hideNowHintChip();
       resumeScrollAfterQuiz = false;
@@ -1344,20 +1238,10 @@ function handleMessage(msg) {
       hide(highlightPrompt);
       hide(checkinsPrompt);
       clearSuggestions();
-      hide(explainSection);
-      setActionActive(explainBtnMain, false);
       hide(highlightSection);
       setActionActive(analyzeActionBtn, false);
-      show(noArticle); hide(waiting); hide(mainContent);
-      break;
-
-    case 'NO_ARTICLE_SERP':
-      hideNowHintChip();
-      resumeScrollAfterQuiz = false;
-      dismissQuiz();
-      hide(backendDownCard);
-      // Result pages usually aren’t extractable articles; automatically explain instead.
-      enterExplainMode({ fetch: true, force: false });
+      hide(waiting); hide(mainContent);
+      if (msg.type === 'PDF_DETECTED') { show(pdfCard); hide(noArticle); } else { show(noArticle); hide(pdfCard); }
       break;
 
     case 'PROGRESS_UPDATE': {
@@ -1436,39 +1320,6 @@ function handleMessage(msg) {
         show(copyNotesBtn);
         show(copyNotesPlainBtn);
       }
-      break;
-
-    // ── Explain page ──
-    case 'EXPLAIN_START':
-      explainBuffer = '';
-      explainText.textContent = '';
-      setExplainExportEnabled(false);
-      show(explainSection);
-      setActionActive(explainBtnMain, true);
-      setStatus('explainStatus', '⟳ Reading page...', 'updating');
-      break;
-
-    case 'EXPLAIN_CHUNK':
-      explainBuffer += msg.chunk;
-      explainText.textContent = explainBuffer;
-      setExplainExportEnabled(!!explainBuffer.trim());
-      break;
-
-    case 'EXPLAIN_CACHED':
-      explainBuffer = (msg.text || '').trim();
-      explainPageKey = currentExplainPageKey();
-      explainText.textContent = explainBuffer;
-      show(explainSection);
-      setActionActive(explainBtnMain, true);
-      setStatus('explainStatus', '', '');
-      setExplainExportEnabled(!!explainBuffer);
-      if (msg.fromCache) showToast('Showing saved explanation.', 'success');
-      break;
-
-    case 'EXPLAIN_DONE':
-      explainPageKey = currentExplainPageKey();
-      setStatus('explainStatus', '', '');
-      setExplainExportEnabled(!!explainBuffer.trim());
       break;
 
     // ── Selection ──
@@ -1840,7 +1691,6 @@ function handleMessage(msg) {
 
     case 'HIGHLIGHT_HISTORY_UPDATE':
       highlightPageMeta = { pageUrl: msg.pageUrl || '', title: msg.title || '' };
-      if (msg.pageUrl) explainPageKey = distillPageUrlKey(msg.pageUrl);
       highlightHistoryForPage = Array.isArray(msg.items) ? msg.items : [];
       renderPageAnalysesList();
       break;

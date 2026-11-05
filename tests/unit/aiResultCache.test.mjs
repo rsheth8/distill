@@ -6,8 +6,7 @@ import { dirname, join } from 'path';
 const require = createRequire(import.meta.url);
 const {
   distillNormalizeSelection,
-  distillFindCachedHighlight,
-  distillExplainContentHash
+  distillFindCachedHighlight
 } = require(join(dirname(fileURLToPath(import.meta.url)), '../../extension/utils/aiResultCache.js'));
 
 describe('aiResultCache', () => {
@@ -23,11 +22,5 @@ describe('aiResultCache', () => {
     const hit = distillFindCachedHighlight(history, 'foo bar');
     expect(hit?.id).toBe('1');
     expect(hit?.analysis).toBe('insight');
-  });
-
-  it('explain content hash is stable for same input', () => {
-    const a = distillExplainContentHash('same page text');
-    const b = distillExplainContentHash('same page text');
-    expect(a).toBe(b);
   });
 });

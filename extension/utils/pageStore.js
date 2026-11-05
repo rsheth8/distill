@@ -24,7 +24,12 @@ const DISTILL_CAP_READ_UNITS = 24;
 const DISTILL_CAP_SUMMARY_CHARS = 5000;
 const DISTILL_CAP_HIGHLIGHTS = 8;
 const DISTILL_CAP_QUIZ_HISTORY = 3;
-const DISTILL_CAP_EXPLAIN_CHARS = 3500;
+const DISTILL_CAP_OVERVIEW_CHARS = 3500;
+const DISTILL_CAP_GUIDES = 30;
+const DISTILL_CAP_GUIDE_CHARS = 2500;
+const DISTILL_CAP_GLOSSARY = 150;
+const DISTILL_CAP_ASK_THREAD = 20;
+const DISTILL_CAP_ASK_CHARS = 2500;
 
 /** Lightweight deterministic FNV-1a hash → hex. */
 function distillStableHash(text) {
@@ -48,6 +53,39 @@ function distillClampString(s, maxChars) {
 
 function distillDefaultQuiz() {
   return { status: 'idle', question: '', answer: '', feedback: '', history: [] };
+}
+
+/**
+ * Paper help (overview, guides, glossary, ask thread), capped. Saved data is untrusted
+ * on restore, so malformed entries are dropped rather than crashed on. Questions with an
+ * empty answer are still in flight and are dropped too, or they would restore as ghosts.
+ */
+function distillPaperHelpFields(src) {
+  const s = src || {};
+  const rawGuides = s.guides && typeof s.guides === 'object' ? s.guides : {};
+  const guides = {};
+  const guideEntries = Object.entries(rawGuides)
+    .filter(([, g]) => g && typeof g === 'object' && typeof g.text === 'string' && Array.isArray(g.terms))
+    .slice(0, DISTILL_CAP_GUIDES);
+  for (const [heading, g] of guideEntries) {
+    guides[heading] = {
+      level: g.level || 'everyday',
+      text: distillClampString(g.text, DISTILL_CAP_GUIDE_CHARS),
+      terms: distillClampList(g.terms.filter(t => t && typeof t.term === 'string' && typeof t.definition === 'string'), 12)
+    };
+  }
+  const glossary = (Array.isArray(s.glossary) ? s.glossary : [])
+    .filter(e => e && typeof e.term === 'string' && typeof e.definition === 'string');
+  const askThread = (Array.isArray(s.askThread) ? s.askThread : [])
+    .filter(e => e && typeof e.q === 'string' && typeof e.a === 'string' && e.a !== '')
+    .slice(-DISTILL_CAP_ASK_THREAD);
+  const o = s.overview;
+  return {
+    overview: o && typeof o.text === 'string' && o.text ? { level: o.level || 'everyday', text: distillClampString(o.text, DISTILL_CAP_OVERVIEW_CHARS) } : null,
+    guides,
+    glossary: distillClampList(glossary, DISTILL_CAP_GLOSSARY),
+    askThread: askThread.map(e => ({ q: distillClampString(e.q, 500), a: distillClampString(e.a, DISTILL_CAP_ASK_CHARS) }))
+  };
 }
 
 /** Build the compact, URL-keyed page snapshot from an in-memory tab state object. */
@@ -80,13 +118,7 @@ function distillBuildPageStatePayload(s, now) {
           history: distillClampList(q.history || [], DISTILL_CAP_QUIZ_HISTORY)
         }
       : distillDefaultQuiz(),
-    explainCache: src.explainCache && typeof src.explainCache === 'object'
-      ? {
-          pageUrl: src.explainCache.pageUrl || '',
-          contentHash: src.explainCache.contentHash || '',
-          text: distillClampString(src.explainCache.text || '', DISTILL_CAP_EXPLAIN_CHARS)
-        }
-      : null
+    ...distillPaperHelpFields(src)
   };
 }
 
@@ -121,7 +153,7 @@ function distillPagePayloadToState(payload) {
       feedback: quiz.feedback || '',
       history: Array.isArray(quiz.history) ? quiz.history : []
     },
-    explainCache: (payload && payload.explainCache) || null
+    ...distillPaperHelpFields(payload)
   };
 }
 
@@ -148,7 +180,7 @@ function distillHistoryPayloadToState(payload) {
     highlightHistory: [],
     pageUrl: (payload && payload.pageUrl) || '',
     quiz: distillDefaultQuiz(),
-    explainCache: null
+    ...distillPaperHelpFields(null)
   };
 }
 
@@ -192,6 +224,7 @@ if (typeof module !== 'undefined' && module.exports) {
     distillClampList,
     distillClampString,
     distillDefaultQuiz,
+    distillPaperHelpFields,
     distillBuildPageStatePayload,
     distillPagePayloadToState,
     distillHistoryPayloadToState,
