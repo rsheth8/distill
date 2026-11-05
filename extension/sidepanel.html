@@ -79,7 +79,7 @@
         <option value="everyday" selected>Everyday</option>
         <option value="close">Closer to the paper</option>
       </select>
-      <button id="settingsBtn" class="icon-btn" title="Settings">⚙</button>
+      <button id="settingsBtn" class="icon-btn" title="Settings" aria-label="Settings"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68 1.65 1.65 0 0 0 10 3.17V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
     </header>
 
     <nav class="tab-bar" role="tablist" aria-label="Distill sections">
@@ -124,7 +124,7 @@
     <!-- First-run / missing AI credentials (dismissible) -->
     <div id="setupHintCard" class="setup-hint-card hidden" role="status">
       <div class="setup-hint-body">
-        <p class="setup-hint-title">Welcome to Distill 👋</p>
+        <p class="setup-hint-title">Welcome to Distill</p>
         <p class="setup-hint-text">Distill explains research papers in plain language as you read. It uses your own <strong>free</strong> AI key — no account, no cost. Two quick steps:</p>
         <ol class="onboard-steps">
           <li><a id="onboardGetKeyLink" href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">Get a free Groq key →</a><br /><span id="onboardSubstep" class="onboard-substep">Groq Console · no credit card</span></li>
@@ -142,7 +142,7 @@
     </div>
     <!-- Backend down / recovery -->
     <div id="backendDownCard" class="state-msg hidden">
-      <span class="state-icon">🖥</span>
+      <span class="state-icon"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2l20 20M8.5 16.5a5 5 0 0 1 7 0M5 13a10 10 0 0 1 5.17-2.8M19 13a10 10 0 0 0-2.3-1.6M12 20h.01"/></svg></span>
       <p id="backendDownTitle">Can't reach Distill cloud.</p>
       <p id="backendDownHint" class="hint">Check your internet connection, then try again. For local development, open Settings → Advanced.</p>
       <div class="settings-key-actions">
@@ -154,14 +154,14 @@
 
     <!-- No article detected -->
     <div id="noArticle" class="state-msg hidden">
-      <span class="state-icon">📄</span>
+      <span class="state-icon"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15h6"/></svg></span>
       <p>This page isn't a research paper.</p>
       <p class="hint">Distill helps you read research papers. Open one on arXiv, PubMed Central, bioRxiv or a journal's site, or open a paper's PDF.</p>
     </div>
 
     <!-- PDF open in Chrome's viewer -->
     <div id="pdfCard" class="state-msg hidden">
-      <span class="state-icon">📄</span>
+      <span class="state-icon"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M10 13l2 2 4-4"/></svg></span>
       <p>This paper is a PDF.</p>
       <p class="hint">Chrome's PDF viewer can't be read by extensions. Open it in Distill's reader to get help with it.</p>
       <button id="openInReaderBtn" class="btn-explain-page" type="button">Open in Distill →</button>
@@ -206,13 +206,13 @@
         <div class="section-header">
           <span class="section-title">So far</span>
           <div class="header-actions">
-            <button id="focusBtn" type="button" class="action-btn action-icon" title="Dim surrounding text" aria-pressed="false">
-              <span id="focusIcon" class="action-ico">◎</span>
-              <span class="action-label">Focus</span>
+            <button id="focusBtn" type="button" class="action-btn action-icon" title="Dim surrounding text" aria-label="Focus" aria-pressed="false">
+              <span id="focusIcon" class="action-ico"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/></svg></span>
+              <span class="action-label sr-only">Focus</span>
             </button>
-            <button id="learnBtn" type="button" class="action-btn action-icon" title="Comprehension quizzes (Learn Mode)" aria-pressed="false">
-              <span class="action-ico">◈</span>
-              <span class="action-label">Learn</span>
+            <button id="learnBtn" type="button" class="action-btn action-icon" title="Comprehension quizzes (Learn Mode)" aria-label="Check-ins" aria-pressed="false">
+              <span class="action-ico"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></svg></span>
+              <span class="action-label sr-only">Learn</span>
             </button>
             <details id="copyMenu" class="copy-menu">
               <summary class="btn-copy">Copy notes</summary>

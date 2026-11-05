@@ -921,6 +921,7 @@ function handleMessage(msg) {
   switch (msg.type) {
 
     case 'ARTICLE_NAVIGATING':
+      thinkingStreams.clear(); document.body.classList.remove('is-thinking');
       dismissQuiz();
       highlightHistoryForPage = [];
       analysisBuffer = '';
@@ -956,6 +957,7 @@ function handleMessage(msg) {
       pdfReaderUrl = msg.readerUrl || '';
     // falls through
     case 'NO_ARTICLE':
+      thinkingStreams.clear(); document.body.classList.remove('is-thinking');
       dismissQuiz();
       hide(backendDownCard);
       hide(highlightPrompt);
@@ -977,6 +979,7 @@ function handleMessage(msg) {
 
     // ── So far ──
     case 'SUMMARY_START':
+      setThinking('summary', true);
       summaryText.classList.remove('muted');
       summarySection.classList.add('summary-section-streaming');
       summaryText.classList.add('summary-text-streaming');
@@ -994,11 +997,12 @@ function handleMessage(msg) {
       break;
 
     case 'SUMMARY_DONE':
+      setThinking('summary', false);
       summaryBulletSections = msg.bulletSections || {};
       renderSummary(summaryBuffer, summaryText);
       summarySection.classList.remove('summary-section-streaming');
       summaryText.classList.remove('summary-text-streaming');
-      setStatus('summaryStatus', '✓', 'done');
+      setStatus('summaryStatus', 'Done', 'done');
       setTimeout(() => setStatus('summaryStatus', '', ''), 2000);
       break;
 
@@ -1048,6 +1052,7 @@ function handleMessage(msg) {
       break;
 
     case 'ANALYSIS_START':
+      setThinking('analysis', true);
       analysisBuffer = '';
       analysisText.textContent = '';
       show(analysisText);
@@ -1059,6 +1064,7 @@ function handleMessage(msg) {
       break;
 
     case 'ANALYSIS_DONE':
+      setThinking('analysis', false);
       analyzeBtn.disabled = false;
       analyzeBtn.textContent = 'Explain';
       if (msg.highlightId) lastHighlightId = msg.highlightId;
@@ -1076,6 +1082,7 @@ function handleMessage(msg) {
 
     // ── Comprehension quiz ──
     case 'QUIZ_START':
+      setThinking('quiz', true);
       if (quizDismissTimer) {
         clearTimeout(quizDismissTimer);
         quizDismissTimer = null;
@@ -1106,12 +1113,14 @@ function handleMessage(msg) {
       break;
 
     case 'QUIZ_DONE':
+      setThinking('quiz', false);
       setQuizState('Answer to continue');
       show(quizAnswerWrap);
       quizAnswer.focus();
       break;
 
     case 'FEEDBACK_START':
+      setThinking('quiz', true);
       quizFeedback.textContent = '';
       show(quizFeedback);
       submitAnswerBtn.disabled = false;
@@ -1124,6 +1133,7 @@ function handleMessage(msg) {
       break;
 
     case 'FEEDBACK_DONE': {
+      setThinking('quiz', false);
       quizActive = false;
       const n = typeof msg.paragraphsUntilNextQuiz === 'number' ? msg.paragraphsUntilNextQuiz : QUIZ_EVERY;
       paragraphsUntilNextQuiz = n;
@@ -1227,6 +1237,7 @@ function handleMessage(msg) {
     }
 
     case 'ERROR':
+      thinkingStreams.clear(); document.body.classList.remove('is-thinking');
       if (msg.code === 'BACKEND_DOWN') {
         backendDownTitle.textContent = "Can't reach Distill cloud.";
         backendDownHint.textContent = msg.message || 'Check your connection, then tap Retry.';
@@ -1436,6 +1447,13 @@ function formatTimeLeft(wordsRead, totalWords) {
   if (mins < 0.5) return 'almost done';
   if (mins < 1.5) return '~1 min left';
   return `~${Math.round(mins)} min left`;
+}
+
+const thinkingStreams = new Set();
+/** Logo waves drift while any AI stream runs. */
+function setThinking(key, on) {
+  if (on) thinkingStreams.add(key); else thinkingStreams.delete(key);
+  document.body.classList.toggle('is-thinking', thinkingStreams.size > 0);
 }
 
 function show(el) { if (!el) return; el.classList.remove('hidden'); }

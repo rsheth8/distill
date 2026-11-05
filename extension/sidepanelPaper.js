@@ -1,5 +1,5 @@
 // Paper help in the side panel: reading level, overview, trust, section guide, Ask, Glossary.
-// Loaded after sidepanel.js and uses its globals ($, port, currentTabId, show, hide, setStatus, setPanel).
+// Loaded after sidepanel.js and uses its globals ($, port, currentTabId, show, hide, setStatus, setPanel, setThinking).
 // AI output and paper text are untrusted: everything goes in with textContent.
 
 const DISTILL_LEVELS = ['simple', 'everyday', 'close'];
@@ -202,6 +202,7 @@ function handlePaperMessage(msg) {
       break;
     }
     case 'PAPER_HELP_START':
+      setThinking(k, true);
       paperView.live.add(k);
       paperView.streams[k] = '';
       if (msg.kind === 'overview') {
@@ -216,6 +217,7 @@ function handlePaperMessage(msg) {
       renderKind(msg.kind);
       break;
     case 'PAPER_HELP_DONE':
+      setThinking(k, false);
       paperView.live.delete(k);
       if (msg.kind === 'overview') {
         delete paperView.streams[k];
@@ -228,6 +230,7 @@ function handlePaperMessage(msg) {
       renderKind(msg.kind);
       break;
     case 'PAPER_HELP_ERROR':
+      setThinking(k, false);
       paperView.live.delete(k);
       delete paperView.streams[k];
       if (msg.code === 'ABORTED') { // the background dropped the job (a new paper): nothing failed, so no error and no Retry

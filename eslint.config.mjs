@@ -90,7 +90,7 @@ export default [
       globals: {
         ...extGlobals,
         $: 'readonly', port: 'readonly', currentTabId: 'readonly', show: 'readonly', hide: 'readonly',
-        setStatus: 'readonly', setPanel: 'readonly', lastSelectedText: 'readonly',
+        setStatus: 'readonly', setThinking: 'readonly', setPanel: 'readonly', lastSelectedText: 'readonly',
         distillParseLabelled: 'readonly', distillParseTerms: 'readonly',
         distillSectionMap: 'readonly', distillRenderSectionMap: 'readonly'
       }
