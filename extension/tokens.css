@@ -1,0 +1,21 @@
+/* Paper and ink: shared by the side panel and the PDF reader. */
+:root {
+  color-scheme: light dark;
+  --paper-bg:   #e8e6e1;
+  --paper:      #faf9f6;
+  --ink:        #2b2a27;
+  --ink-muted:  #6b6860;
+  --paper-line: #d4d1c9;
+  --marker:     rgba(250, 204, 21, 0.38);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper-bg:   #1f1e1c;
+    --paper:      #272624;
+    --ink:        #ece9e2;
+    --ink-muted:  #a29e94;
+    --paper-line: #3a3835;
+    --marker:     rgba(250, 204, 21, 0.28);
+  }
+}
