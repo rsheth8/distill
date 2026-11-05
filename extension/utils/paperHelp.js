@@ -98,6 +98,54 @@ function distillMergeGlossary(glossary, terms, section, max = 150) {
   return list;
 }
 
+const DISTILL_STOPWORDS = new Set(('the and for are was were with that this from what which who whom how why when where does did ' +
+  'has have had can could would should will their they them into about than then there these those its not but you your ' +
+  'our out all any been being more most some such only also very just over under paper study authors').split(' '));
+
+function distillWords(text) {
+  return (String(text || '').toLowerCase().match(/[a-z][a-z0-9-]{2,}/g) || []).filter(w => !DISTILL_STOPWORDS.has(w));
+}
+
+/**
+ * Paragraphs most likely to answer the question (word overlap, +2 when the heading matches),
+ * best first until maxChars, then put back in paper order. No match → the opening paragraphs.
+ * ponytail: keyword overlap, not embeddings; swap in embeddings if answers miss obvious passages.
+ */
+function distillPickSections(paper, question, maxChars = 5000) {
+  const p = paper || {};
+  const q = new Set(distillWords(question));
+  const sections = [...(p.abstract ? [{ heading: 'Abstract', text: p.abstract }] : []), ...(Array.isArray(p.sections) ? p.sections : [])];
+  const paras = [];
+  sections.forEach((s, si) => {
+    const headingBonus = distillWords(s.heading).some(w => q.has(w)) ? 2 : 0;
+    String(s.text || '').split('\n\n').forEach((raw, pi) => {
+      const text = raw.trim();
+      if (!text) return;
+      const hits = distillWords(text).filter(w => q.has(w)).length;
+      paras.push({ si, pi, text, score: hits ? hits + headingBonus : headingBonus });
+    });
+  });
+  const ranked = paras.filter(x => x.score > 0).sort((a, b) => b.score - a.score);
+  const pool = ranked.length ? ranked : paras;
+  const chosen = [];
+  let used = 0;
+  for (const x of pool) {
+    if (used + x.text.length > maxChars) continue;
+    chosen.push(x);
+    used += x.text.length;
+  }
+  if (!chosen.length && pool.length) chosen.push({ ...pool[0], text: pool[0].text.slice(0, maxChars) });
+  chosen.sort((a, b) => a.si - b.si || a.pi - b.pi);
+  const out = [];
+  for (const x of chosen) {
+    const heading = sections[x.si].heading;
+    const last = out[out.length - 1];
+    if (last && last.heading === heading) last.text += `\n\n${x.text}`;
+    else out.push({ heading, text: x.text });
+  }
+  return out;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { distillPaperExcerpt, distillTrustFacts, distillParseLabelled, distillParseTerms, distillFindSection, distillMergeGlossary };
+  module.exports = { distillPaperExcerpt, distillTrustFacts, distillParseLabelled, distillParseTerms, distillFindSection, distillMergeGlossary, distillPickSections };
 }

@@ -139,3 +139,35 @@ describe('distillMergeGlossary', () => {
     expect(help.distillMergeGlossary(full, [{ term: 'new', definition: 'd' }], 's').length).toBe(150);
   });
 });
+
+describe('distillPickSections', () => {
+  const p = {
+    abstract: 'We study sleep in mice.',
+    sections: [
+      { heading: 'Methods', kind: 'methods', text: 'Mice slept in cages.\n\nWe measured heart rate.' },
+      { heading: 'Results', kind: 'results', text: 'Sleep improved memory.\n\nHeart rate fell during sleep.' },
+      { heading: 'Funding', kind: '', text: 'Paid by a grant.' }
+    ]
+  };
+  it('keeps relevant paragraphs, in paper order, grouped by section', () => {
+    expect(help.distillPickSections(p, 'What happened to heart rate?')).toEqual([
+      { heading: 'Methods', text: 'We measured heart rate.' },
+      { heading: 'Results', text: 'Heart rate fell during sleep.' }
+    ]);
+  });
+  it('heading words count, stopwords do not', () => {
+    expect(help.distillPickSections(p, 'who paid the funding')[0].heading).toBe('Funding');
+    expect(help.distillPickSections(p, 'what was the')).toEqual(help.distillPickSections(p, ''));
+  });
+  it('with no match, falls back to the opening paragraphs within the budget', () => {
+    const r = help.distillPickSections(p, "What's the main takeaway?", 60);
+    expect(r[0]).toEqual({ heading: 'Abstract', text: 'We study sleep in mice.' });
+    expect(r.map(x => x.text).join('').length).toBeLessThanOrEqual(60);
+  });
+  it('respects the budget and never returns nothing for a non-empty paper', () => {
+    const big = { abstract: 'heart '.repeat(2000), sections: [] };
+    const r = help.distillPickSections(big, 'heart', 500);
+    expect(r[0].text.length).toBeLessThanOrEqual(500);
+    expect(help.distillPickSections({}, 'heart')).toEqual([]);
+  });
+});
