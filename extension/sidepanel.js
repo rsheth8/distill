@@ -473,7 +473,7 @@ async function refreshSitePrefsUi() {
   }
 }
 
-chrome.storage.local.get(['localBaseUrl', 'localModel', 'aiProvider', 'geminiApiKey', 'groqApiKey', 'openaiApiKey', 'anthropicApiKey', 'accentId', 'learnMode', 'useBackendProxy', 'backendTarget', 'backendBaseUrlOverride', 'distillSetupHintDismissed'], r => {
+chrome.storage.local.get(['localBaseUrl', 'localModel', 'aiProvider', 'geminiApiKey', 'groqApiKey', 'openaiApiKey', 'anthropicApiKey', 'accentId', 'readingAssistance', 'useBackendProxy', 'backendTarget', 'backendBaseUrlOverride', 'distillSetupHintDismissed'], r => {
   providerKeys.gemini = typeof r.geminiApiKey === 'string' ? r.geminiApiKey : '';
   providerKeys.groq = typeof r.groqApiKey === 'string' ? r.groqApiKey : '';
   providerKeys.openai = typeof r.openaiApiKey === 'string' ? r.openaiApiKey : '';
@@ -489,8 +489,11 @@ chrome.storage.local.get(['localBaseUrl', 'localModel', 'aiProvider', 'geminiApi
   }
   if (backendUrlOverrideInput) backendUrlOverrideInput.value = typeof r.backendBaseUrlOverride === 'string' ? r.backendBaseUrlOverride : '';
   applyAccent(r.accentId || 'ink');
-  learnOn = !!r.learnMode;
-  setActionActive($('learnBtn'), learnOn);
+  applyAssistance(distillReadingAssistance(r));
+  if (r.readingAssistance?.schemaVersion !== 1) {
+    chrome.storage.local.set({readingAssistance:distillReadingAssistance(r)});
+    show($('assistanceMigration'));
+  }
   void refreshBackendStatus();
   void refreshSitePrefsUi();
 });
@@ -680,16 +683,29 @@ for (const btn of document.querySelectorAll('#copyMenu [data-format]')) {
 let learnOn = false;
 const learnBtn = $('learnBtn');
 
-learnBtn.addEventListener('click', () => {
-  learnOn = !learnOn;
+function applyAssistance(prefs) {
+  learnOn = prefs.checkins;
+  $('automaticHelpToggle').checked = prefs.automaticHelp;
+  $('checkinsToggle').checked = prefs.checkins;
   setActionActive(learnBtn, learnOn);
-  port?.postMessage({ type: 'LEARN_MODE', on: learnOn, tabId: currentTabId });
-  // Turning off while a quiz is active → dismiss it immediately and unfreeze the page
-  if (!learnOn && quizActive) {
+  $('assistanceStatus').textContent = !prefs.automaticHelp && !prefs.checkins ? 'Quiet reading' :
+    `Assisted reading · ${[prefs.automaticHelp && 'automatic help', prefs.checkins && 'check-ins'].filter(Boolean).join(' + ')}`;
+}
+function saveAssistance(prefs) {
+  applyAssistance(prefs);
+  chrome.storage.local.set({readingAssistance:prefs});
+  if (!prefs.checkins && quizActive) {
     dismissQuiz();
-    port?.postMessage({ type: 'SKIP_QUIZ', tabId: currentTabId });
+    port?.postMessage({type:'LATER_QUIZ',tabId:currentTabId});
   }
-});
+}
+function assistanceFields() {
+  return {schemaVersion:1,automaticHelp:$('automaticHelpToggle').checked,checkins:$('checkinsToggle').checked};
+}
+$('automaticHelpToggle').addEventListener('change',()=>saveAssistance(assistanceFields()));
+$('checkinsToggle').addEventListener('change',()=>saveAssistance(assistanceFields()));
+$('quietReadingBtn').addEventListener('click',()=>saveAssistance({schemaVersion:1,automaticHelp:false,checkins:false}));
+learnBtn.addEventListener('click',()=>saveAssistance({...assistanceFields(),checkins:!learnOn}));
 
 // ── Comprehension quiz ────────────────────────────────────────────────────────
 
@@ -740,6 +756,8 @@ function setQuizState(text = '') {
   quizStateText.textContent = text;
   show(quizStateText);
 }
+
+$('laterQuizBtn').addEventListener('click',()=>{dismissQuiz();port?.postMessage({type:'LATER_QUIZ',tabId:currentTabId});});
 
 skipQuizBtn.addEventListener('click', () => {
   skipQuizBtn.disabled = true;

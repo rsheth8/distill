@@ -19,7 +19,7 @@ const paperHelpAbort = new Map(); // tabId -> { ctrl, kind, key } of the paper-h
  * or when the tab moved on (clearPaperHelp, or tabState replaced by a new paper): a stale call
  * sends and stores nothing, and settles so the queue never hangs.
  */
-function streamPaperHelp(tabId, { kind, key, task, context, input, level, validate }) {
+function streamPaperHelp(tabId, { kind, key, task, context, input, level, validate, origin = 'user' }) {
   const s = tabState.get(tabId);
   const ctrl = new AbortController();
   paperHelpAbort.set(tabId, { ctrl, kind, key });
@@ -42,7 +42,7 @@ function streamPaperHelp(tabId, { kind, key, task, context, input, level, valida
     };
     toPanel({ type: 'PAPER_HELP_START', tabId, kind, key });
     streamTask({
-      tabId, task, s, signal: ctrl.signal, retry: false, context: { ...context, level }, input,
+      tabId, task, s, origin, signal: ctrl.signal, retry: false, context: { ...context, level }, input,
       noAuthMessage: 'No API key set — click ⚙ to add one.',
       onChunk: chunk => {
         if (settled) return;
@@ -142,9 +142,10 @@ function sendTerms(tabId, heading, terms) {
 /** Guide for one section; on success its terms are underlined in the page and added to the glossary. */
 function runSectionGuide(tabId, heading, opts = {}) {
   const s = tabState.get(tabId);
+  const epoch = assistanceEpoch;
   return queuePaperHelp(tabId, async () => {
     if (tabState.get(tabId) !== s) return; // the tab moved on (new paper) while this waited its turn
-    if (opts.dwell && s?.section?.heading !== heading) return; // an automatic guide for a section the reader has since left
+    if (opts.dwell && (epoch !== assistanceEpoch || s?.section?.heading !== heading)) return; // an automatic guide for a section the reader has since left
     const section = s?.paper && distillFindSection(s.paper, heading);
     if (!section || !section.text.trim()) {
       toPanel({ type: 'PAPER_HELP_ERROR', tabId, kind: 'guide', key: heading, code: 'NO_SECTION', message: 'No guide for this part.' });
@@ -156,7 +157,7 @@ function runSectionGuide(tabId, heading, opts = {}) {
     if (tabState.get(tabId) !== s) return;
     if (s.guides?.[heading]?.level === level && s.guides[heading].expertise === expertise) return sendTerms(tabId, heading, s.guides[heading].terms);
     const text = await streamPaperHelp(tabId, {
-      kind: 'guide', key: heading, task: 'section_guide', level,
+      kind: 'guide', key: heading, task: 'section_guide', level, origin: opts.dwell ? 'automatic' : 'user',
       context: { title: s.title || s.paper.title, section: { heading: section.heading, kind: section.kind } },
       input: { sectionText: section.text.slice(0, 6000) }
     });
@@ -180,10 +181,11 @@ function onSectionChanged(tabId, heading) {
   const canGuide = !!heading && !!distillFindSection(s.paper, heading);
   toPanel({ type: 'SECTION_CHANGED', tabId, heading, hasGuide: !!s.guides?.[heading], canGuide });
   if (!canGuide) return;
+  const epoch = assistanceEpoch;
   guideDwellTimers.set(tabId, setTimeout(async () => {
     guideDwellTimers.delete(tabId);
     const now = tabState.get(tabId);
-    if (now?.section?.heading !== heading) return;
+    if (epoch !== assistanceEpoch || now?.section?.heading !== heading) return;
     const level = await readingLevel();
     const expertise = await paperHelpAudience();
     if (tabState.get(tabId) !== now || now.section?.heading !== heading || (now.guides?.[heading]?.level === level && now.guides[heading].expertise === expertise)) return;
@@ -204,9 +206,7 @@ function onReadingLevelChanged() {
   for (const [tabId, s] of tabState) {
     if (s?.paper) chrome.tabs.sendMessage(tabId, { type: 'CLEAR_TERMS' }).catch(() => {});
   }
-  chrome.tabs.query({ active: true, lastFocusedWindow: true }).then(([tab]) => {
-    if (tab && tabState.get(tab.id)?.paper) void runOverview(tab.id);
-  }).catch(() => {});
+
 }
 
 const ASK_THREAD_MAX = 20;

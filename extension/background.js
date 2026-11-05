@@ -1,6 +1,6 @@
 'use strict';
 
-importScripts('utils/buildConfig.js', 'utils/pageUrlKey.js', 'utils/backendEnv.js', 'utils/aiResultCache.js', 'utils/geminiAdapter.js', 'utils/openaiCompatAdapter.js', 'utils/pageStore.js', 'utils/paperExtractor.js', 'utils/prompts.js', 'utils/paperHelp.js', 'paperFeatures.js');
+importScripts('utils/readingAssistance.js', 'utils/buildConfig.js', 'utils/pageUrlKey.js', 'utils/backendEnv.js', 'utils/aiResultCache.js', 'utils/geminiAdapter.js', 'utils/openaiCompatAdapter.js', 'utils/pageStore.js', 'utils/paperExtractor.js', 'utils/prompts.js', 'utils/paperHelp.js', 'paperFeatures.js');
 
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
 
@@ -273,6 +273,8 @@ const HISTORY_KEY_PREFIX = DISTILL_HISTORY_PREFIX;
 const PAGE_STATE_KEY_PREFIX = DISTILL_PAGE_STATE_PREFIX;
 
 let sidePanelPort = null;
+const autoAiWork = new Map();
+let assistanceEpoch = 0;
 const summaryCadenceState = new Map();
 // Tabs whose state was just loaded from persistent (chrome.storage.local) save-state,
 // i.e. a genuine "restored from last time" — used to show the restore notice once.
@@ -280,6 +282,13 @@ const restoredFromStorageTabs = new Set();
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
+  if (changes.readingAssistance) {
+    assistanceEpoch++;
+    const assistance = distillReadingAssistance({ readingAssistance: changes.readingAssistance.newValue });
+    for (const work of autoAiWork.values()) if (!distillMayAutoRun(assistance, work.task)) work.ctrl.abort();
+    for (const timer of guideDwellTimers.values()) clearTimeout(timer);
+    guideDwellTimers.clear();
+  }
   if (changes.backendTarget || changes.backendBaseUrlOverride) {
     backendProbeCache = { checkedAt: 0, result: null };
     void ensureBackendToken();
@@ -770,7 +779,7 @@ chrome.runtime.onConnect.addListener(port => {
         void (async () => {
           await ensureTabHydratedFromPageState(msg.tabId);
           await restoreState(msg.tabId);
-          void runOverview(msg.tabId); // returns early when the overview is already at the current reading level
+
           await publishSitePrefs(msg.tabId);
           toPanel({ type: 'FOCUS_SYNC', tabId: msg.tabId, on: !!focusModeByTab.get(msg.tabId) });
         })();
@@ -964,6 +973,7 @@ chrome.runtime.onConnect.addListener(port => {
           chrome.tabs.sendMessage(msg.tabId, { type: 'FOCUS_MODE', on: !!msg.on }).catch(() => {});
         }
         break;
+      case 'LATER_QUIZ':
       case 'SKIP_QUIZ':
         if (msg.tabId) {
           const s = tabState.get(msg.tabId);
@@ -978,30 +988,15 @@ chrome.runtime.onConnect.addListener(port => {
             s.quiz.feedback = '';
             schedulePersistTab(msg.tabId);
             toPanel({ type: 'QUIZ_SKIPPED', tabId: msg.tabId });
-            void generateSkippedReview(msg.tabId, question);
+            if (msg.type === 'SKIP_QUIZ') void generateSkippedReview(msg.tabId, question);
           }
-          chrome.tabs.sendMessage(msg.tabId, { type: 'UNFREEZE_SCROLL' }).catch(() => {});
         }
         break;
       case 'LEARN_MODE':
-        chrome.storage.local.set({ learnMode: msg.on });
-        if (!msg.on && msg.tabId) {
-          const s = tabState.get(msg.tabId);
-          if (s?.quiz && s.quiz.status !== 'idle') {
-            const prev = quizArchiveTimers.get(msg.tabId);
-            if (prev) clearTimeout(prev);
-            quizArchiveTimers.delete(msg.tabId);
-            const question = s.quiz.question || s.currentQuestion || 'Check-in';
-            s.quiz.status = 'idle';
-            s.quiz.question = '';
-            s.quiz.answer = '';
-            s.quiz.feedback = '';
-            schedulePersistTab(msg.tabId);
-            toPanel({ type: 'QUIZ_SKIPPED', tabId: msg.tabId });
-            void generateSkippedReview(msg.tabId, question);
-          }
-          chrome.tabs.sendMessage(msg.tabId, { type: 'UNFREEZE_SCROLL' }).catch(() => {});
-        }
+        void (async () => {
+          const prefs = distillReadingAssistance(await chrome.storage.local.get('readingAssistance'));
+          await chrome.storage.local.set({readingAssistance:{...prefs,checkins:!!msg.on}});
+        })();
         break;
     }
   });
@@ -1061,7 +1056,7 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
           persistTabSnapshot(tabId);
           persistHistorySnapshot(tabId);
           await restoreState(tabId); // republishes ARTICLE_DETECTED + progress + summary + quiz + highlights
-          void runOverview(tabId);
+
           void resendTerms(tabId);
           void publishSitePrefs(tabId);
           break;
@@ -1107,7 +1102,7 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
           paragraphsUntilNextQuiz: paragraphsUntilQuiz(tabId)
         });
         publishPaperHelp(tabId);
-        void runOverview(tabId);
+
         persistTabSnapshot(tabId);
         persistHistorySnapshot(tabId);
         void publishSitePrefs(tabId);
@@ -1182,7 +1177,7 @@ function onParagraphRead(tabId, text) {
   const quietWindowPassed = now - cadence.lastSummaryAt >= cfg.minIntervalMs;
   const forceByVolume = s.wordsSinceSummary >= cfg.forceIntervalWords;
   if (!s.isUpdating && s.wordsSinceSummary >= cfg.minNewWords && (quietWindowPassed || forceByVolume)) {
-    updateSummary(tabId);
+    void updateSummary(tabId);
   }
 
   // Comprehension quiz every QUIZ_EVERY paragraphs (only in Learn Mode)
@@ -1190,9 +1185,7 @@ function onParagraphRead(tabId, text) {
   if (s.readParagraphs.length >= nextQuiz && !s.isUpdating) {
     quizNextAt.set(tabId, s.readParagraphs.length + QUIZ_EVERY);
     schedulePersistTab(tabId);
-    chrome.storage.local.get('learnMode', r => {
-      if (r.learnMode) generateQuestion(tabId);
-    });
+    void generateQuestion(tabId);
   }
 
   schedulePersistTab(tabId);
@@ -1202,6 +1195,7 @@ function onParagraphRead(tabId, text) {
 // ── "So far" summary ──────────────────────────────────────────────────────────
 
 async function updateSummary(tabId) {
+  if (!distillMayAutoRun(distillReadingAssistance(await chrome.storage.local.get('readingAssistance')), 'summary')) return;
   const s = tabState.get(tabId);
   if (!s || s.isUpdating || s.readParagraphs.length === 0) return;
 
@@ -1234,6 +1228,7 @@ async function updateSummary(tabId) {
     await streamTask({
       tabId,
       task: 'summary',
+      origin: 'automatic',
       s,
       noAuthMessage: 'No API key set — click ⚙ to add your Anthropic API key.',
       context: {
@@ -1284,6 +1279,7 @@ async function updateSummary(tabId) {
 // ── Comprehension quiz ────────────────────────────────────────────────────────
 
 async function generateQuestion(tabId) {
+  if (!distillMayAutoRun(distillReadingAssistance(await chrome.storage.local.get('readingAssistance')), 'quiz_question')) return;
   const s = tabState.get(tabId);
   if (!s) return;
 
@@ -1294,13 +1290,13 @@ async function generateQuestion(tabId) {
   s.quiz.feedback = '';
   schedulePersistTab(tabId);
   toPanel({ type: 'QUIZ_START', tabId });
-  chrome.tabs.sendMessage(tabId, { type: 'FREEZE_SCROLL' }).catch(() => {});
 
   let question = '';
   try {
     await streamTask({
       tabId,
       task: 'quiz_question',
+      origin: 'automatic',
       s,
       noAuthMessage: 'No API key set — click ⚙ to add your Anthropic API key.',
       context: { title: s.title || '', recent: recentText, section: s.section },
@@ -1327,7 +1323,6 @@ async function generateQuestion(tabId) {
           schedulePersistTab(tabId);
         }
         toPanel({ type: 'ERROR', code: err.code, message: err.message, tabId });
-        chrome.tabs.sendMessage(tabId, { type: 'UNFREEZE_SCROLL' }).catch(() => {});
       }
     });
   } catch (e) {
@@ -1337,7 +1332,6 @@ async function generateQuestion(tabId) {
       schedulePersistTab(tabId);
     }
     toPanel({ type: 'ERROR', code: e.code, message: e.message, tabId });
-    chrome.tabs.sendMessage(tabId, { type: 'UNFREEZE_SCROLL' }).catch(() => {});
   }
 }
 
@@ -1382,7 +1376,6 @@ async function evaluateAnswer(tabId, question, answer) {
         }
         const until = s2 ? paragraphsUntilQuiz(tabId) : QUIZ_EVERY;
         toPanel({ type: 'FEEDBACK_DONE', paragraphsUntilNextQuiz: until, tabId });
-        chrome.tabs.sendMessage(tabId, { type: 'UNFREEZE_SCROLL' }).catch(() => {});
         schedulePersistTab(tabId);
       },
       onError: err => {
@@ -1392,7 +1385,6 @@ async function evaluateAnswer(tabId, question, answer) {
           schedulePersistTab(tabId);
         }
         toPanel({ type: 'ERROR', code: err.code, message: err.message, tabId });
-        chrome.tabs.sendMessage(tabId, { type: 'UNFREEZE_SCROLL' }).catch(() => {});
       }
     });
   } catch (e) {
@@ -1402,7 +1394,6 @@ async function evaluateAnswer(tabId, question, answer) {
       schedulePersistTab(tabId);
     }
     toPanel({ type: 'ERROR', code: e.code, message: e.message, tabId });
-    chrome.tabs.sendMessage(tabId, { type: 'UNFREEZE_SCROLL' }).catch(() => {});
   }
 }
 
@@ -1780,7 +1771,7 @@ async function restoreState(tabId) {
     toPanel({ type: 'SUMMARY_DONE', tabId, bulletSections: s.bulletSections || {} });
   }
   toPanel({ type: 'QUIZ_HISTORY_UPDATE', tabId, items: s.quiz?.history || [] });
-  if (s.quiz && s.quiz.status !== 'idle') {
+  if (s.quiz && s.quiz.status !== 'idle' && distillReadingAssistance(await chrome.storage.local.get('readingAssistance')).checkins) {
     toPanel({
       type: 'QUIZ_RESTORE',
       tabId,
@@ -1790,9 +1781,6 @@ async function restoreState(tabId) {
       feedback: s.quiz.feedback || '',
       paragraphsUntilNextQuiz: paragraphsUntilQuiz(tabId)
     });
-    // A check-in was in progress when the user left — re-freeze the page so the
-    // reader can't scroll past it, matching the normal quiz-start behavior.
-    chrome.tabs.sendMessage(tabId, { type: 'FREEZE_SCROLL' }).catch(() => {});
   }
   broadcastHighlightHistory(tabId);
 
@@ -1808,11 +1796,38 @@ async function restoreState(tabId) {
 
 // ── Claude API streaming ──────────────────────────────────────────────────────
 
+async function runAutomaticTask(options) {
+  const ctrl = new AbortController();
+  const token = Symbol();
+  autoAiWork.set(token, { ctrl, task: options.task, tabId: options.tabId });
+  let terminal = false;
+  const cancel = () => {
+    if (!terminal) { terminal = true; options.onError?.({code:'CANCELLED',message:'Automatic help stopped.'}); }
+    autoAiWork.delete(token);
+  };
+  ctrl.signal.addEventListener('abort', cancel, {once:true});
+  const parentAbort = () => ctrl.abort();
+  options.signal?.addEventListener('abort', parentAbort, {once:true});
+  try {
+    const assistance = distillReadingAssistance(await chrome.storage.local.get('readingAssistance'));
+    if (options.signal?.aborted || ctrl.signal.aborted || !distillMayAutoRun(assistance, options.task)) { ctrl.abort(); return; }
+    await streamTask({ ...options, origin:'user', retry:false, signal:ctrl.signal,
+      onChunk: chunk => { if (!terminal && !ctrl.signal.aborted) options.onChunk?.(chunk); },
+      onDone: () => { if (!terminal && !ctrl.signal.aborted) { terminal=true; options.onDone?.(); } },
+      onError: err => { if (!terminal && !ctrl.signal.aborted) { terminal=true; options.onError?.(err); } }
+    });
+  } finally {
+    autoAiWork.delete(token);
+    options.signal?.removeEventListener('abort', parentAbort);
+  }
+}
+
 async function streamTask({
   tabId,
   task,
   s,
   signal,
+  origin = 'user',
   noAuthMessage = 'No API key set.',
   context = {},
   input = {},
@@ -1821,6 +1836,7 @@ async function streamTask({
   onError,
   retry = true // false for background paper-help calls: they must not replace the Retry of the user's own request
 }) {
+  if (origin === 'automatic') return runAutomaticTask({tabId,task,s,signal,noAuthMessage,context,input,onChunk,onDone,onError});
   const { readerExpertise } = await chrome.storage.local.get('readerExpertise');
   context = { ...context, expertise: readerExpertise === 'expert' ? 'expert' : 'newcomer', level: context.level || await readingLevel() };
   // Allow the side panel to offer a "Retry" button for the last AI call.

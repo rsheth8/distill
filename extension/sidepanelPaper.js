@@ -85,6 +85,10 @@ function renderOverview() {
   // A reply with no labels at all still shows, as one paragraph.
   if (!labelled.length && parsed.lead && !('overview:overview' in paperView.streams)) addText(body, 'p', parsed.lead);
   if (paperView.state) show($('overviewCard'));
+  if (!paperView.live.has('overview:overview')) {
+    $('overviewRetryBtn').textContent = text ? 'Refresh overview' : 'Generate overview';
+    if (paperView.state) show($('overviewRetryBtn'));
+  }
   renderTrust(parsed);
 }
 

@@ -284,35 +284,6 @@
     return parts.join('\n\n');
   }
 
-  // ── Freeze overlay (used during comprehension quiz) ────────────────────────
-  let freezeOverlay     = null;
-  let freezeScrollGuard = null;
-
-  function freezeScroll() {
-    if (freezeOverlay) return;
-    const savedY = window.scrollY;
-    freezeScrollGuard = () => window.scrollTo(0, savedY);
-    window.addEventListener('scroll', freezeScrollGuard, { passive: true });
-    freezeOverlay = document.createElement('div');
-    freezeOverlay.id = 'air-freeze-overlay';
-    freezeOverlay.innerHTML = `
-      <div id="air-freeze-msg">
-        <span class="air-freeze-icon">◈</span>
-        <span class="air-freeze-title">Check-in time</span>
-        <span class="air-freeze-sub">Answer the question in the side panel to continue reading.</span>
-      </div>
-    `;
-    document.body.appendChild(freezeOverlay);
-  }
-
-  function unfreezeScroll() {
-    if (!freezeOverlay) return;
-    window.removeEventListener('scroll', freezeScrollGuard);
-    freezeScrollGuard = null;
-    freezeOverlay.remove();
-    freezeOverlay = null;
-  }
-
   // ── Accent color ───────────────────────────────────────────────────────────
 
   const ACCENT_PRESETS = {
@@ -357,11 +328,8 @@
         setFocusMode(msg.on);
         break;
       case 'FREEZE_SCROLL':
-        freezeScroll();
-        break;
       case 'UNFREEZE_SCROLL':
-        unfreezeScroll();
-        break;
+        break; // Old workers cannot trap the reader.
       case 'SCROLL_TO_HIGHLIGHT': {
         const anchor = msg.anchor;
         const r = anchor ? rangeFromSerialized(anchor) : null;
@@ -510,62 +478,6 @@
         background: var(--air-a22, rgba(37,99,235,0.22));
         border-radius: 999px;
       }
-      #air-freeze-overlay {
-        position: fixed;
-        inset: 0;
-        z-index: 2147483646;
-        background: rgba(0,0,0,0.52);
-        backdrop-filter: blur(3px);
-        -webkit-backdrop-filter: blur(3px);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: default;
-        animation: air-freeze-in 0.28s ease;
-      }
-      @keyframes air-freeze-in {
-        from { opacity: 0; }
-        to   { opacity: 1; }
-      }
-      #air-freeze-msg {
-        background: rgba(255,255,255,0.96);
-        border-radius: 14px;
-        padding: 28px 36px;
-        text-align: center;
-        max-width: 300px;
-        box-shadow: 0 12px 40px rgba(0,0,0,0.25);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 6px;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-      }
-      @media (prefers-color-scheme: dark) {
-        #air-freeze-msg {
-          background: rgba(22,27,34,0.97);
-        }
-        .air-freeze-title { color: #e6edf3 !important; }
-        .air-freeze-sub   { color: #8b949e !important; }
-      }
-      .air-freeze-icon {
-        font-size: 30px;
-        color: var(--air-accent, #2563eb);
-        line-height: 1;
-        margin-bottom: 4px;
-      }
-      .air-freeze-title {
-        font-size: 16px;
-        font-weight: 700;
-        color: #0f172a;
-        letter-spacing: -0.2px;
-      }
-      .air-freeze-sub {
-        font-size: 12px;
-        color: #64748b;
-        line-height: 1.55;
-        max-width: 220px;
-      }
-
       /* (In-page annotations removed) */
       .air-anno-pop { animation: air-anno-pop 340ms ease-out; }
       @keyframes air-anno-pop {

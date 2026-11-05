@@ -21,7 +21,7 @@ function load() {
   tabMsgs = [];
   activeTabs = [];
   ctx = vm.createContext({
-    console, AbortController, Map, Promise, Object, Array, String,
+    assistanceEpoch:0, console, AbortController, Map, Promise, Object, Array, String,
     setTimeout: (...a) => setTimeout(...a),
     clearTimeout: id => clearTimeout(id),
     chrome: {
@@ -360,7 +360,7 @@ describe('section guides', () => {
     expect(calls).toHaveLength(0);
   });
 
-  it('a level change clears underlines on paper tabs and re-runs the overview in view', async () => {
+  it('a level change clears underlines without starting inference', async () => {
     ctx.tabState.set(1, { paper, title: 'T', overview: { level: 'simple', text: 'old' } });
     ctx.tabState.set(2, { paper });
     ctx.tabState.set(3, {});
@@ -368,8 +368,7 @@ describe('section guides', () => {
     ctx.onReadingLevelChanged();
     await flush();
     expect(tabMsgs.map(m => `${m.tabId}:${m.type}`)).toEqual(['1:CLEAR_TERMS', '2:CLEAR_TERMS']);
-    expect(calls).toHaveLength(1);
-    expect(calls[0].task).toBe('overview');
+    expect(calls).toHaveLength(0);
   });
 });
 

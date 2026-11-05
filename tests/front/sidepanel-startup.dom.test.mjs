@@ -97,7 +97,7 @@ describe('side panel', () => {
     expect(scrolls).toHaveBeenCalledTimes(1);
   });
 
-  it('an ABORTED job drops its live key and its "Reading…" status, without an error or Retry', async () => {
+  it('an ABORTED job drops its live key and its "Reading…" status, without an error and offers manual generation', async () => {
     await boot();
     onPortMessage(paperState());
     onPortMessage({ type: 'PAPER_HELP_START', tabId: TAB, kind: 'overview', key: 'overview' });
@@ -107,7 +107,8 @@ describe('side panel', () => {
     expect(inPanel('paperView.live.size')).toBe(0);
     expect(inPanel('"overview:overview" in paperView.streams')).toBe(false);
     expect(document.getElementById('overviewStatus').textContent).toBe('');
-    expect(document.getElementById('overviewRetryBtn').classList.contains('hidden')).toBe(true);
+    expect(document.getElementById('overviewRetryBtn').classList.contains('hidden')).toBe(false);
+    expect(document.getElementById('overviewRetryBtn').textContent).toBe('Generate overview');
   });
 
   it('clears the old paper, notes and selection when switching tabs', async () => {

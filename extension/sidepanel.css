@@ -1233,3 +1233,5 @@ header { flex-wrap: wrap; }
 .ask-item blockquote { margin: 8px 0; padding-left: 12px; border-left: 2px solid var(--paper-line); }
 
 :focus-visible { outline: 2px solid var(--accent) !important; outline-offset: 2px; }
+
+.assistance-bar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; padding:8px 0; }

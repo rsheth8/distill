@@ -3,11 +3,13 @@ import globals from 'globals';
 
 const extGlobals = {
   ...globals.browser,
-  chrome: 'readonly'
+  chrome: 'readonly',
+  distillReadingAssistance: 'readonly', distillMayAutoRun: 'readonly'
 };
 
 /** CI lint scope: service worker, side panel, shared utils, tests, and the smoke runner. */
 export default [
+  { files: ['extension/utils/readingAssistance.js'], languageOptions: {sourceType:'script',globals:{module:'readonly'}}, rules:{'no-unused-vars':'off'} },
   { ignores: ['node_modules/**', 'backend/node_modules/**'] },
   js.configs.recommended,
   {
@@ -16,7 +18,7 @@ export default [
       ecmaVersion: 2022,
       sourceType: 'script',
       globals: {
-        ...extGlobals,
+        ...extGlobals, guideDwellTimers:'readonly',
         distillPageUrlKey: 'readonly',
         distillPaperText: 'readonly',
         distillSectionKind: 'readonly',
@@ -74,7 +76,7 @@ export default [
       sourceType: 'script',
       globals: {
         ...extGlobals,
-        tabState: 'readonly', toPanel: 'readonly', streamTask: 'readonly', schedulePersistTab: 'readonly',
+        assistanceEpoch: 'readonly', tabState: 'readonly', toPanel: 'readonly', streamTask: 'readonly', schedulePersistTab: 'readonly',
         readingLevel: 'readonly', distillPaperExcerpt: 'readonly', distillTrustFacts: 'readonly',
         distillParseLabelled: 'readonly', distillParseTerms: 'readonly', distillFindSection: 'readonly',
         distillMergeGlossary: 'readonly', distillPickSections: 'readonly', distillPickPassages: 'readonly', distillUnsupportedDemographicCounts: 'readonly', distillByline: 'readonly'
@@ -121,6 +123,7 @@ export default [
       globals: {
         ...globals.browser,
         chrome: 'readonly',
+  distillReadingAssistance: 'readonly', distillMayAutoRun: 'readonly',
         browser: 'readonly',
         extractArticle: 'readonly',
         distillExtractPaper: 'readonly',
@@ -170,6 +173,7 @@ export default [
       globals: {
         ...globals.browser,
         chrome: 'readonly',
+  distillReadingAssistance: 'readonly', distillMayAutoRun: 'readonly',
         module: 'readonly'
       }
     },
