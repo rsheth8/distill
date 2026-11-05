@@ -81,9 +81,12 @@ function wireActiveTab(tabId) {
   port?.postMessage({ type: 'GET_RESUME', tabId: currentTabId });
 }
 
-chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-  if (!tabs[0]) return;
-  wireActiveTab(tabs[0].id);
+// wireActiveTab calls into sidepanelPaper.js, which loads after this file: wait until every script has run.
+document.addEventListener('DOMContentLoaded', () => {
+  chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+    if (!tabs[0]) return;
+    wireActiveTab(tabs[0].id);
+  });
 });
 
 chrome.tabs.onActivated.addListener(act => {
