@@ -1171,6 +1171,7 @@ function scheduleSummaryRender() {
 
 function handleMessage(msg) {
   if (msg.tabId && msg.tabId !== currentTabId) return;
+  handlePaperMessage(msg);
 
   switch (msg.type) {
 

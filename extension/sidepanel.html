@@ -94,6 +94,18 @@
     </div>
 
     <div id="viewRead" class="panel-view">
+      <section id="overviewCard" class="section hidden" aria-live="polite">
+        <h2 class="section-title">Overview</h2>
+        <div id="overviewBody"></div>
+        <p><span id="overviewStatus" class="status-badge"></span> <button id="overviewRetryBtn" type="button" class="paper-link-btn hidden">Retry</button></p>
+      </section>
+      <section id="trustCard" class="section hidden">
+        <h2 class="section-title">How much to trust it</h2>
+        <ul id="trustFacts" class="fact-tags"></ul>
+        <p id="trustStudy"></p>
+        <div id="trustLimits"></div>
+        <p class="hint">A single study rarely settles a question.</p>
+      </section>
     <!-- First-run / missing AI credentials (dismissible) -->
     <div id="setupHintCard" class="setup-hint-card hidden" role="status">
       <div class="setup-hint-body">

@@ -51,7 +51,10 @@ export default [
         distillApplyAccentCssVars: 'readonly',
         distillNormalizeSelection: 'readonly',
         distillFindCachedHighlight: 'readonly',
-        importScripts: 'readonly'
+        importScripts: 'readonly',
+        queuePaperHelp: 'readonly', runOverview: 'readonly', publishPaperHelp: 'readonly', clearPaperHelp: 'readonly',
+        runSectionGuide: 'readonly', runAsk: 'readonly', onSectionChanged: 'readonly', resendTerms: 'readonly',
+        handlePaperMessage: 'readonly', distillTrustFacts: 'readonly', distillParseLabelled: 'readonly'
       }
     },
     rules: {
@@ -60,6 +63,21 @@ export default [
       'no-useless-escape': 'error',
       'no-duplicate-case': 'error'
     }
+  },
+  {
+    files: ['extension/paperFeatures.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script',
+      globals: {
+        ...extGlobals,
+        tabState: 'readonly', toPanel: 'readonly', streamTask: 'readonly', schedulePersistTab: 'readonly',
+        readingLevel: 'readonly', distillPaperExcerpt: 'readonly', distillTrustFacts: 'readonly',
+        distillParseLabelled: 'readonly', distillParseTerms: 'readonly', distillFindSection: 'readonly',
+        distillMergeGlossary: 'readonly', distillPickSections: 'readonly'
+      }
+    },
+    rules: { 'no-unused-vars': 'off' }
   },
   {
     files: ['extension/sidepanelPaper.js'],

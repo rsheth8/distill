@@ -1,6 +1,6 @@
 'use strict';
 
-importScripts('utils/buildConfig.js', 'utils/pageUrlKey.js', 'utils/backendEnv.js', 'utils/aiResultCache.js', 'utils/geminiAdapter.js', 'utils/openaiCompatAdapter.js', 'utils/pageStore.js', 'utils/paperExtractor.js', 'utils/prompts.js');
+importScripts('utils/buildConfig.js', 'utils/pageUrlKey.js', 'utils/backendEnv.js', 'utils/aiResultCache.js', 'utils/geminiAdapter.js', 'utils/openaiCompatAdapter.js', 'utils/pageStore.js', 'utils/paperExtractor.js', 'utils/prompts.js', 'utils/paperHelp.js', 'paperFeatures.js');
 
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
 
@@ -230,7 +230,8 @@ const AI_TUNING = {
       quiz_question: 90,
       quiz_feedback: 180,
       quiz_skipped_review: 170,
-      analysis: 260
+      analysis: 260,
+      overview: 420
     }
   },
   'ultra-lean': {
@@ -240,7 +241,8 @@ const AI_TUNING = {
       quiz_question: 70,
       quiz_feedback: 130,
       quiz_skipped_review: 120,
-      analysis: 180
+      analysis: 180,
+      overview: 300
     }
   }
 };
@@ -404,6 +406,7 @@ const pdfTabs = new Map(); // tabId → reader.html URL for a PDF open in Chrome
 
 function clearTab(tabId) {
   tabState.delete(tabId);
+  clearPaperHelp(tabId);
   pdfTabs.delete(tabId);
   quizNextAt.delete(tabId);
   const t = persistTimers.get(tabId);
@@ -963,6 +966,12 @@ chrome.runtime.onConnect.addListener(port => {
           toPanel({ type: 'HIGHLIGHT_NOTE_SAVED', tabId: msg.tabId, highlightId: id });
         })();
         break;
+      case 'RETRY_OVERVIEW':
+        void (async () => {
+          await ensureTabHydrated(msg.tabId);
+          void runOverview(msg.tabId);
+        })();
+        break;
       case 'ANALYZE_SELECTION':
         void (async () => {
           await ensureTabHydrated(msg.tabId);
@@ -1089,7 +1098,8 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
           (Array.isArray(existing.readUnits) && existing.readUnits.length > 0) ||
           (Array.isArray(existing.readParagraphs) && existing.readParagraphs.length > 0) ||
           (Array.isArray(existing.highlightHistory) && existing.highlightHistory.length > 0) ||
-          (existing.quiz && existing.quiz.status !== 'idle')
+          (existing.quiz && existing.quiz.status !== 'idle') ||
+          !!existing.overview || (Array.isArray(existing.askThread) && existing.askThread.length > 0)
         );
 
         if (hasSavedProgress) {
@@ -1105,6 +1115,7 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
           persistTabSnapshot(tabId);
           persistHistorySnapshot(tabId);
           await restoreState(tabId); // republishes ARTICLE_DETECTED + progress + summary + quiz + highlights
+          void runOverview(tabId);
           void publishResume(tabId);
           void publishSitePrefs(tabId);
           break;
@@ -1133,6 +1144,7 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
           lastSummary:      '',
           highlightHistory: [],
           pageUrl,
+          overview: null, guides: {}, glossary: [], askThread: [],
           quiz: defaultQuizState()
         });
         summaryCadenceState.set(tabId, { lastSummaryAt: 0 });
@@ -1146,6 +1158,8 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
           tabId,
           paragraphsUntilNextQuiz: paragraphsUntilQuiz(tabId)
         });
+        publishPaperHelp(tabId);
+        void runOverview(tabId);
         persistTabSnapshot(tabId);
         persistHistorySnapshot(tabId);
         void publishResume(tabId);
@@ -1994,6 +2008,7 @@ async function restoreState(tabId) {
     tabId,
     paragraphsUntilNextQuiz: paragraphsUntilQuiz(tabId)
   });
+  publishPaperHelp(tabId);
   toPanel({
     type: 'PROGRESS_UPDATE',
     readCount: s.readParagraphs.length,

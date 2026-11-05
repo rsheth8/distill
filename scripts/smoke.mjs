@@ -153,8 +153,9 @@ async function probeBackendHealth() {
   console.log('smoke: backend GET /health ok');
 }
 
-const bg = readFileSync(join(extRoot, 'background.js'), 'utf8');
-const sp = readFileSync(join(extRoot, 'sidepanel.js'), 'utf8');
+const read = file => readFileSync(join(extRoot, file), 'utf8');
+const bg = read('background.js') + read('paperFeatures.js');
+const sp = read('sidepanel.js') + read('sidepanelPaper.js');
 const server = readFileSync(join(root, 'backend', 'server.js'), 'utf8');
 
 const panelTypes = extractToPanelTypes(bg);

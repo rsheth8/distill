@@ -13,7 +13,8 @@ describe('distillBuildPrompt', () => {
     quiz_question: [{ recent: 'R' }, {}, ['R', 'ONE short question']],
     quiz_feedback: [{ recent: 'R' }, { question: 'Q?', answer: 'A' }, ['R', 'Q?', '"A"']],
     quiz_skipped_review: [{ recent: 'R' }, { question: 'Q?' }, ['R', 'Q?', 'model answer']],
-    analysis: [{ title: 'T', opener: 'ABS', priorGist: 'G', recent: 'R' }, { selection: 'SEL' }, ['T', 'ABS', 'G', 'R', '"SEL"']]
+    analysis: [{ title: 'T', opener: 'ABS', priorGist: 'G', recent: 'R' }, { selection: 'SEL' }, ['T', 'ABS', 'G', 'R', '"SEL"']],
+    overview: [{ title: 'T' }, { excerpt: 'EXC' }, ['T', 'EXC', 'ASKED:', 'DID:', 'FOUND:', 'WHY:', 'STUDY:', 'LIMITS:']],
   };
 
   for (const [task, [context, input, wanted]] of Object.entries(tasks)) {
@@ -23,6 +24,10 @@ describe('distillBuildPrompt', () => {
       for (const w of wanted) expect(text(p)).toContain(w);
     });
   }
+
+  it('overview trims the excerpt to 7,000 chars', () => {
+    expect(text(distillBuildPrompt('overview', {}, { excerpt: 'x'.repeat(20000) })).length).toBeLessThan(8000);
+  });
 
   it('explain_page is gone (the overview replaces it)', () => {
     expect(() => distillBuildPrompt('explain_page', {}, { pageText: 'x' })).toThrow(/explain_page/);

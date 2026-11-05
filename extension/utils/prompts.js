@@ -109,6 +109,20 @@ function distillBuildPrompt(task, context = {}, input = {}) {
       ]);
     }
 
+    case 'overview':
+      return out(sys('Give them a plain overview of the whole paper.'), [
+        `Paper title: ${title}`,
+        `From the paper:\n\n${distillPromptClamp(i.excerpt, 7000)}`,
+        'Answer with exactly these labels, each starting its own line, each followed by one short paragraph:\n' +
+          'ASKED: the question the paper asks\n' +
+          'DID: what the researchers did\n' +
+          'FOUND: what they found\n' +
+          'WHY: why it might matter to an ordinary person\n' +
+          'STUDY: the kind of study and its size (people, samples or data), if the paper says\n' +
+          'LIMITS: the limits the authors themselves mention, one per line starting with "- "; "- Not stated" if none\n' +
+          'No other text. No markdown.'
+      ]);
+
     default:
       throw new Error(`No prompt for task '${task}'`);
   }

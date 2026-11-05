@@ -165,7 +165,8 @@ const TASK_COSTS = {
   analysis: 12,
   quiz_question: 5,
   quiz_feedback: 7,
-  quiz_skipped_review: 6
+  quiz_skipped_review: 6,
+  overview: 12
 };
 
 const TASK_MODEL_ROUTER = {
@@ -174,7 +175,8 @@ const TASK_MODEL_ROUTER = {
   quiz_feedback: { primary: 'claude-haiku-4-5', fallback: 'claude-haiku-4-5' },
   quiz_skipped_review: { primary: 'claude-haiku-4-5', fallback: 'claude-haiku-4-5' },
   summary: { primary: 'claude-haiku-4-5', fallback: 'claude-haiku-4-5' },
-  analysis: { primary: 'claude-haiku-4-5', fallback: 'claude-haiku-4-5' }
+  analysis: { primary: 'claude-haiku-4-5', fallback: 'claude-haiku-4-5' },
+  overview: { primary: 'claude-haiku-4-5', fallback: 'claude-haiku-4-5' }
 };
 
 const LLM_CONFIG = {
@@ -205,7 +207,8 @@ const AI_TUNING = {
       quiz_question: 90,
       quiz_feedback: 180,
       quiz_skipped_review: 170,
-      analysis: 260
+      analysis: 260,
+      overview: 420
     }
   },
   'ultra-lean': {
@@ -215,7 +218,8 @@ const AI_TUNING = {
       quiz_question: 70,
       quiz_feedback: 130,
       quiz_skipped_review: 120,
-      analysis: 180
+      analysis: 180,
+      overview: 300
     }
   }
 };
