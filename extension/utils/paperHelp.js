@@ -59,6 +59,43 @@ function distillParseLabelled(text, labels) {
   return out;
 }
 
+/** "term — definition" lines (also –, " - " and ":") from a TERMS: block. */
+function distillParseTerms(block) {
+  const terms = [];
+  for (const line of String(block || '').split('\n')) {
+    const m = /^\s*(?:[-*•]|\d+[.)])?\s*(.+?)\s*(?:—|–|:|\s-\s)\s*(.+)$/.exec(line);
+    if (!m) continue;
+    const term = m[1].replace(/[*_"]/g, '').trim();
+    if (!term || term.length > 60) continue;
+    terms.push({ term, definition: m[2].trim() });
+    if (terms.length === 12) break;
+  }
+  return terms;
+}
+
+/** The paper section with this heading (case and spacing ignored); "Abstract" is the abstract. */
+function distillFindSection(paper, heading) {
+  const p = paper || {};
+  const want = String(heading || '').trim().toLowerCase();
+  if (!want) return null;
+  if (want === 'abstract') return p.abstract ? { heading: 'Abstract', kind: '', text: p.abstract } : null;
+  const s = (Array.isArray(p.sections) ? p.sections : []).find(x => String(x.heading).trim().toLowerCase() === want);
+  return s ? { heading: s.heading, kind: s.kind, text: s.text } : null;
+}
+
+/** Add a section's terms to the glossary; the first definition of a term wins. */
+function distillMergeGlossary(glossary, terms, section, max = 150) {
+  const list = Array.isArray(glossary) ? glossary.slice() : [];
+  const seen = new Set(list.map(g => g.term.toLowerCase()));
+  for (const t of terms || []) {
+    const key = t.term.toLowerCase();
+    if (seen.has(key) || list.length >= max) continue;
+    seen.add(key);
+    list.push({ term: t.term, definition: t.definition, section });
+  }
+  return list;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { distillPaperExcerpt, distillTrustFacts, distillParseLabelled };
+  module.exports = { distillPaperExcerpt, distillTrustFacts, distillParseLabelled, distillParseTerms, distillFindSection, distillMergeGlossary };
 }

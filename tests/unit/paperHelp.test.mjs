@@ -85,3 +85,47 @@ describe('distillParseLabelled', () => {
     expect(help.distillParseLabelled('Just a guide.\nTwo lines.', ['TERMS']).lead).toBe('Just a guide.\nTwo lines.');
   });
 });
+
+describe('distillParseTerms', () => {
+  it('reads em dash, en dash, spaced hyphen and colon lines; strips list markers and bold', () => {
+    const block = '- **attention** — a way to weigh words\n2. p-value: chance of a fluke\n• baseline – the thing compared against\nself-attention - attention within one sentence';
+    expect(help.distillParseTerms(block)).toEqual([
+      { term: 'attention', definition: 'a way to weigh words' },
+      { term: 'p-value', definition: 'chance of a fluke' },
+      { term: 'baseline', definition: 'the thing compared against' },
+      { term: 'self-attention', definition: 'attention within one sentence' }
+    ]);
+  });
+  it('keeps a leading number that is part of the term', () => {
+    expect(help.distillParseTerms('3D printing — building objects layer by layer')[0].term).toBe('3D printing');
+  });
+  it('skips lines without a definition, terms over 60 chars, and stops at 12', () => {
+    expect(help.distillParseTerms('no separator here\n' + 'x'.repeat(61) + ' — too long')).toEqual([]);
+    const many = Array.from({ length: 20 }, (_, i) => `t${i} — d`).join('\n');
+    expect(help.distillParseTerms(many).length).toBe(12);
+    expect(help.distillParseTerms(undefined)).toEqual([]);
+  });
+});
+
+describe('distillFindSection', () => {
+  it('finds by heading, ignoring case and spaces; Abstract maps to the abstract', () => {
+    expect(help.distillFindSection(paper(), '  methods ')).toEqual({ heading: 'Methods', kind: 'methods', text: 'METH' });
+    expect(help.distillFindSection(paper(), 'Abstract').text).toBe(paper().abstract);
+    expect(help.distillFindSection(paper(), 'Figure 2')).toBeNull();
+    expect(help.distillFindSection(paper(), '')).toBeNull();
+    expect(help.distillFindSection(null, 'Methods')).toBeNull();
+  });
+});
+
+describe('distillMergeGlossary', () => {
+  it('adds new terms with their section, keeps the first definition, caps the list', () => {
+    let g = help.distillMergeGlossary([], [{ term: 'Attention', definition: 'first' }], 'Intro');
+    g = help.distillMergeGlossary(g, [{ term: 'attention', definition: 'second' }, { term: 'loss', definition: 'error' }], 'Methods');
+    expect(g).toEqual([
+      { term: 'Attention', definition: 'first', section: 'Intro' },
+      { term: 'loss', definition: 'error', section: 'Methods' }
+    ]);
+    const full = Array.from({ length: 150 }, (_, i) => ({ term: `t${i}`, definition: 'd', section: 's' }));
+    expect(help.distillMergeGlossary(full, [{ term: 'new', definition: 'd' }], 's').length).toBe(150);
+  });
+});
