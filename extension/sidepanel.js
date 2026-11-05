@@ -1176,7 +1176,7 @@ function scheduleSummaryRender() {
 
 function handleMessage(msg) {
   if (msg.tabId && msg.tabId !== currentTabId) return;
-  handlePaperMessage(msg);
+  if (typeof handlePaperMessage === 'function') handlePaperMessage(msg); // connect() runs before sidepanelPaper.js loads
 
   switch (msg.type) {
 

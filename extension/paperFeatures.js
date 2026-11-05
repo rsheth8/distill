@@ -98,9 +98,16 @@ function runOverview(tabId) {
   });
 }
 
-/** Abort the running call. The queue tail stays, so the next job waits for the aborted one to settle. */
+/**
+ * Abort the running call. The queue tail stays, so the next job waits for the aborted one to settle.
+ * The panel is told (ABORTED) so it drops that stream's "Reading…" status.
+ */
 function clearPaperHelp(tabId) {
-  paperHelpAbort.get(tabId)?.ctrl.abort();
+  const running = paperHelpAbort.get(tabId);
+  if (running) {
+    toPanel({ type: 'PAPER_HELP_ERROR', tabId, kind: running.kind, key: running.key, code: 'ABORTED', message: '' });
+    running.ctrl.abort();
+  }
   clearTimeout(guideDwellTimers.get(tabId));
   guideDwellTimers.delete(tabId);
 }

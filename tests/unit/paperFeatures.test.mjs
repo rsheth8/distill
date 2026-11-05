@@ -88,7 +88,7 @@ describe('paperFeatures', () => {
     await b;
   });
 
-  it('clearPaperHelp aborts the old job silently and the next one still runs', async () => {
+  it('clearPaperHelp aborts the old job, tells the panel (ABORTED) and the next one still runs', async () => {
     ctx.tabState.set(1, { paper: {} });
     const a = ctx.queuePaperHelp(1, job(1, 'a'));
     await tick();
@@ -109,10 +109,16 @@ describe('paperFeatures', () => {
     calls[1].resolve();
     expect(await b).toBe('new');
     expect(types()).toEqual([
-      'PAPER_HELP_START:a', 'PAPER_HELP_CHUNK:a',
+      'PAPER_HELP_START:a', 'PAPER_HELP_CHUNK:a', 'PAPER_HELP_ERROR:a',
       'PAPER_HELP_START:b', 'PAPER_HELP_CHUNK:b', 'PAPER_HELP_DONE:b'
     ]);
     expect(sent.some(m => m.chunk === 'late')).toBe(false);
+    expect(sent.find(m => m.type === 'PAPER_HELP_ERROR')).toMatchObject({ tabId: 1, kind: 'overview', key: 'a', code: 'ABORTED', message: '' });
+  });
+
+  it('clearPaperHelp with nothing running tells the panel nothing', () => {
+    ctx.clearPaperHelp(1);
+    expect(sent).toEqual([]);
   });
 
   it('a replaced tabState entry makes the old job stale even without clearPaperHelp', async () => {
