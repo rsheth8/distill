@@ -1,0 +1,96 @@
+{
+  "guardAuditSourceSha256": "93f252f85478ce57915c012d74aad579e75c469b2b72d82ee2f9c99dfb8cfa2e",
+  "run": "consolidation-facebook",
+  "generated": "2026-11-05T19:44:51.971Z",
+  "metadata": {
+    "date": "2026-11-05T19:42:55.527Z",
+    "provider": "Ollama OpenAI-compatible API; Node direct, NOT extension origin verification",
+    "models": [
+      "qwen2.5:7b"
+    ],
+    "modelVersions": [
+      {
+        "name": "qwen2.5:7b",
+        "digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+        "parameterSize": "7.6B",
+        "quantization": "Q4_K_M"
+      }
+    ],
+    "gitRevision": "6ecb59688a3362e0aa48cb64ed9229e483885155",
+    "hardware": {
+      "cpu": "Apple M2 Max",
+      "logicalCpus": 12,
+      "memoryBytes": 34359738368
+    },
+    "promptSha256": "6e599fc7a25ced83d0578179516bfca287d51de4158b4e6491d8a0f1fe917119",
+    "promptVersion": "working-tree",
+    "temperature": 0.5,
+    "maxTokens": {
+      "overview": 420,
+      "section_guide": 380,
+      "analysis": 260,
+      "ask": 320
+    },
+    "budgetMode": "production-balanced",
+    "platform": "darwin",
+    "architecture": "arm64",
+    "server": {
+      "version": "0.40.14"
+    }
+  },
+  "qualityScoring": "NOT SCORED: human source verification and independent review pending",
+  "total": 4,
+  "papers": [
+    "facebook"
+  ],
+  "groups": {
+    "qwen2.5:7b / expert / close / ask": {
+      "count": 2,
+      "complete": 2,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 8303,
+      "firstTokenMedianMs": 4276
+    },
+    "qwen2.5:7b / newcomer / close / ask": {
+      "count": 2,
+      "complete": 2,
+      "empty": 0,
+      "truncated": 0,
+      "failed": 0,
+      "completionMedianMs": 11573,
+      "firstTokenMedianMs": 7162
+    }
+  },
+  "extraction": [
+    {
+      "paper": "facebook",
+      "status": "extracted",
+      "cached": true,
+      "paperSha256": "a806254168e3aab8ee4b2f3930cf66734fd3c09b978d9e622dc30f4521c6b828",
+      "sections": [
+        {
+          "heading": "Introduction",
+          "chars": 2791
+        },
+        {
+          "heading": "Methods",
+          "chars": 3463
+        },
+        {
+          "heading": "Results",
+          "chars": 8720
+        },
+        {
+          "heading": "Discussion",
+          "chars": 6019
+        },
+        {
+          "heading": "Concluding Comment",
+          "chars": 503
+        }
+      ]
+    }
+  ]
+}

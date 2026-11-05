@@ -1,3 +1,9 @@
+# Current status — November 5 consolidation
+
+See [CONSOLIDATION_REVIEW.md](CONSOLIDATION_REVIEW.md) for current evidence. The combined UI branch includes read-along, quiet reading, source return and performance instrumentation. Fresh suite: 328 tests pass. Academic accuracy remains FAILED; 26 additional captures and 16 provisional Ask diagnostics preserve unresolved coefficient-scale errors. Direct Ollama succeeds on the Downloads identity (see DEPENDABLE_READING_QA.md); origin-blocked notes below are historical. Human scoring/pilot remain pending.
+
+---
+
 # Research-reader readiness status
 
 Updated: November 5, 2026 (America/Chicago). Engineering continuation committed locally; release gates NOT met. Nothing merged, pushed or published.
