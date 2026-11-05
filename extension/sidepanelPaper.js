@@ -52,6 +52,7 @@ function renderPaperCard() {
   const list = $('paperFacts');
   list.replaceChildren();
   $('paperByline').textContent = st?.byline || '';
+  $('extractionNotice').textContent = st?.intakeNotice || 'AI uses extracted text. Check the original source for missing material.';
   for (const f of st?.trustFacts || []) {
     const li = document.createElement('li');
     if (f.href) {

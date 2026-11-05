@@ -204,6 +204,25 @@ function distillCitedPassages(text, supplied) {
   return (Array.isArray(supplied) ? supplied : []).filter(p => ids.has(p.id));
 }
 
+/** Include paper-help evidence even before a running summary has been generated. */
+function distillPaperNotesText(state, markdown = false) {
+  const out = [];
+  const heading = text => markdown ? `## ${text}` : text;
+  if (state?.overview?.text) {
+    out.push(heading('AI overview — selected excerpts; verify against source'), state.overview.text, '');
+  }
+  for (const entry of (state?.askThread || []).filter(e => e?.a).slice(-5)) {
+    out.push(heading('Question about the paper'), entry.q, entry.a);
+    const cited = distillCitedPassages(entry.a, entry.passages);
+    if (cited.length) {
+      out.push('Supplied passages (provenance only; check claim support):');
+      for (const p of cited) out.push(`${p.id} — ${p.heading}`, markdown ? `> ${p.text.replace(/\n/g, '\n> ')}` : p.text);
+    } else out.push('No supplied passage citation available for this answer.');
+    out.push('');
+  }
+  return out.join('\n').trim();
+}
+
 const DISTILL_SECTION_LINES = {
   intro: 'The question and why it matters.',
   methods: 'How they did it and what was measured.',
@@ -246,5 +265,5 @@ function distillGroupBullets(bullets, bulletSections, sectionOrder) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { distillPickPassages, distillCitedPassages, distillBulletKey, distillGroupBullets, distillPaperExcerpt, distillTrustFacts, distillParseLabelled, distillParseTerms, distillFindSection, distillMergeGlossary, distillPickSections, distillSectionMap, distillByline };
+  module.exports = { distillPaperNotesText, distillPickPassages, distillCitedPassages, distillBulletKey, distillGroupBullets, distillPaperExcerpt, distillTrustFacts, distillParseLabelled, distillParseTerms, distillFindSection, distillMergeGlossary, distillPickSections, distillSectionMap, distillByline };
 }

@@ -20,7 +20,7 @@ export default [
         distillPageUrlKey: 'readonly',
         distillPaperText: 'readonly',
         distillSectionKind: 'readonly',
-        distillBuildPrompt: 'readonly',
+        distillBuildPrompt: 'readonly', distillPaperNotesText: 'readonly',
         distillResolveBackendBaseUrl: 'readonly',
         distillFormatExportCaptured: 'readonly',
         distillBuildAnalysisExportMarkdown: 'readonly',
@@ -231,7 +231,7 @@ export default [
     files: ['scripts/eval/research/*.mjs'],
     languageOptions: {
       ecmaVersion: 2022, sourceType: 'module',
-      globals: { ...globals.node, ...globals.browser, chrome: 'readonly', validateLocal: 'readonly', LanguageModel: 'readonly', wireActiveTab: 'readonly', paperView: 'readonly', __evalRequests: 'readonly' }
+      globals: { ...globals.node, ...globals.browser, chrome: 'readonly', validateLocal: 'readonly', LanguageModel: 'readonly', wireActiveTab: 'readonly', paperView: 'readonly', __evalRequests: 'readonly', __copiedNotes: 'readonly' }
     }
   },
   {

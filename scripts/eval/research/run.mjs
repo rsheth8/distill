@@ -1,6 +1,7 @@
 // Reproducible local quality capture. No downloads of models or server mutations.
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import os from 'node:os';
 import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -23,7 +24,7 @@ const baseUrl = arg('base') || 'http://localhost:11434';
 if (!['localhost','127.0.0.1','[::1]'].includes(new URL(baseUrl).hostname)) throw Error('Evaluation accepts loopback inference only.');
 await fs.mkdir(output, { recursive: true });
 const hash = s => createHash('sha256').update(s).digest('hex');
-const meta = { date: new Date().toISOString(), provider: 'Ollama OpenAI-compatible API; Node direct, NOT extension origin verification', baseUrl, models, promptSha256: hash(await fs.readFile(promptPath)), promptVersion: baseline ? 'cd163b1' : 'working-tree', temperature: 0.5, maxTokens: productionBudget ? tokenBudgets : 700, budgetMode: productionBudget ? 'production-balanced' : 'exploratory-700; differs from shipped task limits', platform: process.platform, architecture: process.arch, scoring: 'unscored; human verification pending' };
+const meta = { gitRevision: execFileSync('git',['rev-parse','HEAD'],{cwd:root}).toString().trim(), hardware: {cpu:os.cpus()[0]?.model,logicalCpus:os.cpus().length,memoryBytes:os.totalmem()}, date: new Date().toISOString(), provider: 'Ollama OpenAI-compatible API; Node direct, NOT extension origin verification', baseUrl, models, promptSha256: hash(await fs.readFile(promptPath)), promptVersion: baseline ? 'cd163b1' : 'working-tree', temperature: 0.5, maxTokens: productionBudget ? tokenBudgets : 700, budgetMode: productionBudget ? 'production-balanced' : 'exploratory-700; differs from shipped task limits', platform: process.platform, architecture: process.arch, scoring: 'unscored; human verification pending' };
 try { meta.server = await fetch(`${baseUrl}/api/version`).then(r=>r.json()); meta.installedModels = await fetch(`${baseUrl}/api/tags`).then(r=>r.json()).then(r=>r.models.map(({name,digest,details})=>({name,digest,details}))); } catch(e) { meta.serverError = e.message; }
 await fs.writeFile(`${output}/metadata.json`, JSON.stringify(meta,null,2));
 for (const spec of manifest.papers.filter(p=>!only||only.includes(p.id))) {
@@ -62,6 +63,7 @@ for (const spec of manifest.papers.filter(p=>!only||only.includes(p.id))) {
   const section = paper.sections.find(s=>s.kind==='results') || paper.sections[0];
   const tasks = [ ['overview',{}, {excerpt:distillPaperExcerpt(paper)}], ['section_guide',{section},{sectionText:section.text}], ['analysis',{section,opener:paper.abstract},{selection:section.text.slice(0,900)}], ...spec.questions.map(q=>['ask',baseline?{abstract:paper.abstract}:{},{question:q.question,excerpts:(baseline?distillPickSections:distillPickPassages)(paper,q.question)},q.id]) ];
   for(const [task,ctx,input,qid] of tasks) {
+   if (arg('tasks') && !arg('tasks').split(',').includes(task)) continue;
    const file = `${dest}/${model.replace(/[^a-z0-9.-]/gi,'_')}-${level}${baseline && expertise === 'newcomer' ? '' : '-'+expertise}-${qid||task}.json`;
    try { await fs.access(file); continue; } catch { /* resume missing runs only */ }
    const prompt=distillBuildPrompt(task,{title:paper.title,level,expertise,...ctx},input);

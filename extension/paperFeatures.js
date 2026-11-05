@@ -70,6 +70,11 @@ async function paperHelpAudience() {
 function paperHelpState(s) {
   return {
     overview: s.overview || null,
+    intakeNotice: s.paper?.source === 'pdf' && !s.paper.abstract
+      ? 'No labeled abstract was extracted from this PDF. The overview uses section excerpts; check Original PDF for missing text, tables and equations.'
+      : s.paper && !s.paper.sections?.length
+        ? 'Only the abstract is available. Open the full paper before checking methods or results.'
+        : 'AI uses extracted text. Figures, tables and equations may be missing or incomplete; check the original source.',
     trustFacts: s.paper ? distillTrustFacts(s.paper) : [],
     sections: (s.paper?.sections || []).map(x => ({ heading: x.heading, kind: x.kind || 'other', chars: (x.text || '').length })),
     byline: distillByline(s.paper),

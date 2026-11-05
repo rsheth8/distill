@@ -1641,6 +1641,9 @@ function buildNotesMarkdown(s) {
     out.push('');
   }
 
+  const paperNotes = distillPaperNotesText(s, true);
+  if (paperNotes) out.push(paperNotes, '');
+
   if (highlights.length) {
     out.push('## Highlights');
     for (const h of highlights.slice(0, 5)) {
@@ -1696,6 +1699,9 @@ function buildNotesPlain(s) {
     out.push(summary.trim());
     out.push('');
   }
+
+  const paperNotes = distillPaperNotesText(s, false);
+  if (paperNotes) out.push(paperNotes, '');
 
   if (highlights.length) {
     out.push('Highlights');

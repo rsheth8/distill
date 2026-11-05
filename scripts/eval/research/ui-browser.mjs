@@ -62,6 +62,11 @@ try{
  check('source passage is inspectable',await panel.locator('#askThread blockquote').first().isVisible());
  await panel.locator('#askThread details button').first().click();await source.waitForTimeout(200);
  check('source navigation focuses actual passage',await source.evaluate(()=>document.activeElement?.textContent.includes('42 adults')));
+ await panel.evaluate(()=>{globalThis.__copiedNotes='';navigator.clipboard.writeText=async value=>{globalThis.__copiedNotes=value;};});
+ await panel.click('#tabReadBtn');await panel.locator('#copyMenu summary').click();await panel.locator('#copyMenu [data-format=markdown]').click();
+ await panel.waitForFunction(()=>globalThis.__copiedNotes?.includes('Supplied passages'));
+ check('first-use note export includes overview, Ask and supplied evidence',await panel.evaluate(()=>__copiedNotes.includes('42 adults')&&__copiedNotes.includes('AI overview')&&__copiedNotes.includes('S2P0')));
+ await panel.click('#tabAskBtn');
  for(const scheme of ['light','dark'])for(const width of [360,480]){
   await panel.emulateMedia({colorScheme:scheme});await panel.setViewportSize({width,height:900});
   check(`Ask fits ${scheme} ${width}`,await panel.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));

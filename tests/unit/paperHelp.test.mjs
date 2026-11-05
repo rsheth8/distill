@@ -299,3 +299,16 @@ describe('overview context allocation', () => {
     expect(excerpt.length).toBeLessThanOrEqual(7000);
   });
 });
+
+describe('first useful reading-note export',()=>{
+  it('includes overview/caveats and supplied Ask evidence without requiring progressive reading',()=>{
+    const s={lastSummary:'',overview:{text:'FOUND: Association.\nLIMITS: Cannot establish causation.'},askThread:[{q:'Sample?',a:'42 adults [S2P0]. FROM: S2P0, S99P99',passages:[{id:'S2P0',heading:'Methods',text:'The sample included 42 adults.'}]}]};
+    for(const markdown of [true,false]){
+      const notes=help.distillPaperNotesText(s,markdown);
+      expect(notes).toContain('Cannot establish causation');
+      expect(notes).toContain('The sample included 42 adults.');
+      expect(notes).toContain('S2P0 — Methods');
+      expect(notes).not.toContain('S99P99 —');
+    }
+  });
+});
