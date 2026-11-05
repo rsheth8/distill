@@ -66,6 +66,8 @@ function paperHelpState(s) {
   return {
     overview: s.overview || null,
     trustFacts: s.paper ? distillTrustFacts(s.paper) : [],
+    sections: (s.paper?.sections || []).map(x => ({ heading: x.heading, kind: x.kind || 'other', chars: (x.text || '').length })),
+    byline: [s.paper?.authors?.length ? (s.paper.authors.length > 2 ? `${s.paper.authors[0]} et al.` : s.paper.authors.join(' and ')) : '', s.paper?.source && s.paper.source !== 'generic' && s.paper.source !== 'pdf' ? { arxiv: 'arXiv', pmc: 'PubMed Central', biorxiv: 'bioRxiv' }[s.paper.source] || '' : ''].filter(Boolean).join(' · '),
     section: s.section?.heading || '',
     canGuide: !!(s.paper && s.section?.heading && distillFindSection(s.paper, s.section.heading)),
     guides: s.guides || {},

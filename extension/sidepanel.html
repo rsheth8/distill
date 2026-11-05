@@ -88,13 +88,21 @@
       <button id="tabGlossaryBtn" class="tab-btn" type="button" role="tab" aria-selected="false">Glossary</button>
     </nav>
 
-    <!-- Article title strip -->
-    <div id="articleTitleBar" class="title-bar hidden">
-      <span id="articleTitle" class="article-title"></span>
-      <button id="fullTextLink" class="full-text-link hidden" type="button">Only the abstract is on this page. Open the full paper →</button>
-    </div>
-
     <div id="viewRead" class="panel-view">
+      <section id="paperCard" class="paper-card hidden">
+        <h1 id="articleTitle" class="paper-title"></h1>
+        <p id="paperByline" class="paper-byline"></p>
+        <ul id="paperFacts" class="fact-tags"></ul>
+        <button id="fullTextLink" class="full-text-link hidden" type="button">Only the abstract is on this page. Open the full paper →</button>
+        <div class="paper-where">
+          <div id="sectionMap" class="section-map" role="group" aria-label="Sections of this paper" hidden></div>
+          <p class="paper-where-line"><span id="sectionNow" class="section-now"></span> <span id="sectionLine" class="section-line"></span></p>
+          <p id="readingMeta" class="hint reading-meta">
+            <span id="progressLabel" class="progress-label">0 paragraphs read</span>
+            <span id="timeLabel" class="time-label"></span>
+          </p>
+        </div>
+      </section>
       <section id="overviewCard" class="section hidden" aria-live="polite">
         <h2 class="section-title">Overview</h2>
         <div id="overviewBody"></div>
@@ -102,7 +110,6 @@
       </section>
       <section id="trustCard" class="section hidden">
         <h2 class="section-title">How much to trust it</h2>
-        <ul id="trustFacts" class="fact-tags"></ul>
         <p id="trustStudy"></p>
         <div id="trustLimits"></div>
         <p class="hint">A single study rarely settles a question.</p>
@@ -165,11 +172,6 @@
 
     <!-- Main reading panel -->
     <div id="mainContent">
-
-      <p id="readingMeta" class="hint reading-meta">
-        <span id="progressLabel" class="progress-label">0 paragraphs read</span>
-        <span id="timeLabel" class="time-label"></span>
-      </p>
 
       <!-- Suggestions -->
       <section id="suggestionsCard" class="section suggestions-card hidden">
@@ -383,6 +385,7 @@
   <script src="utils/accentColor.js"></script>
   <script src="sidepanel.js"></script>
   <script src="utils/paperHelp.js"></script>
+  <script src="utils/sectionMap.js"></script>
   <script src="sidepanelPaper.js"></script>
 </body>
 </html>

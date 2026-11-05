@@ -38,6 +38,31 @@ function overviewText() {
   return paperView.streams['overview:overview'] ?? paperView.state?.overview?.text ?? '';
 }
 
+// sidepanel.js owns whether the card is shown; this only fills it.
+function renderPaperCard() {
+  const st = paperView.state;
+  const list = $('paperFacts');
+  list.replaceChildren();
+  $('paperByline').textContent = st?.byline || '';
+  for (const f of st?.trustFacts || []) {
+    const li = document.createElement('li');
+    if (f.href) {
+      const a = addText(li, 'a', f.text);
+      a.href = f.href;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+    } else {
+      li.textContent = f.text;
+    }
+    list.append(li);
+  }
+  const segs = distillSectionMap(st?.sections || [], paperView.section);
+  distillRenderSectionMap($('sectionMap'), segs, heading => sendPaper({ type: 'JUMP_TO_SECTION', heading }));
+  const cur = segs.find(s => s.state === 'current');
+  $('sectionNow').textContent = cur ? cur.heading : '';
+  $('sectionLine').textContent = cur?.line || '';
+}
+
 function renderOverview() {
   const text = overviewText();
   const body = $('overviewBody');
@@ -55,21 +80,6 @@ function renderOverview() {
 }
 
 function renderTrust(parsed) {
-  const facts = paperView.state?.trustFacts || [];
-  const list = $('trustFacts');
-  list.replaceChildren();
-  for (const f of facts) {
-    const li = document.createElement('li');
-    if (f.href) {
-      const a = addText(li, 'a', f.text);
-      a.href = f.href;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-    } else {
-      li.textContent = f.text;
-    }
-    list.append(li);
-  }
   $('trustStudy').textContent = parsed.STUDY ? `Study: ${parsed.STUDY}` : '';
   const limits = $('trustLimits');
   limits.replaceChildren();
@@ -79,7 +89,7 @@ function renderTrust(parsed) {
     const ul = addText(limits, 'ul', '');
     for (const t of items) addText(ul, 'li', t);
   }
-  $('trustCard').classList.toggle('hidden', !facts.length);
+  $('trustCard').classList.toggle('hidden', !parsed.STUDY && !bulletLines(parsed.LIMITS).length);
 }
 
 function renderGuide() {
@@ -155,6 +165,7 @@ function askPaper(question) {
 }
 
 function renderAll(scrollAsk = false) {
+  renderPaperCard();
   renderOverview();
   renderGuide();
   renderGlossary();
@@ -245,6 +256,7 @@ function handlePaperMessage(msg) {
       paperView.canGuide = msg.canGuide !== false;
       setStatus('guideStatus', '', '');
       renderGuide();
+      renderPaperCard();
       break;
     case 'ARTICLE_NAVIGATING':
     case 'NO_ARTICLE':

@@ -412,6 +412,12 @@
         distillUnmarkTerms(document.body);
         if (termCard) termCard.hidden = true;
         break;
+      case 'SCROLL_TO_SECTION': {
+        const want = String(msg.heading || '').trim().toLowerCase().slice(0, 120);
+        const head = sectionHeads.find(h => distillCleanHeading(distillNodeText(h)).slice(0, 120).toLowerCase() === want);
+        head?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        break;
+      }
       case 'SCROLL_TO_TERM': {
         const want = String(msg.term || '').toLowerCase();
         const span = [...document.querySelectorAll('.distill-term')].find(s => s.dataset.term.toLowerCase() === want);

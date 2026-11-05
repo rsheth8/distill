@@ -912,6 +912,9 @@ chrome.runtime.onConnect.addListener(port => {
           void runAsk(msg.tabId, msg.question);
         })();
         break;
+      case 'JUMP_TO_SECTION':
+        chrome.tabs.sendMessage(msg.tabId, { type: 'SCROLL_TO_SECTION', heading: String(msg.heading || '') }).catch(() => {});
+        break;
       case 'SCROLL_TO_TERM':
         chrome.tabs.sendMessage(msg.tabId, { type: 'SCROLL_TO_TERM', term: String(msg.term || '') }).catch(() => {});
         break;

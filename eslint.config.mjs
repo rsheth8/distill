@@ -91,7 +91,8 @@ export default [
         ...extGlobals,
         $: 'readonly', port: 'readonly', currentTabId: 'readonly', show: 'readonly', hide: 'readonly',
         setStatus: 'readonly', setPanel: 'readonly',
-        distillParseLabelled: 'readonly', distillParseTerms: 'readonly'
+        distillParseLabelled: 'readonly', distillParseTerms: 'readonly',
+        distillSectionMap: 'readonly', distillRenderSectionMap: 'readonly'
       }
     },
     rules: { 'no-unused-vars': 'off' }

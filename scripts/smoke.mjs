@@ -170,6 +170,10 @@ const removedIds = [
 const panelSources = sp + read('sidepanel.html');
 const leftover = removedIds.filter(id => new RegExp(`['"]${id}['"]`).test(panelSources));
 if (leftover.length) fail(`Removed panel ids still referenced: ${leftover.join(', ')}`);
+const bgAll = read('background.js') + read('paperFeatures.js');
+if (!/case 'JUMP_TO_SECTION'/.test(bgAll)) fail('background does not handle JUMP_TO_SECTION');
+if (!/case 'SCROLL_TO_SECTION'/.test(read('content.js'))) fail('content script does not handle SCROLL_TO_SECTION');
+if (!/type: 'JUMP_TO_SECTION'/.test(sp)) fail('panel never sends JUMP_TO_SECTION');
 const server = readFileSync(join(root, 'backend', 'server.js'), 'utf8');
 
 const panelTypes = extractToPanelTypes(bg);
