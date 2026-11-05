@@ -236,6 +236,7 @@ function distillPdfPaper(rawPages, { url = '', info = {} } = {}) {
   const figures = [];
   let section = null;
   let abstract = '';
+  let inlineAbstract = false;
   for (const b of blocks) {
     if (b.heading && isTop(b.heading)) {
       sections.push(section = { heading: b.heading.text, parts: [] });
@@ -250,7 +251,9 @@ function distillPdfPaper(rawPages, { url = '', info = {} } = {}) {
     }
     if (!section) {
       const m = text.match(/^abstract\b[\s.:—–-]*/i);
-      if (m && !abstract) abstract = text.slice(m[0].length);
+      if (m && !abstract) { abstract = text.slice(m[0].length); inlineAbstract = true; }
+      else if (/^(key ?words|index terms)\b/i.test(text)) inlineAbstract = false;
+      else if (inlineAbstract) abstract += ` ${text}`;
       continue; // authors and affiliations before the first heading
     }
     section.parts.push(text);

@@ -98,3 +98,30 @@ describe('distillPdfPaper', () => {
     expect(paper.isPreprint).toBe(true);
   });
 });
+
+describe('inline abstract across PDF paragraph blocks', () => {
+  it('retains continuation paragraphs until the first section and stops at keywords', () => {
+    const page={width:W,height:H,items:[
+      item(100,50,'A Paper About Precision',{size:18}),
+      ...column(50,100,['Abstract. We measured the physical den-','sity using a controlled observational model.']),
+      ...column(50,150,['The key estimate was 67.3 with uncertainty','of 1.2 in the reported physical units.']),
+      item(50,190,'Keywords: cosmology and inference'),
+      item(50,215,'1 Introduction',{size:12,font:'bold'}),
+      ...column(50,240,['The introduction begins here with enough','body text to establish the standard font.'])
+    ]};
+    const paper=distillPdfPaper([page]);
+    expect(paper.abstract).toContain('physical density');
+    expect(paper.abstract).toContain('67.3 with uncertainty');
+    expect(paper.abstract).not.toContain('Keywords');
+    expect(paper.abstract).not.toContain('introduction begins');
+  });
+});
+
+describe('unsupported raster-only input',()=>{
+  it('produces no usable text from an image-only pdf.js page',async()=>{
+    const {readFile}=await import('node:fs/promises');
+    const fixture=JSON.parse(await readFile(new URL('../fixtures/research/image-only.json',import.meta.url),'utf8'));
+    const paper=distillPdfPaper(fixture.pages);
+    expect(paper.abstract).toBe('');expect(paper.sections).toEqual([]);
+  });
+});

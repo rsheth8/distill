@@ -77,7 +77,7 @@ export default [
         tabState: 'readonly', toPanel: 'readonly', streamTask: 'readonly', schedulePersistTab: 'readonly',
         readingLevel: 'readonly', distillPaperExcerpt: 'readonly', distillTrustFacts: 'readonly',
         distillParseLabelled: 'readonly', distillParseTerms: 'readonly', distillFindSection: 'readonly',
-        distillMergeGlossary: 'readonly', distillPickSections: 'readonly', distillByline: 'readonly'
+        distillMergeGlossary: 'readonly', distillPickSections: 'readonly', distillPickPassages: 'readonly', distillByline: 'readonly'
       }
     },
     rules: { 'no-unused-vars': 'off' }
@@ -92,7 +92,7 @@ export default [
         $: 'readonly', port: 'readonly', currentTabId: 'readonly', show: 'readonly', hide: 'readonly',
         setStatus: 'readonly', setThinking: 'readonly', setPanel: 'readonly', lastSelectedText: 'readonly',
         distillParseLabelled: 'readonly', distillParseTerms: 'readonly',
-        distillSectionMap: 'readonly', distillRenderSectionMap: 'readonly'
+        distillBrowserModelAvailability: 'readonly', distillCitedPassages: 'readonly', distillSectionMap: 'readonly', distillRenderSectionMap: 'readonly'
       }
     },
     rules: { 'no-unused-vars': 'off' }
@@ -125,7 +125,7 @@ export default [
         extractArticle: 'readonly',
         distillExtractPaper: 'readonly',
         distillPaperText: 'readonly',
-        distillCleanHeading: 'readonly',
+        distillNodeText: 'readonly', distillCleanHeading: 'readonly',
         distillSectionAtLine: 'readonly',
         distillNodeText: 'readonly',
         distillMarkTerms: 'readonly',
@@ -178,7 +178,7 @@ export default [
     }
   },
   {
-    files: ['extension/utils/exportClip.js', 'extension/utils/accentColor.js', 'extension/utils/articleExtractor.js', 'extension/utils/paperExtractor.js', 'extension/utils/prompts.js', 'extension/utils/paperHelp.js', 'extension/utils/geminiAdapter.js', 'extension/utils/openaiCompatAdapter.js', 'extension/utils/pageStore.js', 'extension/utils/buildConfig.js', 'extension/utils/termMarks.js', 'extension/utils/sectionMap.js'],
+    files: ['extension/utils/exportClip.js', 'extension/utils/accentColor.js', 'extension/utils/articleExtractor.js', 'extension/utils/paperExtractor.js', 'extension/utils/prompts.js', 'extension/utils/paperHelp.js', 'extension/utils/geminiAdapter.js', 'extension/utils/openaiCompatAdapter.js', 'extension/utils/browserModel.js', 'extension/utils/pageStore.js', 'extension/utils/buildConfig.js', 'extension/utils/termMarks.js', 'extension/utils/sectionMap.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',
@@ -224,6 +224,14 @@ export default [
     },
     rules: {
       'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }]
+    }
+  },
+  {
+    // Browser-evaluation callbacks execute in Chrome; orchestration executes in Node.
+    files: ['scripts/eval/research/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2022, sourceType: 'module',
+      globals: { ...globals.node, ...globals.browser, chrome: 'readonly', validateLocal: 'readonly', LanguageModel: 'readonly', wireActiveTab: 'readonly', paperView: 'readonly', __evalRequests: 'readonly' }
     }
   },
   {

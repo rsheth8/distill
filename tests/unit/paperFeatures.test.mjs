@@ -140,7 +140,7 @@ describe('paperFeatures', () => {
   });
 
   it('runOverview reads the level once, passes it through and stores it', async () => {
-    const s = { paper: { title: 'P' }, title: 'T' };
+    const s = { paper: { title: 'P', abstract: 'Extracted text.' }, title: 'T' };
     ctx.tabState.set(1, s);
     const p = ctx.runOverview(1);
     await tick();
@@ -151,7 +151,7 @@ describe('paperFeatures', () => {
     await p;
     expect(levelReads).toBe(1);
     expect(sent.find(m => m.type === 'PAPER_HELP_DONE').level).toBe('everyday');
-    expect(s.overview).toEqual({ level: 'everyday', text: 'ASKED: x' });
+    expect(s.overview).toEqual({ level: 'everyday', expertise: 'newcomer', text: 'ASKED: x' });
   });
 });
 
@@ -299,7 +299,7 @@ describe('section guides', () => {
 
   it('an existing guide at the current level is re-underlined, not regenerated', async () => {
     const s = setup();
-    s.guides = { Methods: { level: 'everyday', text: 'x', terms: [{ term: 'a', definition: 'b' }] } };
+    s.guides = { Methods: { level: 'everyday', expertise: 'newcomer', text: 'x', terms: [{ term: 'a', definition: 'b' }] } };
     await ctx.runSectionGuide(1, 'Methods');
     expect(calls).toHaveLength(0);
     expect(tabMsgs).toHaveLength(1);
@@ -402,12 +402,14 @@ describe('ask the paper', () => {
     expect(sent.at(-1).askThread).toHaveLength(1);
     await flush();
     expect(calls).toHaveLength(1);
-    expect(calls[0]).toMatchObject({ task: 'ask', context: { title: 'T', abstract: 'We study sleep.', thread: [], level: 'everyday' } });
-    expect(calls[0].input).toEqual({ question: 'Did sleep help memory?', excerpts: [{ heading: 'Abstract', text: 'We study sleep.' }, { heading: 'Results', text: 'Sleep improved memory.' }] });
+    expect(calls[0]).toMatchObject({ task: 'ask', context: { title: 'T', thread: [], level: 'everyday' } });
+    expect(calls[0].input.question).toBe('Did sleep help memory?');
+    expect(calls[0].input.excerpts).toEqual(s.askThread[0].passages);
+    expect(calls[0].input.excerpts.map(p => p.id).sort()).toEqual(['S0P0', 'S1P0']);
     expect(sent.find(m => m.type === 'PAPER_HELP_START')).toMatchObject({ kind: 'ask', key: '0' });
     expect(s.askThread[0].a).toBe('');
     await finish(0, 'Yes it did.\nFROM: Results', p);
-    expect(s.askThread).toEqual([{ q: 'Did sleep help memory?', a: 'Yes it did.\nFROM: Results' }]);
+    expect(s.askThread).toMatchObject([{ q: 'Did sleep help memory?', a: 'Yes it did.\nFROM: Results' }]);
     expect(sent.at(-1).type).toBe('PAPER_HELP_STATE');
   });
 
@@ -435,7 +437,7 @@ describe('ask the paper', () => {
     expect(s.askThread).toEqual([]);
   });
 
-  it('sends at most the 3 latest answered turns, a clipped abstract and a clipped question', async () => {
+  it('sends at most the 3 latest answered turns, no duplicated abstract and a clipped question', async () => {
     const s = setup({ paper: { ...paper, abstract: 'a'.repeat(2000) } });
     s.askThread = [
       ...Array.from({ length: 5 }, (_, i) => ({ q: `q${i}`, a: `a${i}` })),
@@ -444,7 +446,7 @@ describe('ask the paper', () => {
     ctx.runAsk(1, 'x'.repeat(900));
     await flush();
     expect(calls[0].context.thread).toEqual([{ q: 'q2', a: 'a2' }, { q: 'q3', a: 'a3' }, { q: 'q4', a: 'a4' }]);
-    expect(calls[0].context.abstract).toHaveLength(800);
+    expect(calls[0].context.abstract).toBeUndefined(); // abstract is supplied once, as a passage
     expect(calls[0].input.question).toHaveLength(500);
     expect(sent.find(m => m.type === 'PAPER_HELP_START').key).toBe('6'); // its index in the thread
   });
@@ -470,7 +472,7 @@ describe('ask the paper', () => {
     await second;
     await flush();
     expect(calls).toHaveLength(1);
-    expect(s.askThread).toEqual([{ q: 'first', a: 'one' }]);
+    expect(s.askThread).toMatchObject([{ q: 'first', a: 'one' }]);
   });
 
   it('a tab that moved on during the stream writes and publishes nothing', async () => {
@@ -483,7 +485,7 @@ describe('ask the paper', () => {
     calls[0].onDone();
     calls[0].resolve();
     await p;
-    expect(s.askThread).toEqual([{ q: 'Why?', a: '' }]);
+    expect(s.askThread).toMatchObject([{ q: 'Why?', a: '' }]);
     expect(sent.filter(m => m.type === 'PAPER_HELP_STATE')).toHaveLength(publishedBefore);
     expect(ctx.tabState.get(1).askThread).toBeUndefined();
   });
@@ -494,5 +496,23 @@ describe('ask the paper', () => {
     setup();
     expect(ctx.runAsk(1, '   ')).toBeUndefined();
     expect(sent).toEqual([]);
+  });
+});
+
+describe('empty extraction must not become generated evidence',()=>{
+  beforeEach(load);
+  it('withholds overview inference and explains the intake failure',async()=>{
+    ctx.distillPaperExcerpt=()=>'';
+    ctx.tabState.set(1,{paper:{title:'Scan',sections:[]}});
+    await ctx.runOverview(1);
+    expect(calls).toHaveLength(0);
+    expect(sent).toContainEqual(expect.objectContaining({type:'PAPER_HELP_ERROR',code:'EXTRACTION_INCOMPLETE'}));
+  });
+  it('withholds Ask inference when no passages exist',async()=>{
+    ctx.tabState.set(1,{paper:{title:'Scan',sections:[]}});
+    await ctx.runAsk(1,'What was the sample?');
+    expect(calls).toHaveLength(0);
+    expect(ctx.tabState.get(1).askThread).toEqual([]);
+    expect(sent).toContainEqual(expect.objectContaining({type:'PAPER_HELP_ERROR',code:'EXTRACTION_INCOMPLETE'}));
   });
 });

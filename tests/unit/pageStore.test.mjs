@@ -207,3 +207,18 @@ describe('paper help fields', () => {
     expect(distillPagePayloadToState(p).askThread).toEqual(p.askThread);
   });
 });
+
+describe('saved provenance and audience compatibility',()=>{
+  it('preserves bounded supplied passages and rejects malformed source IDs',()=>{
+    const payload=distillBuildPageStatePayload({
+      overview:{level:'close',expertise:'expert',text:'An overview'},
+      askThread:[{q:'Sample?',a:'42 [S2P0]',passages:[
+        {id:'S2P0',heading:'Methods',text:'42 adults'},
+        {id:'javascript:bad',heading:'Bad',text:'Not a source'}
+      ]}]
+    },1);
+    const restored=distillPagePayloadToState(payload);
+    expect(restored.overview.expertise).toBe('expert');
+    expect(restored.askThread[0].passages).toEqual([{id:'S2P0',heading:'Methods',text:'42 adults'}]);
+  });
+});

@@ -409,6 +409,19 @@
         distillUnmarkTerms(document.body);
         if (termCard) termCard.hidden = true;
         break;
+      case 'SCROLL_TO_PASSAGE': {
+        const quote = String(msg.text || '').replace(/\s+/g, ' ').trim();
+        if (!quote) break;
+        const target = [...(articleEl || document.body).querySelectorAll('p, li')]
+          .find(el => distillNodeText(el).includes(quote));
+        if (target) {
+          target.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'center' });
+          target.setAttribute('tabindex', '-1');
+          target.focus({ preventScroll: true });
+        }
+        sendResponse({ ok: !!target });
+        break;
+      }
       case 'SCROLL_TO_SECTION': {
         const want = String(msg.heading || '').trim().toLowerCase().slice(0, 120);
         // The paper's sections are h2s; a heading the extractor took from a deeper level is found in the article.

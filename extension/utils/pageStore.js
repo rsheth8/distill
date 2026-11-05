@@ -70,6 +70,7 @@ function distillPaperHelpFields(src) {
   for (const [heading, g] of guideEntries) {
     guides[heading] = {
       level: g.level || 'everyday',
+      ...(g.expertise ? { expertise: g.expertise === 'expert' ? 'expert' : 'newcomer' } : {}),
       text: distillClampString(g.text, DISTILL_CAP_GUIDE_CHARS),
       terms: distillClampList(g.terms.filter(t => t && typeof t.term === 'string' && typeof t.definition === 'string'), 12)
     };
@@ -86,10 +87,11 @@ function distillPaperHelpFields(src) {
   );
   return {
     bulletSections,
-    overview: o && typeof o.text === 'string' && o.text ? { level: o.level || 'everyday', text: distillClampString(o.text, DISTILL_CAP_OVERVIEW_CHARS) } : null,
+    overview: o && typeof o.text === 'string' && o.text ? { level: o.level || 'everyday', ...(o.expertise ? { expertise: o.expertise === 'expert' ? 'expert' : 'newcomer' } : {}), text: distillClampString(o.text, DISTILL_CAP_OVERVIEW_CHARS) } : null,
     guides,
     glossary: distillClampList(glossary, DISTILL_CAP_GLOSSARY),
-    askThread: askThread.map(e => ({ q: distillClampString(e.q, 500), a: distillClampString(e.a, DISTILL_CAP_ASK_CHARS) }))
+    askThread: askThread.map(e => ({ q: distillClampString(e.q, 500), a: distillClampString(e.a, DISTILL_CAP_ASK_CHARS),
+      ...(Array.isArray(e.passages) ? { passages: e.passages.filter(p => p && /^S\d+P\d+$/.test(p.id) && typeof p.text === 'string' && typeof p.heading === 'string').slice(0, 12).map(p => ({ id: p.id, heading: distillClampString(p.heading, 120), text: distillClampString(p.text, 1200) })) } : {}) }))
   };
 }
 

@@ -942,7 +942,20 @@ function handleMessage(msg) {
   if (typeof handlePaperMessage === 'function') handlePaperMessage(msg); // connect() runs before sidepanelPaper.js loads
 
   switch (msg.type) {
-
+    case 'LOCAL_MODELS_RESULT': {
+      $('discoverModelsBtn').disabled = false;
+      if (msg.baseUrl !== $('localBaseUrlInput').value) {
+        $('localModelsStatus').textContent = 'Server address changed. List models again.';
+        break;
+      }
+      const list = $('localModelsList');
+      list.replaceChildren();
+      for (const model of msg.models || []) {
+        const option = document.createElement('option'); option.value = model; list.append(option);
+      }
+      $('localModelsStatus').textContent = msg.message || '';
+      break;
+    }
     case 'ARTICLE_NAVIGATING':
       clearThinking();
       dismissQuiz();

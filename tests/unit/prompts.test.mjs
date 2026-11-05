@@ -17,7 +17,7 @@ describe('distillBuildPrompt', () => {
     overview: [{ title: 'T' }, { excerpt: 'EXC' }, ['T', 'EXC', 'ASKED:', 'DID:', 'FOUND:', 'WHY:', 'STUDY:', 'LIMITS:']],
     section_guide: [{ title: 'T', section: { heading: 'Methods', kind: 'methods' } }, { sectionText: 'SEC' }, ['T', '"Methods"', 'SEC', 'TERMS:', 'up to 12']],
     ask: [{ title: 'T', abstract: 'ABS', thread: [{ q: 'OLDQ', a: 'OLDA' }] }, { question: 'Q?', excerpts: [{ heading: 'Results', text: 'RES' }] },
-      ['T', 'ABS', 'OLDQ', 'OLDA', 'Q?', '[Results]', 'RES', 'BACKGROUND:', 'FROM:', "doesn't say"]],
+      ['T', 'ABS', 'OLDQ', 'OLDA', 'Q?', '[Results]', 'RES', 'BACKGROUND:', 'FROM:', "could not find that in the supplied passages"]],
   };
 
   for (const [task, [context, input, wanted]] of Object.entries(tasks)) {
@@ -70,7 +70,7 @@ describe('distillBuildPrompt', () => {
 
   it('reading level swaps one sentence of the persona', () => {
     const sys = level => distillBuildPrompt('now', { level }, { paragraph: 'p' }).system;
-    expect(sys('simple')).toMatch(/no technical terms at all/);
+    expect(sys('simple')).toMatch(/Explain necessary technical terms/);
     expect(sys('close')).toMatch(/define each one the first time/);
     expect(sys('everyday')).toMatch(/explain it in a few words/);
     expect(sys(undefined)).toBe(sys('everyday'));
@@ -87,5 +87,24 @@ describe('distillBuildPrompt', () => {
   it('backend copy matches (run `npm run sync:prompts`)', () => {
     const read = p => readFileSync(new URL(p, import.meta.url), 'utf8');
     expect(read('../../backend/lib/prompts.js')).toBe(read('../../extension/utils/prompts.js'));
+  });
+});
+
+describe('audience and evidence scope across reading tasks', () => {
+  for (const task of ['overview', 'section_guide', 'ask', 'analysis']) {
+    for (const level of ['simple', 'everyday', 'close']) {
+      it(`${task}/${level}: expert guidance retains methods and quantitative uncertainty`, () => {
+        const p = distillBuildPrompt(task, { level, expertise: 'expert' });
+        expect(p.system).toContain('experienced researcher');
+        expect(p.system).toContain('Preserve units, sample sizes, uncertainty and caveats');
+        expect(p.system).toContain('observational associations');
+      });
+    }
+  }
+  it('scopes missing evidence to retrieved passages and preserves IDs', () => {
+    const p = text(distillBuildPrompt('ask', {}, { question: 'Why?', excerpts: [{ id: 'S2P7', heading: 'Results', text: 'n=42' }] }));
+    expect(p).toContain('[S2P7] Results');
+    expect(p).toContain('full paper is silent');
+    expect(p).not.toContain("say the paper doesn't say");
   });
 });

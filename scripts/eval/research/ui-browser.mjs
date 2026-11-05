@@ -71,6 +71,7 @@ try{
  check('200% zoom has no horizontal document overflow at 480px',await panel.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
  await panel.screenshot({path:`${out}/ask-zoom.png`,fullPage:true});await panel.evaluate(()=>document.body.style.zoom='');
  await panel.keyboard.press('Tab');check('keyboard reaches a visible control',await panel.evaluate(()=>document.activeElement!==document.body));
+ check('keyboard focus has a visible outline',await panel.evaluate(()=>{const style=getComputedStyle(document.activeElement);return style.outlineStyle!=='none'&&parseFloat(style.outlineWidth)>=2;}));
  await panel.emulateMedia({reducedMotion:'reduce'});check('reduced motion disables logo animation',await panel.locator('.wavy-d-logo g path').first().evaluate(e=>getComputedStyle(e).animationName==='none'));
  mode='slow';await panel.fill('#askInput','Wait for a response');await panel.locator('#askForm button').click();await panel.waitForSelector('#paperStopBtn:not(.hidden)');await panel.click('#paperStopBtn');await panel.waitForSelector('#askRetryBtn:not(.hidden)');
  check('cancel releases stream and offers retry',await panel.locator('#askStatus').innerText().then(t=>t.includes('Stopped')));

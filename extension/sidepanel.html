@@ -74,7 +74,11 @@
         </span>
         <span class="title">Distill</span>
       </div>
-      <select id="levelSelect" class="level-select" aria-label="Reading level" title="How plain the explanations are">
+      <select id="expertiseSelect" class="level-select" aria-label="Reader experience" title="Reader experience">
+        <option value="newcomer">Newcomer</option>
+        <option value="expert">Experienced</option>
+      </select>
+      <select id="levelSelect" class="level-select" aria-label="Explanation detail" title="Explanation detail">
         <option value="simple">Simple</option>
         <option value="everyday" selected>Everyday</option>
         <option value="close">Closer to the paper</option>
@@ -82,6 +86,7 @@
       <button id="settingsBtn" class="icon-btn" title="Settings" aria-label="Settings"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68 1.65 1.65 0 0 0 10 3.17V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
     </header>
 
+    <button id="paperStopBtn" type="button" class="paper-link-btn hidden">Stop current response</button>
     <nav class="tab-bar" role="tablist" aria-label="Distill sections">
       <button id="tabReadBtn" class="tab-btn tab-btn-active" type="button" role="tab" aria-selected="true">Read</button>
       <button id="tabAskBtn" class="tab-btn" type="button" role="tab" aria-selected="false">Ask</button>
@@ -93,6 +98,7 @@
         <h1 id="articleTitle" class="paper-title"></h1>
         <p id="paperByline" class="paper-byline"></p>
         <ul id="paperFacts" class="fact-tags"></ul>
+        <p class="hint">AI uses extracted text. Figures, tables and equations may be missing or incomplete; check the original source.</p>
         <button id="fullTextLink" class="full-text-link hidden" type="button">Only the abstract is on this page. Open the full paper →</button>
       </section>
       <div id="paperWhere" class="paper-where hidden">
@@ -105,14 +111,15 @@
       </div>
       <section id="overviewCard" class="section hidden" aria-live="polite">
         <h2 class="section-title">Overview</h2>
+        <p class="hint">Based on selected excerpts, which may omit important results and caveats.</p>
         <div id="overviewBody"></div>
         <p><span id="overviewStatus" class="status-badge"></span> <button id="overviewRetryBtn" type="button" class="paper-link-btn hidden">Retry</button></p>
       </section>
       <section id="trustCard" class="section hidden">
-        <h2 class="section-title">How much to trust it</h2>
+        <h2 class="section-title">Study context and caveats</h2>
         <p id="trustStudy"></p>
         <div id="trustLimits"></div>
-        <p class="hint">A single study rarely settles a question.</p>
+        <p class="hint">AI summary of supplied text. Check the source; this does not rate the paper’s reliability.</p>
       </section>
       <section id="guideCard" class="section hidden" aria-live="polite">
         <h2 class="section-title">You're in: <span id="guideHeading"></span></h2>
@@ -133,7 +140,7 @@
           <button id="onboardConnectBtn" type="button" class="btn-primary">Connect</button>
         </div>
         <p id="onboardStatusLine" class="hint key-status-line" role="status"></p>
-        <button id="onboardLocalBtn" type="button" class="paper-link-btn">Prefer fully private? Run a model on your computer</button>
+        <button id="onboardLocalBtn" type="button" class="paper-link-btn">Prefer local inference? Run a model on your computer</button>
         <div id="onboardDone" class="onboard-done hidden">
           <p>Connected.</p>
           <button id="onboardSampleBtn" type="button" class="btn-primary">Try it on a sample paper</button>
@@ -297,13 +304,18 @@
             <label class="settings-sub" for="localBaseUrlInput">Server address</label>
             <input id="localBaseUrlInput" type="url" placeholder="http://localhost:11434" autocomplete="off" spellcheck="false" />
             <p class="hint">Ollama: <code>http://localhost:11434</code> · LM Studio: <code>http://localhost:1234</code></p>
+            <button id="discoverModelsBtn" type="button" class="paper-link-btn">List installed models</button>
+            <p id="localModelsStatus" class="hint" role="status"></p>
+            <datalist id="localModelsList"></datalist>
             <label class="settings-sub" for="localModelInput">Model</label>
-            <input id="localModelInput" type="text" placeholder="qwen3:4b" autocomplete="off" spellcheck="false" />
+            <input id="localModelInput" list="localModelsList" type="text" placeholder="qwen3:4b" autocomplete="off" spellcheck="false" />
             <p class="hint">Setup: install Ollama, run <code>ollama pull qwen3:4b</code>, then allow Distill (macOS command below; restart Ollama after):</p>
             <code id="localOriginsCmd" class="local-cmd"></code>
             <button id="copyLocalCmdBtn" type="button" class="btn-copy">Copy command</button>
             <p class="hint">Windows/Linux: set <code>OLLAMA_ORIGINS</code> to the same value. LM Studio: turn on CORS in the Developer tab.</p>
           </div>
+          <button id="checkBrowserModelBtn" type="button" class="paper-link-btn">Check Chrome built-in availability</button>
+          <p id="browserModelStatus" class="hint" role="status"></p>
           <div class="settings-key-actions">
             <button id="saveKeyBtn" type="button" class="btn-primary">Save &amp; connect</button>
             <button id="validateKeyBtn" type="button" class="btn-copy">Test key</button>
@@ -410,6 +422,7 @@
   <script src="sidepanel.js"></script>
   <script src="utils/paperHelp.js"></script>
   <script src="utils/sectionMap.js"></script>
+  <script src="utils/browserModel.js"></script>
   <script src="sidepanelPaper.js"></script>
 </body>
 </html>

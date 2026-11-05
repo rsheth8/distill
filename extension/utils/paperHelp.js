@@ -14,7 +14,11 @@ function distillPaperExcerpt(paper, maxChars = 7000) {
   if (picked.length < 2) picked = sections.slice(0, 4);
   const parts = [];
   if (p.abstract) parts.push(`Abstract\n${p.abstract.slice(0, 1500)}`);
-  for (const s of picked) parts.push(`${s.heading}\n${String(s.text || '').slice(0, 1200)}`);
+  for (const s of picked) {
+    const text = String(s.text || '');
+    const excerpt = text.length > 1200 ? `${text.slice(0, 800)}\n[Middle of section omitted]\n${text.slice(-350)}` : text;
+    parts.push(`${s.heading}\n${excerpt}`);
+  }
   return parts.join('\n\n').slice(0, maxChars);
 }
 
@@ -32,11 +36,11 @@ function distillPaperDate(p) {
 function distillTrustFacts(paper) {
   const p = paper || {};
   const facts = [];
-  if (p.isPreprint) facts.push({ text: 'Preprint — not yet peer-reviewed' });
+  if (p.isPreprint) facts.push({ text: 'Preprint source — review status unverified' });
   else if (p.source === 'pdf') facts.push({ text: 'Publication status unknown' });
   else facts.push({ text: 'Journal article' });
   const date = distillPaperDate(p);
-  if (date) facts.push({ text: date });
+  if (date) facts.push({ text: p.source === 'arxiv' && !p.date ? `First posted: ${date}` : date });
   const n = Array.isArray(p.authors) ? p.authors.length : 0;
   if (n) facts.push({ text: n === 1 ? '1 author' : `${n} authors` });
   if (p.doi) facts.push({ text: `DOI ${p.doi}`, href: `https://doi.org/${encodeURI(p.doi).replace(/[#?]/g, encodeURIComponent)}` });
@@ -160,9 +164,49 @@ function distillPickSections(paper, question, maxChars = 5000) {
   return out;
 }
 
+/** Bounded passage retrieval: unique query terms prevent repetition from dominating.
+ * Long paragraphs are windowed so a result near their end remains retrievable.
+ * IDs refer to extracted section/paragraph positions, not publisher paragraph numbers.
+ */
+function distillPickPassages(paper, question, maxChars = 5000) {
+  const q = new Set(distillWords(question));
+  const sections = [{ heading: 'Abstract', text: paper?.abstract || '' }, ...(paper?.sections || [])];
+  const candidates = [];
+  sections.forEach((s, si) => String(s.text || '').split('\n\n').forEach((raw, pi) => {
+    const para = raw.trim();
+    for (let start = 0; start < para.length; start += 1000) {
+      const text = para.slice(start, start + 1200);
+      const words = new Set(distillWords(text));
+      const hits = [...q].filter(w => words.has(w)).length;
+      const headingHits = distillWords(s.heading).filter(w => q.has(w)).length;
+      candidates.push({ id: `S${si}P${pi}`, heading: s.heading, text, start, si, pi, score: hits * 3 + Math.min(2, headingHits) });
+    }
+  }));
+  candidates.sort((a, b) => b.score - a.score || a.si - b.si || a.pi - b.pi || a.start - b.start);
+  const selected = [], seen = new Set();
+  let used = 0;
+  for (const x of candidates) {
+    if (seen.has(x.id)) continue;
+    const overhead = x.id.length + x.heading.length + 8;
+    const room = maxChars - used - overhead;
+    if (room < 80 || selected.length >= 12) break;
+    const text = x.text.slice(0, room);
+    selected.push({ id: x.id, heading: x.heading, text, start: x.start, truncated: x.start > 0 || text.length < String(sections[x.si].text).split('\n\n')[x.pi].trim().length });
+    used += text.length + overhead;
+    seen.add(x.id);
+  }
+  return selected;
+}
+
+/** Only IDs present in supplied input are navigable. This checks provenance, not truth. */
+function distillCitedPassages(text, supplied) {
+  const ids = new Set((String(text || '').match(/\bS\d+P\d+\b/g) || []));
+  return (Array.isArray(supplied) ? supplied : []).filter(p => ids.has(p.id));
+}
+
 const DISTILL_SECTION_LINES = {
   intro: 'The question and why it matters.',
-  methods: 'How they did it. Fine to skim.',
+  methods: 'How they did it and what was measured.',
   results: 'What they found.',
   discussion: 'What it means, and its limits.'
 };
@@ -202,5 +246,5 @@ function distillGroupBullets(bullets, bulletSections, sectionOrder) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { distillBulletKey, distillGroupBullets, distillPaperExcerpt, distillTrustFacts, distillParseLabelled, distillParseTerms, distillFindSection, distillMergeGlossary, distillPickSections, distillSectionMap, distillByline };
+  module.exports = { distillPickPassages, distillCitedPassages, distillBulletKey, distillGroupBullets, distillPaperExcerpt, distillTrustFacts, distillParseLabelled, distillParseTerms, distillFindSection, distillMergeGlossary, distillPickSections, distillSectionMap, distillByline };
 }

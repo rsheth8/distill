@@ -1225,3 +1225,11 @@ body.is-thinking .wavy-d-logo g path:nth-child(even) { animation-delay: -1.2s; }
 .settings-group + .settings-group { margin-top: 12px; }
 .settings-group-title { font: 600 13px/1.3 var(--font-ui); color: var(--text-pri); margin: 0; }
 .settings-panel label { text-transform: none; letter-spacing: 0; }
+
+/* Keep independent audience/detail controls usable at narrow panel widths. */
+header { flex-wrap: wrap; }
+.ask-item details { margin: 8px 0; overflow-wrap: anywhere; }
+.ask-item summary { cursor: pointer; }
+.ask-item blockquote { margin: 8px 0; padding-left: 12px; border-left: 2px solid var(--paper-line); }
+
+:focus-visible { outline: 2px solid var(--accent) !important; outline-offset: 2px; }

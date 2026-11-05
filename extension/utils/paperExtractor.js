@@ -24,8 +24,8 @@ function distillSectionKind(heading) {
   const h = heading.toLowerCase();
   // Nature-style "Main" holds intro, results and discussion together, so it stays 'other'.
   if (/introduction|background|motivation/.test(h)) return 'intro';
-  if (/method|materials|approach|setup|study design|participants|architectur/.test(h)) return 'methods';
-  if (/result|finding|evaluation|experiment/.test(h)) return 'results';
+  if (/method|materials|approach|setup|study design|participants|architectur|detector/.test(h)) return 'methods';
+  if (/result|finding|evaluation|experiment|observation/.test(h)) return 'results';
   if (/discussion|conclu|limitation|future work/.test(h)) return 'discussion';
   return 'other';
 }

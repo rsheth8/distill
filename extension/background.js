@@ -285,7 +285,15 @@ chrome.storage.onChanged.addListener((changes, area) => {
     void ensureBackendToken();
   }
   if (changes[USE_BACKEND_PROXY_KEY]?.newValue === true) void ensureBackendToken();
-  if (changes.readingLevel) onReadingLevelChanged();
+  if (changes.readingLevel || changes.readerExpertise) {
+    for (const [tabId, s] of tabState) {
+      clearPaperHelp(tabId);
+      s.overview = null;
+      s.guides = {};
+      schedulePersistTab(tabId);
+    }
+    onReadingLevelChanged();
+  }
 });
 
 const SUMMARY_CADENCE = { minNewWords: 95, minIntervalMs: 11000, forceIntervalWords: 200 };
@@ -795,6 +803,12 @@ chrome.runtime.onConnect.addListener(port => {
       case 'GET_USAGE':
         void publishUsage(msg.tabId);
         break;
+      case 'CANCEL_PAPER_HELP':
+        clearPaperHelp(msg.tabId, true);
+        break;
+      case 'LIST_LOCAL_MODELS':
+        void listLocalModels(msg.baseUrl).then(result => toPanel({ type: 'LOCAL_MODELS_RESULT', baseUrl: String(msg.baseUrl || ''), ...result }));
+        break;
       case 'VALIDATE_AI_KEY':
         void (async () => {
           const provider = AI_PROVIDERS.includes(msg.provider) ? msg.provider : DEFAULT_AI_PROVIDER;
@@ -913,6 +927,14 @@ chrome.runtime.onConnect.addListener(port => {
           void runAsk(msg.tabId, msg.question);
         })();
         break;
+      case 'JUMP_TO_PASSAGE': {
+        const entry = tabState.get(msg.tabId)?.askThread?.[Number(msg.entryIndex)];
+        const source = entry?.passages?.find(p => p.id === msg.passageId);
+        if (source) chrome.tabs.sendMessage(msg.tabId, { type: 'SCROLL_TO_PASSAGE', heading: source.heading, text: source.text })
+          .then(result => toPanel({ type: 'SOURCE_NAVIGATION_RESULT', tabId: msg.tabId, ok: !!result?.ok }))
+          .catch(() => toPanel({ type: 'SOURCE_NAVIGATION_RESULT', tabId: msg.tabId, ok: false }));
+        break;
+      }
       case 'JUMP_TO_SECTION':
         chrome.tabs.sendMessage(msg.tabId, { type: 'SCROLL_TO_SECTION', heading: String(msg.heading || '') }).catch(() => {});
         break;
@@ -1793,7 +1815,8 @@ async function streamTask({
   onError,
   retry = true // false for background paper-help calls: they must not replace the Retry of the user's own request
 }) {
-  context = { ...context, level: context.level || await readingLevel() };
+  const { readerExpertise } = await chrome.storage.local.get('readerExpertise');
+  context = { ...context, expertise: readerExpertise === 'expert' ? 'expert' : 'newcomer', level: context.level || await readingLevel() };
   // Allow the side panel to offer a "Retry" button for the last AI call.
   if (tabId && retry) {
     lastAiRetryByTab.set(tabId, () => streamTask({
@@ -1813,6 +1836,12 @@ async function streamTask({
   const messages = [{ role: 'user', content: blocks.map(text => ({ type: 'text', text })) }];
   const aiMode = await getAiMode();
   const taskMaxTokens = maxTokensForTask(task, aiMode);
+  const provider = await getAiProvider();
+  if (provider === 'local') {
+    // "/no_think" is Qwen3's switch for LM Studio; Ollama uses reasoning_effort (set in streamOpenAiCompat).
+    await streamOpenAiCompat({ apiKey: '', cfg: await localChatConfig(), signal, systemPrompt: `${systemPrompt || ''}\n/no_think`, messages, maxTokens: taskMaxTokens, onChunk, onDone, onError });
+    return;
+  }
   const globalUseBackend = await useBackendProxy();
   const siteBackendOnly = await getSiteBackendOnly(s?.pageUrl || '');
   const preferBackend = siteBackendOnly || globalUseBackend !== false;
@@ -1851,13 +1880,6 @@ async function streamTask({
     }
   }
 
-  const provider = await getAiProvider();
-  if (provider === 'local') {
-    if (preferBackend) void publishBackendStatus(tabId, { status: 'fallback_direct' });
-    // "/no_think" is Qwen3's switch for LM Studio; Ollama uses reasoning_effort (set in streamOpenAiCompat).
-    await streamOpenAiCompat({ apiKey: '', cfg: await localChatConfig(), signal, systemPrompt: `${systemPrompt || ''}\n/no_think`, messages, maxTokens: taskMaxTokens, onChunk, onDone, onError });
-    return;
-  }
   const apiKey = await getProviderKey(provider);
   if (!apiKey) {
     if (preferBackend) {
@@ -2189,6 +2211,12 @@ async function streamGemini({ apiKey, signal, systemPrompt, messages, maxTokens 
 // ── OpenAI-compatible streaming (Groq, OpenAI) — direct, user's own key ────────
 
 async function streamOpenAiCompat({ apiKey, cfg, signal, systemPrompt, messages, maxTokens = 256, onChunk, onDone, onError }) {
+  const requestSignal = AbortSignal.any([signal, AbortSignal.timeout(120_000)].filter(Boolean));
+  const reportError = e => {
+    if (requestSignal.reason?.name === 'TimeoutError') {
+      onError(Object.assign(new Error('The model took longer than two minutes. Retry, shorten the input, or choose a smaller model in Settings.'), { code: 'LOCAL_TIMEOUT' }));
+    } else onError(e);
+  };
   const body = distillBuildChatRequestBody({ systemPrompt, messages, maxTokens, temperature: 0.5, model: cfg.model });
   const classifyOpts = { label: cfg.label, keyUrl: cfg.keyUrl };
   const localOpts = { baseUrl: cfg.baseUrl, model: cfg.model, extensionId: chrome.runtime.id };
@@ -2202,16 +2230,16 @@ async function streamOpenAiCompat({ apiKey, cfg, signal, systemPrompt, messages,
   let attempt = 0;
   for (;;) {
     try {
-      response = await fetch(cfg.url, { method: 'POST', signal, headers, body: JSON.stringify(body) });
+      response = await fetch(cfg.url, { method: 'POST', signal: requestSignal, headers, body: JSON.stringify(body) });
     } catch (e) {
-      if (cfg.local && e?.name !== 'AbortError') {
+      if (cfg.local && !requestSignal.aborted) {
         const info = distillClassifyLocalError(0, localOpts);
         const err = new Error(info.message);
         err.code = info.code;
         onError(err);
         return;
       }
-      onError(e);
+      reportError(e);
       return;
     }
 
@@ -2220,7 +2248,7 @@ async function streamOpenAiCompat({ apiKey, cfg, signal, systemPrompt, messages,
     let errBody = null;
     try { errBody = await response.clone().json(); } catch { /* non-JSON error */ }
     const info = cfg.local
-      ? distillClassifyLocalError(response.status, localOpts)
+      ? distillClassifyLocalError(response.status, { ...localOpts, body: errBody })
       : distillClassifyChatError(response.status, errBody, classifyOpts);
 
     if (info.retryable && response.status >= 500 && attempt < 1) {
@@ -2253,11 +2281,21 @@ async function streamOpenAiCompat({ apiKey, cfg, signal, systemPrompt, messages,
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
+  let finishReason = null;
+  const finish = () => {
+    const tail = visible('', true);
+    if (tail) onChunk(tail);
+    if (finishReason && finishReason !== 'stop' && finishReason !== 'length') {
+      onError(Object.assign(new Error('The model did not complete a text answer. Retry or choose another model.'), { code: 'CHAT_INCOMPLETE' }));
+    } else if (finishReason === 'length') {
+      onError(Object.assign(new Error('The answer reached the model output limit. Retry with a narrower question; the partial answer has not been saved.'), { code: 'CHAT_TRUNCATED' }));
+    } else onDone();
+  };
   try {
     for (;;) {
       const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
+      if (done && !buffer) break;
+      buffer += done ? decoder.decode() + '\n' : decoder.decode(value, { stream: true });
       let nl;
       while ((nl = buffer.indexOf('\n')) >= 0) {
         const line = buffer.slice(0, nl).trim();
@@ -2266,21 +2304,24 @@ async function streamOpenAiCompat({ apiKey, cfg, signal, systemPrompt, messages,
         const raw = line.slice(5).trim();
         if (!raw) continue;
         if (raw === '[DONE]') {
-          const tail = visible('', true);
-          if (tail) onChunk(tail);
-          onDone();
+          finish();
           return;
         }
         let obj;
         try { obj = JSON.parse(raw); } catch { continue; }
-        const text = visible(distillParseChatChunk(obj).text);
+        const parsed = distillParseChatChunk(obj);
+        if (parsed.finishReason) finishReason = parsed.finishReason;
+        const text = visible(parsed.text);
         if (text) onChunk(text);
       }
+      if (done) break;
     }
-  } catch (e) { onError(e); return; }
-  const tail = visible('', true);
-  if (tail) onChunk(tail);
-  onDone();
+  } catch (e) { reportError(e); return; }
+  if (!finishReason) {
+    onError(Object.assign(new Error('The model connection ended before the answer completed. Retry the question.'), { code: 'CHAT_INTERRUPTED' }));
+    return;
+  }
+  finish();
 }
 
 /** One-shot key check used by onboarding + Settings. Returns { ok, message }. */
@@ -2310,7 +2351,8 @@ async function validateAiKey(provider, key, local = {}) {
       const r = await fetch(cfg.url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${trimmed}` },
-        body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 })
+        body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 }),
+      signal: AbortSignal.timeout(30_000)
       });
       if (r.ok) return { ok: true, message: 'Key works — you’re all set.' };
       let cBody = null;
@@ -2335,6 +2377,24 @@ async function validateAiKey(provider, key, local = {}) {
   }
 }
 
+/** Read-only discovery. Never pulls or loads a model. */
+async function listLocalModels(baseUrl) {
+  const cfg = await localChatConfig({ baseUrl });
+  for (const route of ['/v1/models', '/api/tags']) {
+    try {
+      const response = await fetch(cfg.baseUrl + route, { signal: AbortSignal.timeout(5000) });
+      if (!response.ok) {
+        if (response.status === 403) return { models: [], message: distillClassifyLocalError(403, { ...cfg, extensionId: chrome.runtime.id }).message };
+        continue;
+      }
+      const body = await response.json();
+      const models = (Array.isArray(body.data) ? body.data.map(m => m.id) : Array.isArray(body.models) ? body.models.filter(m => !m.capabilities || m.capabilities.includes('completion')).map(m => m.name) : []).filter(m => typeof m === 'string').slice(0, 100);
+      return { models, message: models.length ? 'Choose an installed model from the Model field, then test the connection.' : 'No models returned. Load a model in your server, then retry.' };
+    } catch { /* another supported discovery route may work */ }
+  }
+  return { models: [], message: `Could not list models at ${cfg.baseUrl}. Check that the server is running and allows this extension.` };
+}
+
 /** One-token request to the local server: checks it's up, Distill is allowed, and the model exists. */
 async function validateLocal(local) {
   const cfg = await localChatConfig(local);
@@ -2344,13 +2404,15 @@ async function validateLocal(local) {
     r = await fetch(cfg.url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 })
+      body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 }),
+      signal: AbortSignal.timeout(30_000)
     });
-  } catch {
-    return { ok: false, message: distillClassifyLocalError(0, opts).message };
+  } catch (err) {
+    return { ok: false, message: err?.name === 'TimeoutError' ? 'The local model did not respond within 30 seconds. Check the server and loaded model, then retry.' : distillClassifyLocalError(0, opts).message };
   }
   if (r.ok) return { ok: true, message: `Connected to ${cfg.model} — runs on your computer.` };
-  return { ok: false, message: distillClassifyLocalError(r.status, opts).message };
+  const body = await r.json().catch(() => null);
+  return { ok: false, message: distillClassifyLocalError(r.status, { ...opts, body }).message };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -2506,7 +2568,7 @@ async function publishUsage(tabId) {
       openai: 'Using your own OpenAI key — usage counts against your account.',
       groq: 'Using your own Groq key — usage counts against your free Groq quota.',
       gemini: 'Using your own Gemini key — usage counts against your free Google quota.',
-      local: 'Running on your own computer — no quota, and article text never leaves this device.'
+      local: 'Inference goes directly to your configured model server. Use localhost to keep inference on this computer.'
     };
     toPanel({ type: 'USAGE_UNAVAILABLE', tabId, message: labels[provider] || labels.groq });
     return;

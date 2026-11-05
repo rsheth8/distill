@@ -62,6 +62,11 @@ function streamPaperHelp(tabId, { kind, key, task, context, input, level }) {
   });
 }
 
+async function paperHelpAudience() {
+  const bag = await chrome.storage?.local?.get('readerExpertise');
+  return bag?.readerExpertise === 'expert' ? 'expert' : 'newcomer';
+}
+
 function paperHelpState(s) {
   return {
     overview: s.overview || null,
@@ -87,15 +92,21 @@ function runOverview(tabId) {
     const s = tabState.get(tabId);
     if (!s?.paper) return;
     const level = await readingLevel();
-    if (tabState.get(tabId) !== s) return; // the tab moved on while we read the level
-    if (s.overview?.text && s.overview.level === level) return;
+    const expertise = await paperHelpAudience();
+    if (tabState.get(tabId) !== s) return; // the tab moved on while we read the profile
+    if (s.overview?.text && s.overview.level === level && s.overview.expertise === expertise) return;
+    const excerpt = distillPaperExcerpt(s.paper);
+    if (!excerpt.trim()) {
+      toPanel({ type: 'PAPER_HELP_ERROR', tabId, kind: 'overview', key: 'overview', code: 'EXTRACTION_INCOMPLETE', message: 'No readable paper text was extracted. Open the full source or Original PDF; scanned pages need a text layer.' });
+      return;
+    }
     const text = await streamPaperHelp(tabId, {
       kind: 'overview', key: 'overview', task: 'overview', level,
       context: { title: s.title || s.paper.title },
-      input: { excerpt: distillPaperExcerpt(s.paper) }
+      input: { excerpt }
     });
     if (!text || tabState.get(tabId) !== s) return; // failed, or the tab moved on
-    s.overview = { level, text };
+    s.overview = { level, expertise, text };
     schedulePersistTab(tabId);
   });
 }
@@ -104,10 +115,10 @@ function runOverview(tabId) {
  * Abort the running call. The queue tail stays, so the next job waits for the aborted one to settle.
  * The panel is told (ABORTED) so it drops that stream's "Reading…" status.
  */
-function clearPaperHelp(tabId) {
+function clearPaperHelp(tabId, userCancelled = false) {
   const running = paperHelpAbort.get(tabId);
   if (running) {
-    toPanel({ type: 'PAPER_HELP_ERROR', tabId, kind: running.kind, key: running.key, code: 'ABORTED', message: '' });
+    toPanel({ type: 'PAPER_HELP_ERROR', tabId, kind: running.kind, key: running.key, code: userCancelled ? 'CANCELLED' : 'ABORTED', message: userCancelled ? 'Stopped. Retry when you are ready.' : '' });
     running.ctrl.abort();
   }
   clearTimeout(guideDwellTimers.get(tabId));
@@ -128,13 +139,15 @@ function runSectionGuide(tabId, heading, opts = {}) {
     if (tabState.get(tabId) !== s) return; // the tab moved on (new paper) while this waited its turn
     if (opts.dwell && s?.section?.heading !== heading) return; // an automatic guide for a section the reader has since left
     const section = s?.paper && distillFindSection(s.paper, heading);
-    if (!section) {
+    if (!section || !section.text.trim()) {
       toPanel({ type: 'PAPER_HELP_ERROR', tabId, kind: 'guide', key: heading, code: 'NO_SECTION', message: 'No guide for this part.' });
       return;
     }
     const level = await readingLevel();
     if (tabState.get(tabId) !== s) return; // the tab moved on while we read the level
-    if (s.guides?.[heading]?.level === level) return sendTerms(tabId, heading, s.guides[heading].terms);
+    const expertise = await paperHelpAudience();
+    if (tabState.get(tabId) !== s) return;
+    if (s.guides?.[heading]?.level === level && s.guides[heading].expertise === expertise) return sendTerms(tabId, heading, s.guides[heading].terms);
     const text = await streamPaperHelp(tabId, {
       kind: 'guide', key: heading, task: 'section_guide', level,
       context: { title: s.title || s.paper.title, section: { heading: section.heading, kind: section.kind } },
@@ -142,7 +155,7 @@ function runSectionGuide(tabId, heading, opts = {}) {
     });
     if (!text || tabState.get(tabId) !== s) return;
     const terms = distillParseTerms(distillParseLabelled(text, ['TERMS']).TERMS);
-    s.guides = { ...s.guides, [heading]: { level, text, terms } };
+    s.guides = { ...s.guides, [heading]: { level, expertise, text, terms } };
     s.glossary = distillMergeGlossary(s.glossary, terms, heading);
     schedulePersistTab(tabId);
     publishPaperHelp(tabId);
@@ -165,7 +178,8 @@ function onSectionChanged(tabId, heading) {
     const now = tabState.get(tabId);
     if (now?.section?.heading !== heading) return;
     const level = await readingLevel();
-    if (tabState.get(tabId) !== now || now.section?.heading !== heading || now.guides?.[heading]?.level === level) return;
+    const expertise = await paperHelpAudience();
+    if (tabState.get(tabId) !== now || now.section?.heading !== heading || (now.guides?.[heading]?.level === level && now.guides[heading].expertise === expertise)) return;
     void runSectionGuide(tabId, heading, { dwell: true });
   }, GUIDE_DWELL_MS));
 }
@@ -174,7 +188,8 @@ function onSectionChanged(tabId, heading) {
 async function resendTerms(tabId) {
   const s = tabState.get(tabId);
   const level = await readingLevel();
-  for (const [heading, g] of Object.entries(s?.guides || {})) if (g.level === level) sendTerms(tabId, heading, g.terms);
+  const expertise = await paperHelpAudience();
+  for (const [heading, g] of Object.entries(s?.guides || {})) if (g.level === level && (g.expertise || 'newcomer') === expertise) sendTerms(tabId, heading, g.terms);
 }
 
 /** Reading level changed: drop the pages' underlines and re-run the overview for the paper in view. */
@@ -203,10 +218,18 @@ function runAsk(tabId, question) {
     const key = String(s.askThread.indexOf(entry));
     if (key === '-1') return; // pushed out of the thread by newer questions before its turn
     const earlier = s.askThread.filter(e => e !== entry && e.a).slice(-3);
+    entry.passages = distillPickPassages(s.paper, q);
+    if (!entry.passages.length) {
+      toPanel({ type: 'PAPER_HELP_ERROR', tabId, kind: 'ask', key, code: 'EXTRACTION_INCOMPLETE', message: 'No readable passages were extracted. Check the full source or Original PDF before asking.' });
+      s.askThread = s.askThread.filter(e => e !== entry);
+      schedulePersistTab(tabId);
+      publishPaperHelp(tabId);
+      return;
+    }
     const text = await streamPaperHelp(tabId, {
       kind: 'ask', key, task: 'ask', level,
-      context: { title: s.title || s.paper.title, abstract: String(s.paper.abstract || '').slice(0, 800), thread: earlier },
-      input: { question: q, excerpts: distillPickSections(s.paper, q) }
+      context: { title: s.title || s.paper.title, thread: earlier },
+      input: { question: q, excerpts: entry.passages }
     });
     if (tabState.get(tabId) !== s) return; // the tab moved on: write and publish nothing
     if (text) entry.a = text;

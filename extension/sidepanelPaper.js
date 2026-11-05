@@ -17,6 +17,14 @@ levelSelect.addEventListener('change', () => {
   chrome.storage.local.set({ readingLevel: paperView.level });
 });
 
+const expertiseSelect = $('expertiseSelect');
+chrome.storage.local.get('readerExpertise').then(({ readerExpertise }) => {
+  expertiseSelect.value = readerExpertise === 'expert' ? 'expert' : 'newcomer';
+});
+expertiseSelect.addEventListener('change', () => {
+  chrome.storage.local.set({ readerExpertise: expertiseSelect.value });
+});
+
 const OVERVIEW_LABELS = ['ASKED', 'DID', 'FOUND', 'WHY', 'STUDY', 'LIMITS'];
 const OVERVIEW_PARTS = [['ASKED', 'The question'], ['DID', 'What they did'], ['FOUND', 'What they found'], ['WHY', 'Why it matters']];
 
@@ -99,7 +107,7 @@ function renderGuide() {
   show(card);
   $('guideHeading').textContent = heading;
   const stored = paperView.state.guides?.[heading];
-  const current = stored?.level === paperView.level ? stored : null;
+  const current = stored?.level === paperView.level && (stored.expertise || 'newcomer') === expertiseSelect.value ? stored : null;
   const text = paperView.streams[`guide:${heading}`] ?? current?.text ?? '';
   const body = paperView.canGuide ? distillParseLabelled(text, ['TERMS']).lead : 'No guide for this part.';
   $('guideBody').textContent = body;
@@ -141,7 +149,19 @@ function renderAsk(scroll = false) {
     const parsed = distillParseLabelled(text || '', ['BACKGROUND', 'FROM']);
     addText(item, 'p', parsed.lead || '…', 'ask-a');
     if (parsed.BACKGROUND) addText(item, 'p', `Background: ${parsed.BACKGROUND}`, 'ask-meta');
-    if (parsed.FROM) addText(item, 'p', `From: ${parsed.FROM}`, 'ask-meta');
+    const sources = distillCitedPassages(text, entry.passages);
+    for (const source of sources) {
+      const details = document.createElement('details');
+      const summary = addText(details, 'summary', `${source.id} · ${source.heading}`);
+      summary.title = 'Supplied passage; check whether it supports the answer';
+      addText(details, 'blockquote', source.text);
+      const jump = addText(details, 'button', 'Open source passage', 'paper-link-btn');
+      jump.type = 'button';
+      jump.addEventListener('click', () => sendPaper({ type: 'JUMP_TO_PASSAGE', entryIndex: i, passageId: source.id }));
+      item.append(details);
+    }
+    if (!sources.length && parsed.FROM) addText(item, 'p', 'No supplied passage citation to verify.', 'ask-meta');
+    if (sources.length) addText(item, 'p', 'These are supplied passages, not an automatic fact check. Open each to check the claim.', 'ask-meta');
   });
   $('askStarters').classList.toggle('hidden', thread.length > 0);
   if (scroll) box.lastElementChild?.scrollIntoView({ block: 'nearest' });
@@ -174,6 +194,7 @@ function renderAll(scrollAsk = false) {
 
 // A stream event only changes its own view; rendering the rest on every chunk is wasted work.
 function renderKind(kind) {
+  $('paperStopBtn').classList.toggle('hidden', paperView.live.size === 0);
   if (kind === 'overview') renderOverview();
   else if (kind === 'guide') renderGuide();
   else if (kind === 'ask') renderAsk(true);
@@ -186,12 +207,16 @@ function resetPaperView() {
   paperView.canGuide = true;
   paperView.streams = {};
   paperView.live = new Set();
+  hide($('paperStopBtn'));
   for (const id of ['overviewCard', 'trustCard', 'guideCard']) hide($(id));
 }
 
 function handlePaperMessage(msg) {
   const k = `${msg.kind}:${msg.key}`;
   switch (msg.type) {
+    case 'SOURCE_NAVIGATION_RESULT':
+      setStatus('askStatus', msg.ok ? '' : 'The source page may have changed. The supplied passage is still shown above; reopen the paper to locate it.', msg.ok ? '' : 'error');
+      break;
     case 'PAPER_HELP_STATE': {
       const grew = (msg.askThread?.length || 0) > (paperView.state?.askThread?.length || 0); // a question was just added
       paperView.state = msg;
@@ -297,4 +322,14 @@ $('askAboutBtn').addEventListener('click', () => {
   input.value = `About "${quote}": `;
   input.focus();
   input.setSelectionRange(input.value.length, input.value.length);
+});
+
+$('paperStopBtn').addEventListener('click', () => sendPaper({ type: 'CANCEL_PAPER_HELP' }));
+$('checkBrowserModelBtn').addEventListener('click', async () => {
+  $('browserModelStatus').textContent = (await distillBrowserModelAvailability()).message;
+});
+$('discoverModelsBtn').addEventListener('click', () => {
+  $('discoverModelsBtn').disabled = true;
+  $('localModelsStatus').textContent = 'Checking the configured server…';
+  port?.postMessage({ type: 'LIST_LOCAL_MODELS', baseUrl: $('localBaseUrlInput').value });
 });

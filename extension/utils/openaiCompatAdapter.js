@@ -149,17 +149,25 @@ function distillMakeThinkFilter() {
  * @param {{ baseUrl: string, model: string, extensionId?: string }} opts
  * @returns {{ code: string, message: string, retryable: boolean }}
  */
-function distillClassifyLocalError(status, { baseUrl, model, extensionId = '<extension-id>' }) {
+function distillClassifyLocalError(status, { baseUrl, model, extensionId = '<extension-id>', body = null }) {
   if (status === 0) {
     return { code: 'LOCAL_UNREACHABLE', message: `Can’t reach your local model at ${baseUrl}. Is Ollama or LM Studio running?`, retryable: true };
   }
   if (status === 403) {
     return { code: 'LOCAL_FORBIDDEN', message: `Ollama blocked Distill. Allow it with OLLAMA_ORIGINS=chrome-extension://${extensionId}, then restart Ollama (see Settings).`, retryable: false };
   }
-  if (status === 404) {
-    return { code: 'LOCAL_NO_MODEL', message: `Model “${model}” isn’t installed. Run: ollama pull ${model} (or load it in LM Studio).`, retryable: false };
+  const raw = typeof body?.error === 'string' ? body.error : body?.error?.message || '';
+  const lower = String(raw).toLowerCase();
+  if (status === 413 || /context|token limit|too (large|long)|reduce.*length/.test(lower)) {
+    return { code: 'LOCAL_CONTEXT', message: `The request exceeds ${model}’s context window. Try a shorter selection or a model with a larger context window.`, retryable: false };
   }
-  return { code: `LOCAL_HTTP_${status}`, message: `Local model error ${status}.`, retryable: status >= 500 };
+  if (status === 404) {
+    const lm = /:1234(?:\/|$)/.test(baseUrl);
+    return { code: 'LOCAL_NO_MODEL', message: lm
+      ? `Model “${model}” or the API route is unavailable. Load a model in LM Studio and copy its exact identifier from /v1/models into Settings.`
+      : `Model “${model}” or the API route is unavailable. Check Settings and installed models with ollama list; if needed, install it yourself with ollama pull ${model}.`, retryable: false };
+  }
+  return { code: `LOCAL_HTTP_${status}`, message: `Local model error ${status}.${raw ? ` ${String(raw).slice(0, 300)}` : ' Check the server log and model in Settings.'}`, retryable: status >= 500 };
 }
 
 if (typeof module !== 'undefined' && module.exports) {

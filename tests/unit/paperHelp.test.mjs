@@ -51,7 +51,7 @@ describe('distillTrustFacts', () => {
   });
   it('preprint, arXiv date from the DOI, one author', () => {
     const p = paper({ isPreprint: true, source: 'arxiv', doi: '10.48550/arXiv.2310.06825', date: '', authors: ['A'] });
-    expect(texts(p)).toEqual(['Preprint — not yet peer-reviewed', 'Oct 2023', '1 author', 'DOI 10.48550/arXiv.2310.06825']);
+    expect(texts(p)).toEqual(['Preprint source — review status unverified', 'First posted: Oct 2023', '1 author', 'DOI 10.48550/arXiv.2310.06825']);
   });
   it('PDF without a preprint signal, year-only date, no authors or DOI', () => {
     expect(texts(paper({ source: 'pdf', date: '2019', authors: [], doi: '' }))).toEqual(['Publication status unknown', '2019']);
@@ -203,7 +203,7 @@ describe('distillSectionMap', () => {
   });
   it('gives each known kind a plain line and other kinds none', () => {
     const m = help.distillSectionMap(secs, '');
-    expect(m[1].line).toBe('How they did it. Fine to skim.');
+    expect(m[1].line).toBe('How they did it and what was measured.');
     expect(m[3].line).toBe('');
   });
   it('treats an unknown current heading as all ahead', () => {
@@ -264,5 +264,38 @@ describe('distillGroupBullets', () => {
   });
   it('survives bad input', () => {
     expect(help.distillGroupBullets(null, null, null)).toEqual([]);
+  });
+});
+
+
+describe('passage grounding and long-document retrieval', () => {
+  it('finds evidence at the end of a long paragraph without repeated words crowding it out', () => {
+    const p = { sections: [
+      { heading: 'Introduction', text: 'sample '.repeat(3000) },
+      { heading: 'Methods', text: 'filler '.repeat(2000) + 'The randomized population contained 412 adults.' }
+    ] };
+    const picked = help.distillPickPassages(p, 'randomized population adults', 2000);
+    expect(picked.some(x => x.text.includes('412 adults'))).toBe(true);
+    expect(picked.map(x => x.text).join('').length).toBeLessThan(2000);
+    expect(new Set(picked.map(x => x.id)).size).toBe(picked.length);
+  });
+  it('never turns invented IDs or section names into supplied-source controls', () => {
+    const supplied = [{ id: 'S2P3', heading: 'Results', text: 'Evidence.' }];
+    expect(help.distillCitedPassages('Claim [S2P3]. FROM: S9P9, Results', supplied)).toEqual(supplied);
+    expect(help.distillCitedPassages('FROM: S9P9', supplied)).toEqual([]);
+    expect(help.distillCitedPassages('FROM: Results', undefined)).toEqual([]);
+  });
+});
+
+describe('overview context allocation', () => {
+  it('includes an ending caveat from a long discussion instead of only its opening', () => {
+    const p=paper({sections:[
+      {heading:'Introduction',kind:'intro',text:'Question.'},
+      {heading:'Discussion',kind:'discussion',text:'Context. '.repeat(2000)+'Important caveat: this observational study cannot establish causation.'}
+    ]});
+    const excerpt=help.distillPaperExcerpt(p);
+    expect(excerpt).toContain('cannot establish causation');
+    expect(excerpt).toContain('Middle of section omitted');
+    expect(excerpt.length).toBeLessThanOrEqual(7000);
   });
 });

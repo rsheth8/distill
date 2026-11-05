@@ -25,3 +25,27 @@ describe('per-site backend routing', () => {
     expect(await check(true, 'chrome://extensions')).toBe(false);
   });
 });
+
+describe('local inference privacy boundary', () => {
+  it('uses only the configured local endpoint even with reachable backend-only preferences', async () => {
+    const attempts = [];
+    const context = vm.createContext({
+      chrome: { storage: { local: { get: async () => ({readerExpertise:'expert'}) } } },
+      readingLevel: async () => 'close',
+      distillBuildPrompt: () => ({system:'S',blocks:['private paper text']}),
+      getAiMode: async () => 'balanced', maxTokensForTask: () => 200,
+      getAiProvider: async () => 'local', localChatConfig: async () => ({url:'http://localhost:11434/v1/chat/completions'}),
+      streamOpenAiCompat: async opts => { attempts.push(opts.cfg.url); opts.onDone(); },
+      useBackendProxy: async () => { throw Error('Local mode consulted backend preferences'); },
+      getSiteBackendOnly: async () => true,
+      probeBackend: async () => { attempts.push('REMOTE BACKEND'); return {reachable:true}; }
+    });
+    const start = background.indexOf('async function streamTask(');
+    const end = background.indexOf('\nasync function ', start + 1);
+    vm.runInContext(background.slice(start,end),context);
+    let done = false;
+    await context.streamTask({task:'ask',input:{question:'Q'},onDone:()=>{done=true;},onError:e=>{throw e;}});
+    expect(attempts).toEqual(['http://localhost:11434/v1/chat/completions']);
+    expect(done).toBe(true);
+  });
+});
