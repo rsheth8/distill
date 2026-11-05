@@ -820,6 +820,7 @@ const lastActiveParagraphByTab = new Map();
 
 chrome.runtime.onConnect.addListener(port => {
   if (port.name !== 'sidepanel') return;
+  if (!port.sender?.url?.startsWith(chrome.runtime.getURL('sidepanel.html'))) return; // only our own panel page
   sidePanelPort = port;
 
   port.onMessage.addListener(msg => {
@@ -828,6 +829,7 @@ chrome.runtime.onConnect.addListener(port => {
         void (async () => {
           await ensureTabHydratedFromPageState(msg.tabId);
           await restoreState(msg.tabId);
+          void runOverview(msg.tabId); // returns early when the overview is already at the current reading level
           await publishSitePrefs(msg.tabId);
           toPanel({ type: 'FOCUS_SYNC', tabId: msg.tabId, on: !!focusModeByTab.get(msg.tabId) });
         })();
