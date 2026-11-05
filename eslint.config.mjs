@@ -62,6 +62,20 @@ export default [
     }
   },
   {
+    files: ['extension/sidepanelPaper.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script',
+      globals: {
+        ...extGlobals,
+        $: 'readonly', port: 'readonly', currentTabId: 'readonly', show: 'readonly', hide: 'readonly',
+        setStatus: 'readonly', setPanel: 'readonly',
+        distillParseLabelled: 'readonly', distillParseTerms: 'readonly'
+      }
+    },
+    rules: { 'no-unused-vars': 'off' }
+  },
+  {
     files: ['extension/reader.js'],
     languageOptions: {
       ecmaVersion: 2022,
@@ -139,7 +153,7 @@ export default [
     }
   },
   {
-    files: ['extension/utils/exportClip.js', 'extension/utils/accentColor.js', 'extension/utils/articleExtractor.js', 'extension/utils/paperExtractor.js', 'extension/utils/prompts.js', 'extension/utils/geminiAdapter.js', 'extension/utils/openaiCompatAdapter.js', 'extension/utils/pageStore.js', 'extension/utils/buildConfig.js'],
+    files: ['extension/utils/exportClip.js', 'extension/utils/accentColor.js', 'extension/utils/articleExtractor.js', 'extension/utils/paperExtractor.js', 'extension/utils/prompts.js', 'extension/utils/paperHelp.js', 'extension/utils/geminiAdapter.js', 'extension/utils/openaiCompatAdapter.js', 'extension/utils/pageStore.js', 'extension/utils/buildConfig.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',

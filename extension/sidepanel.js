@@ -109,7 +109,6 @@ const settingsPanel    = $('settingsPanel');
 const viewRead         = $('viewRead');
 const viewSettings     = $('viewSettings');
 const tabReadBtn       = $('tabReadBtn');
-const tabSettingsBtn   = $('tabSettingsBtn');
 const apiKeyInput      = $('apiKeyInput');
 const aiProviderSelect = $('aiProviderSelect');
 const getKeyLink       = $('getKeyLink');
@@ -306,11 +305,13 @@ let sitePrefsSaveTimer = null;
 const SITE_PREFS_STORAGE_KEY = 'distillSitePrefsMap';
 
 function setPanel(panel) {
-  const isSettings = panel === 'settings';
-  viewRead?.classList.toggle('hidden', isSettings);
-  viewSettings?.classList.toggle('hidden', !isSettings);
-  tabReadBtn?.classList.toggle('tab-btn-active', !isSettings);
-  tabSettingsBtn?.classList.toggle('tab-btn-active', isSettings);
+  const views = { read: viewRead, ask: $('viewAsk'), glossary: $('viewGlossary'), settings: viewSettings };
+  const tabs = { read: tabReadBtn, ask: $('tabAskBtn'), glossary: $('tabGlossaryBtn') };
+  for (const [name, view] of Object.entries(views)) view?.classList.toggle('hidden', name !== panel);
+  for (const [name, btn] of Object.entries(tabs)) {
+    btn?.classList.toggle('tab-btn-active', name === panel);
+    btn?.setAttribute('aria-selected', String(name === panel));
+  }
 }
 
 setPanel('read');
@@ -511,11 +512,9 @@ settingsBtn.addEventListener('click', () => {
   if (!settingsOpen) void refreshSitePrefsUi();
 });
 
-tabReadBtn?.addEventListener('click', () => setPanel('read'));
-tabSettingsBtn?.addEventListener('click', () => {
-  setPanel('settings');
-  void refreshSitePrefsUi();
-});
+for (const name of ['read', 'ask', 'glossary']) {
+  $(`tab${name[0].toUpperCase()}${name.slice(1)}Btn`)?.addEventListener('click', () => setPanel(name));
+}
 
 /** Persist a key for the active provider and mark it the selected provider. */
 function saveProviderKey(key, { closePanel = false } = {}) {

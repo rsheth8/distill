@@ -73,12 +73,18 @@
         </span>
         <span class="title">Distill</span>
       </div>
+      <select id="levelSelect" class="level-select" aria-label="Reading level" title="How plain the explanations are">
+        <option value="simple">Simple</option>
+        <option value="everyday" selected>Everyday</option>
+        <option value="close">Closer to the paper</option>
+      </select>
       <button id="settingsBtn" class="icon-btn" title="Settings">⚙</button>
     </header>
 
-    <nav class="tab-bar" aria-label="Distill sections">
-      <button id="tabReadBtn" class="tab-btn tab-btn-active" type="button">Read</button>
-      <button id="tabSettingsBtn" class="tab-btn" type="button">Settings</button>
+    <nav class="tab-bar" role="tablist" aria-label="Distill sections">
+      <button id="tabReadBtn" class="tab-btn tab-btn-active" type="button" role="tab" aria-selected="true">Read</button>
+      <button id="tabAskBtn" class="tab-btn" type="button" role="tab" aria-selected="false">Ask</button>
+      <button id="tabGlossaryBtn" class="tab-btn" type="button" role="tab" aria-selected="false">Glossary</button>
     </nav>
 
     <!-- Article title strip -->
@@ -331,6 +337,29 @@
     </div>
     </div>
 
+    <div id="viewAsk" class="panel-view hidden">
+      <section class="section">
+        <div id="askThread" class="ask-thread" aria-live="polite"></div>
+        <div id="askStarters" class="ask-starters">
+          <button type="button" class="ask-starter">What's the main takeaway?</button>
+          <button type="button" class="ask-starter">Who could this affect?</button>
+          <button type="button" class="ask-starter">How sure are the authors?</button>
+        </div>
+        <form id="askForm" class="ask-form">
+          <textarea id="askInput" rows="2" maxlength="500" placeholder="Ask about this paper…" aria-label="Your question"></textarea>
+          <button type="submit" class="ask-submit">Ask</button>
+        </form>
+        <p><span id="askStatus" class="status-badge"></span> <button id="askRetryBtn" type="button" class="paper-link-btn hidden">Retry</button></p>
+      </section>
+    </div>
+
+    <div id="viewGlossary" class="panel-view hidden">
+      <section class="section">
+        <p id="glossaryEmpty" class="hint">Terms show up here as Distill guides you through each section.</p>
+        <dl id="glossaryList" class="glossary-list"></dl>
+      </section>
+    </div>
+
     <div id="viewSettings" class="panel-view hidden">
       <div id="settingsPanel" class="settings-panel">
         <div class="settings-row settings-ai-row">
@@ -470,5 +499,7 @@
   <script src="utils/exportClip.js"></script>
   <script src="utils/accentColor.js"></script>
   <script src="sidepanel.js"></script>
+  <script src="utils/paperHelp.js"></script>
+  <script src="sidepanelPaper.js"></script>
 </body>
 </html>
