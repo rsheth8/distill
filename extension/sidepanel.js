@@ -3,6 +3,7 @@
 // ── Accent presets ────────────────────────────────────────────────────────────
 
 const ACCENTS = [
+  { id: 'ink',     name: 'Ink',     light: '#2f4f73', dark: '#a9c1dc', dot: '#2f4f73' },
   { id: 'blue',    name: 'Ocean',   light: '#2563eb', dark: '#60a5fa', dot: '#3b82f6' },
   { id: 'amber',   name: 'Amber',   light: '#b45309', dark: '#fbbf24', dot: '#f59e0b' },
   { id: 'emerald', name: 'Emerald', light: '#047857', dark: '#34d399', dot: '#10b981' },
@@ -45,7 +46,7 @@ ACCENTS.forEach(preset => {
 
 // Re-apply when system theme changes so light/dark variant updates
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-  chrome.storage.local.get('accentId', r => applyAccent(r.accentId || 'blue'));
+  chrome.storage.local.get('accentId', r => applyAccent(r.accentId || 'ink'));
 });
 
 // ── Port connection ───────────────────────────────────────────────────────────
@@ -522,7 +523,7 @@ chrome.storage.local.get(['localBaseUrl', 'localModel', 'aiProvider', 'geminiApi
     backendTargetSelect.value = t === 'dev' || t === 'staging' ? t : 'prod';
   }
   if (backendUrlOverrideInput) backendUrlOverrideInput.value = typeof r.backendBaseUrlOverride === 'string' ? r.backendBaseUrlOverride : '';
-  applyAccent(r.accentId || 'blue');
+  applyAccent(r.accentId || 'ink');
   autoResumeAfterQuiz = r.autoResumeAfterQuiz !== false;
   autoResumeToggle.checked = autoResumeAfterQuiz;
   aiModeSelect.value = r.aiMode === 'ultra-lean' ? 'ultra-lean' : 'balanced';

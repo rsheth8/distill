@@ -461,6 +461,7 @@
   // ── Accent color ───────────────────────────────────────────────────────────
 
   const ACCENT_PRESETS = {
+    ink:     { light: '#2f4f73', dark: '#a9c1dc' },
     blue:    { light: '#2563eb', dark: '#60a5fa' },
     amber:   { light: '#b45309', dark: '#fbbf24' },
     emerald: { light: '#047857', dark: '#34d399' },
@@ -470,7 +471,7 @@
   };
 
   function applyArticleAccent(accentId) {
-    const preset = ACCENT_PRESETS[accentId] || ACCENT_PRESETS.blue;
+    const preset = ACCENT_PRESETS[accentId] || ACCENT_PRESETS.ink;
     const dark   = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const hex    = dark ? preset.dark : preset.light;
     const r = parseInt(hex.slice(1, 3), 16);
@@ -485,9 +486,9 @@
     root.style.setProperty('--air-a95',   `rgba(${r},${g},${b},0.95)`);
   }
 
-  chrome.storage.local.get('accentId', r => applyArticleAccent(r.accentId || 'blue'));
+  chrome.storage.local.get('accentId', r => applyArticleAccent(r.accentId || 'ink'));
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-    chrome.storage.local.get('accentId', r => applyArticleAccent(r.accentId || 'blue'));
+    chrome.storage.local.get('accentId', r => applyArticleAccent(r.accentId || 'ink'));
   });
 
   // ── Incoming messages ──────────────────────────────────────────────────────
@@ -753,7 +754,8 @@
         100% { transform: translateY(0) scale(1); opacity: 1; }
       }
       #air-anno-popup { display: none !important; }
-      .distill-term { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
+      .distill-term { background: rgba(250, 204, 21, 0.38); border-radius: 2px; padding: 0 1px; cursor: help; text-decoration: none; }
+      @media (prefers-color-scheme: dark) { .distill-term { background: rgba(250, 204, 21, 0.28); } }
       .distill-term:focus { outline: 2px solid var(--air-a95); outline-offset: 1px; }
       .distill-term-card { position: absolute; z-index: 2147483647; max-width: 280px; padding: 8px 10px;
         background: #fff; color: #222; border: 1px solid rgba(0,0,0,.15); border-radius: 8px;
