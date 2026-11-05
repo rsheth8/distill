@@ -66,6 +66,8 @@ connect();
 function wireActiveTab(tabId) {
   if (tabId == null) return;
   currentTabId = tabId;
+  resetPaperView(); // the new tab may have no paper; GET_STATE republishes one if it does
+  renderAll();
   chrome.tabs.get(tabId, t => {
     try {
       const u = t?.url || '';

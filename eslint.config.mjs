@@ -54,7 +54,7 @@ export default [
         importScripts: 'readonly',
         queuePaperHelp: 'readonly', runOverview: 'readonly', publishPaperHelp: 'readonly', clearPaperHelp: 'readonly',
         runSectionGuide: 'readonly', runAsk: 'readonly', onSectionChanged: 'readonly', resendTerms: 'readonly', onReadingLevelChanged: 'readonly',
-        handlePaperMessage: 'readonly', distillTrustFacts: 'readonly', distillParseLabelled: 'readonly'
+        handlePaperMessage: 'readonly', resetPaperView: 'readonly', renderAll: 'readonly', distillTrustFacts: 'readonly', distillParseLabelled: 'readonly'
       }
     },
     rules: {

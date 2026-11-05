@@ -126,15 +126,17 @@ function runSectionGuide(tabId, heading) {
     const text = await streamPaperHelp(tabId, {
       kind: 'guide', key: heading, task: 'section_guide', level,
       context: { title: s.title || s.paper.title, section: { heading: section.heading, kind: section.kind } },
-      input: { sectionText: section.text }
+      input: { sectionText: section.text.slice(0, 6000) }
     });
     if (!text || tabState.get(tabId) !== s) return;
     const terms = distillParseTerms(distillParseLabelled(text, ['TERMS']).TERMS);
     s.guides = { ...s.guides, [heading]: { level, text, terms } };
     s.glossary = distillMergeGlossary(s.glossary, terms, heading);
     schedulePersistTab(tabId);
-    sendTerms(tabId, heading, terms);
     publishPaperHelp(tabId);
+    // The level may have changed while this ran (the page's underlines were just cleared): keep the guide, skip the underlines.
+    const nowLevel = await readingLevel();
+    if (tabState.get(tabId) === s && nowLevel === level) sendTerms(tabId, heading, terms);
   });
 }
 
@@ -151,7 +153,7 @@ function onSectionChanged(tabId, heading) {
     const now = tabState.get(tabId);
     if (now?.section?.heading !== heading) return;
     const level = await readingLevel();
-    if (tabState.get(tabId) !== now || now.guides?.[heading]?.level === level) return;
+    if (tabState.get(tabId) !== now || now.section?.heading !== heading || now.guides?.[heading]?.level === level) return;
     void runSectionGuide(tabId, heading);
   }, GUIDE_DWELL_MS));
 }

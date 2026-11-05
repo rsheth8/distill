@@ -146,7 +146,7 @@ function handlePaperMessage(msg) {
         hide($('overviewRetryBtn'));
         setStatus('overviewStatus', '⟳ Reading the paper…', 'updating');
       }
-      if (msg.kind === 'guide') setStatus('guideStatus', '⟳ Reading this section…', 'updating');
+      if (msg.kind === 'guide' && msg.key === paperView.section) setStatus('guideStatus', '⟳ Reading this section…', 'updating');
       renderAll();
       break;
     case 'PAPER_HELP_CHUNK':
@@ -161,7 +161,7 @@ function handlePaperMessage(msg) {
       } else {
         paperView.streams[k] = msg.text;
       }
-      if (msg.kind === 'guide') setStatus('guideStatus', '', '');
+      if (msg.kind === 'guide' && msg.key === paperView.section) setStatus('guideStatus', '', '');
       renderAll();
       break;
     case 'PAPER_HELP_ERROR':
@@ -170,7 +170,7 @@ function handlePaperMessage(msg) {
         setStatus('overviewStatus', msg.message || 'Something went wrong.', 'error');
         show($('overviewRetryBtn'));
       }
-      if (msg.kind === 'guide') {
+      if (msg.kind === 'guide' && msg.key === paperView.section) {
         if (msg.code === 'NO_SECTION') paperView.canGuide = false;
         setStatus('guideStatus', msg.code === 'NO_SECTION' ? '' : msg.message || 'Something went wrong.', 'error');
       }

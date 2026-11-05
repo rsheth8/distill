@@ -9,13 +9,15 @@ const tick = () => new Promise(r => setTimeout(r, 0));
 
 const helpSrc = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../../extension/utils/paperHelp.js'), 'utf8');
 
-let ctx, sent, calls, levelReads, tabMsgs, activeTabs;
+let ctx, sent, calls, levelReads, tabMsgs, activeTabs, currentLevel, levelGate;
 
 // A streamTask whose calls the test drives by hand; like the real one, abort ends in onError(AbortError).
 function load() {
   sent = [];
   calls = [];
   levelReads = 0;
+  currentLevel = 'everyday';
+  levelGate = null; // a promise the next readingLevel() calls wait on
   tabMsgs = [];
   activeTabs = [];
   ctx = vm.createContext({
@@ -31,7 +33,7 @@ function load() {
     tabState: new Map(),
     toPanel: m => sent.push(m),
     schedulePersistTab: () => {},
-    readingLevel: async () => { levelReads++; return 'everyday'; },
+    readingLevel: async () => { levelReads++; if (levelGate) await levelGate; return currentLevel; },
     distillPaperExcerpt: () => 'EXC',
     distillTrustFacts: () => [],
     streamTask: opts => new Promise((resolve, reject) => {
@@ -202,13 +204,50 @@ describe('section guides', () => {
     calls[0].onDone();
     calls[0].resolve();
     await p;
-    expect(levelReads).toBe(1);
+    expect(levelReads).toBe(2); // once to start, once to check the level did not change while streaming
     expect(sent.find(m => m.type === 'PAPER_HELP_DONE').level).toBe('everyday');
     expect(s.guides.Methods).toMatchObject({ level: 'everyday', text: guideText, terms: [{ term: 'backprop', definition: 'how it learns' }] });
     expect(s.glossary).toEqual([{ term: 'backprop', definition: 'how it learns', section: 'Methods' }]);
     expect(tabMsgs).toEqual([{ tabId: 1, type: 'SHOW_TERMS', heading: 'Methods', terms: [{ term: 'backprop', definition: 'how it learns' }] }]);
     expect(sent.at(-1)).toMatchObject({ type: 'PAPER_HELP_STATE', section: 'Methods' });
     expect(sent.at(-1).guides.Methods.level).toBe('everyday');
+  });
+
+  it('a level change while a guide streams: the guide is kept at its level but not underlined', async () => {
+    const s = setup();
+    const p = ctx.runSectionGuide(1, 'Methods');
+    await flush();
+    currentLevel = 'simple';
+    ctx.onReadingLevelChanged();
+    await flush();
+    expect(tabMsgs.map(m => m.type)).toEqual(['CLEAR_TERMS']);
+    calls[0].onChunk(guideText);
+    calls[0].onDone();
+    calls[0].resolve();
+    await p;
+    expect(tabMsgs.map(m => m.type)).toEqual(['CLEAR_TERMS']); // no SHOW_TERMS from the old level
+    expect(s.guides.Methods.level).toBe('everyday');
+    expect(s.glossary).toHaveLength(1);
+  });
+
+  it('the dwell callback re-checks the section after reading the level', async () => {
+    const s = setup();
+    let release;
+    ctx.onSectionChanged(1, 'Methods');
+    levelGate = new Promise(r => { release = r; });
+    await vi.advanceTimersByTimeAsync(8000); // timer fired, now waiting on the level
+    s.section = { heading: 'Results' };
+    release();
+    await flush();
+    expect(calls).toHaveLength(0);
+  });
+
+  it('sends at most 6,000 characters of the section', async () => {
+    const big = { title: 'P', sections: [{ heading: 'Methods', kind: 'methods', text: 'x'.repeat(20000) }] };
+    ctx.tabState.set(1, { paper: big, section: { heading: 'Methods' } });
+    ctx.runSectionGuide(1, 'Methods');
+    await flush();
+    expect(calls[0].input.sectionText).toHaveLength(6000);
   });
 
   it('a guide that finishes after the tab moved on stores nothing', async () => {
