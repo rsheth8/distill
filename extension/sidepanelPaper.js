@@ -116,10 +116,40 @@ function renderGlossary() {
   }
 }
 
+let lastAskQuestion = '';
+
+function renderAsk() {
+  const thread = paperView.state?.askThread || [];
+  const box = $('askThread');
+  box.replaceChildren();
+  thread.forEach((entry, i) => {
+    const item = addText(box, 'div', '', 'ask-item');
+    addText(item, 'p', entry.q, 'ask-q');
+    const text = paperView.streams[`ask:${i}`] ?? entry.a;
+    const parsed = distillParseLabelled(text || '', ['BACKGROUND', 'FROM']);
+    addText(item, 'p', parsed.lead || '…', 'ask-a');
+    if (parsed.BACKGROUND) addText(item, 'p', `Background: ${parsed.BACKGROUND}`, 'ask-meta');
+    if (parsed.FROM) addText(item, 'p', `From: ${parsed.FROM}`, 'ask-meta');
+  });
+  $('askStarters').classList.toggle('hidden', thread.length > 0);
+  box.lastElementChild?.scrollIntoView({ block: 'nearest' });
+}
+
+function askPaper(question) {
+  const q = question.trim();
+  if (!q) return;
+  if (!paperView.state) return setStatus('askStatus', 'Open a research paper to ask about it.', 'error');
+  lastAskQuestion = q;
+  hide($('askRetryBtn'));
+  setStatus('askStatus', '', '');
+  sendPaper({ type: 'ASK_PAPER', question: q });
+}
+
 function renderAll() {
   renderOverview();
   renderGuide();
   renderGlossary();
+  renderAsk();
 }
 
 function resetPaperView() {
@@ -170,6 +200,10 @@ function handlePaperMessage(msg) {
         setStatus('overviewStatus', msg.message || 'Something went wrong.', 'error');
         show($('overviewRetryBtn'));
       }
+      if (msg.kind === 'ask') {
+        setStatus('askStatus', msg.message || 'Something went wrong.', 'error');
+        show($('askRetryBtn'));
+      }
       if (msg.kind === 'guide' && msg.key === paperView.section) {
         if (msg.code === 'NO_SECTION') paperView.canGuide = false;
         setStatus('guideStatus', msg.code === 'NO_SECTION' ? '' : msg.message || 'Something went wrong.', 'error');
@@ -195,3 +229,17 @@ $('overviewRetryBtn').addEventListener('click', () => sendPaper({ type: 'RETRY_O
 $('guideBtn').addEventListener('click', () => sendPaper({ type: 'GUIDE_SECTION', heading: paperView.section }));
 $('guideTermsBtn').addEventListener('click', () => setPanel('glossary'));
 levelSelect.addEventListener('change', renderGuide);
+
+$('askForm').addEventListener('submit', e => {
+  e.preventDefault();
+  askPaper($('askInput').value);
+  $('askInput').value = '';
+});
+$('askInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    $('askForm').requestSubmit();
+  }
+});
+for (const btn of document.querySelectorAll('.ask-starter')) btn.addEventListener('click', () => askPaper(btn.textContent));
+$('askRetryBtn').addEventListener('click', () => askPaper(lastAskQuestion));

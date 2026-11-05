@@ -119,6 +119,23 @@ function distillBuildPrompt(task, context = {}, input = {}) {
           'copied exactly as written there, one per line as "term — short definition". No markdown.'
       ]);
 
+    case 'ask': {
+      const thread = (Array.isArray(c.thread) ? c.thread : []).slice(-3)
+        .map(t => `Q: ${distillPromptClamp(t?.q, 300)}\nA: ${distillPromptClamp(t?.a, 600)}`).join('\n\n');
+      const excerpts = (Array.isArray(i.excerpts) ? i.excerpts : []).slice(0, 20)
+        .map(e => `[${distillPromptClamp(e?.heading, 120)}]\n${distillPromptClamp(e?.text, 5000)}`).join('\n\n');
+      return out(sys('Answer their question about this paper.'), [
+        `Paper title: ${title}`,
+        `Abstract:\n\n${distillPromptClamp(c.abstract, 800) || '(not available)'}`,
+        thread ? `Earlier questions:\n\n${thread}` : null,
+        `Parts of the paper:\n\n${distillPromptClamp(excerpts, 5200) || '(none found)'}`,
+        `Question: "${distillPromptClamp(i.question, 500)}"\n\n` +
+          'Answer in 2-5 plain sentences using only the parts above. If they do not answer it, say the paper doesn\'t say. ' +
+          'If general knowledge outside the paper would help, add one line starting "BACKGROUND:". ' +
+          'End with a line "FROM:" listing the section names (in brackets above) you used. No markdown.'
+      ]);
+    }
+
     case 'overview':
       return out(sys('Give them a plain overview of the whole paper.'), [
         `Paper title: ${title}`,

@@ -174,3 +174,32 @@ function onReadingLevelChanged() {
     if (tab && tabState.get(tab.id)?.paper) void runOverview(tab.id);
   }).catch(() => {});
 }
+
+const ASK_THREAD_MAX = 20;
+
+/** Answer a question from the paper. The question shows in the thread at once; the answer streams in. */
+function runAsk(tabId, question) {
+  const s = tabState.get(tabId);
+  const q = String(question || '').trim().slice(0, 500);
+  if (!q || !s?.paper) return;
+  const entry = { q, a: '' };
+  s.askThread = [...(s.askThread || []), entry].slice(-ASK_THREAD_MAX);
+  publishPaperHelp(tabId);
+  return queuePaperHelp(tabId, async () => {
+    const level = await readingLevel();
+    if (tabState.get(tabId) !== s) return; // the tab moved on while we read the level
+    const key = String(s.askThread.indexOf(entry));
+    if (key === '-1') return; // pushed out of the thread by newer questions before its turn
+    const earlier = s.askThread.filter(e => e !== entry && e.a).slice(-3);
+    const text = await streamPaperHelp(tabId, {
+      kind: 'ask', key, task: 'ask', level,
+      context: { title: s.title || s.paper.title, abstract: String(s.paper.abstract || '').slice(0, 800), thread: earlier },
+      input: { question: q, excerpts: distillPickSections(s.paper, q) }
+    });
+    if (tabState.get(tabId) !== s) return; // the tab moved on: write and publish nothing
+    if (text) entry.a = text;
+    else s.askThread = s.askThread.filter(e => e !== entry); // failed: the panel keeps the question for Retry
+    schedulePersistTab(tabId);
+    publishPaperHelp(tabId);
+  });
+}

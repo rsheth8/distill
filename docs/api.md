@@ -297,6 +297,7 @@ Aligned with `extension/background.js` `streamTask` and `TASK_COSTS` in `server.
 | `analysis` | 12 | `level`, `title`, `opener`, `priorGist`, `recent` | `selection` |
 | `overview` | 12 | `title`, `level` | `excerpt` |
 | `section_guide` | 10 | `title`, `section`, `level` | `sectionText` |
+| `ask` | 10 | `title`, `abstract`, `thread`, `level` | `question`, `excerpts` |
 
 **Cost modes**
 

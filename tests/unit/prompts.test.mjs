@@ -16,6 +16,8 @@ describe('distillBuildPrompt', () => {
     analysis: [{ title: 'T', opener: 'ABS', priorGist: 'G', recent: 'R' }, { selection: 'SEL' }, ['T', 'ABS', 'G', 'R', '"SEL"']],
     overview: [{ title: 'T' }, { excerpt: 'EXC' }, ['T', 'EXC', 'ASKED:', 'DID:', 'FOUND:', 'WHY:', 'STUDY:', 'LIMITS:']],
     section_guide: [{ title: 'T', section: { heading: 'Methods', kind: 'methods' } }, { sectionText: 'SEC' }, ['T', '"Methods"', 'SEC', 'TERMS:', 'up to 12']],
+    ask: [{ title: 'T', abstract: 'ABS', thread: [{ q: 'OLDQ', a: 'OLDA' }] }, { question: 'Q?', excerpts: [{ heading: 'Results', text: 'RES' }] },
+      ['T', 'ABS', 'OLDQ', 'OLDA', 'Q?', '[Results]', 'RES', 'BACKGROUND:', 'FROM:', "doesn't say"]],
   };
 
   for (const [task, [context, input, wanted]] of Object.entries(tasks)) {
@@ -28,6 +30,14 @@ describe('distillBuildPrompt', () => {
 
   it('overview trims the excerpt to 7,000 chars', () => {
     expect(text(distillBuildPrompt('overview', {}, { excerpt: 'x'.repeat(20000) })).length).toBeLessThan(8000);
+  });
+
+  it('ask keeps only the last 3 turns and trims excerpts', () => {
+    const thread = Array.from({ length: 6 }, (_, i) => ({ q: `q${i}`, a: `a${i}` }));
+    const t = text(distillBuildPrompt('ask', { thread }, { question: 'x', excerpts: [{ heading: 'H', text: 'e'.repeat(20000) }] }));
+    expect(t).not.toContain('q2');
+    expect(t).toContain('q3');
+    expect(t.length).toBeLessThan(8000);
   });
 
   it('section_guide trims the section to 6,000 chars', () => {

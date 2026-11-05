@@ -291,3 +291,113 @@ describe('section guides', () => {
     expect(calls[0].task).toBe('overview');
   });
 });
+
+describe('ask the paper', () => {
+  const paper = {
+    title: 'P', abstract: 'We study sleep.',
+    sections: [{ heading: 'Results', kind: 'results', text: 'Sleep improved memory.' }]
+  };
+  const flush = () => vi.advanceTimersByTimeAsync(0);
+  const setup = (over = {}) => {
+    const s = { paper, title: 'T', ...over };
+    ctx.tabState.set(1, s);
+    return s;
+  };
+  const finish = async (i, text, p) => {
+    if (text) calls[i].onChunk(text);
+    text ? calls[i].onDone() : calls[i].onError(new Error('boom'));
+    calls[i].resolve();
+    await p;
+  };
+
+  beforeEach(() => { load(); vi.useFakeTimers(); });
+  afterEach(() => vi.useRealTimers());
+
+  it('shows the question at once, then fills in the answer after the stream', async () => {
+    const s = setup();
+    const p = ctx.runAsk(1, '  Did sleep help memory?  ');
+    expect(s.askThread).toEqual([{ q: 'Did sleep help memory?', a: '' }]);
+    expect(sent.at(-1)).toMatchObject({ type: 'PAPER_HELP_STATE' });
+    expect(sent.at(-1).askThread).toHaveLength(1);
+    await flush();
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ task: 'ask', context: { title: 'T', abstract: 'We study sleep.', thread: [], level: 'everyday' } });
+    expect(calls[0].input).toEqual({ question: 'Did sleep help memory?', excerpts: [{ heading: 'Abstract', text: 'We study sleep.' }, { heading: 'Results', text: 'Sleep improved memory.' }] });
+    expect(sent.find(m => m.type === 'PAPER_HELP_START')).toMatchObject({ kind: 'ask', key: '0' });
+    expect(s.askThread[0].a).toBe('');
+    await finish(0, 'Yes it did.\nFROM: Results', p);
+    expect(s.askThread).toEqual([{ q: 'Did sleep help memory?', a: 'Yes it did.\nFROM: Results' }]);
+    expect(sent.at(-1).type).toBe('PAPER_HELP_STATE');
+  });
+
+  it('a failed stream removes the entry', async () => {
+    const s = setup();
+    const p = ctx.runAsk(1, 'Why?');
+    await flush();
+    await finish(0, '', p);
+    expect(s.askThread).toEqual([]);
+    expect(sent.some(m => m.type === 'PAPER_HELP_ERROR' && m.kind === 'ask')).toBe(true);
+    expect(sent.at(-1)).toMatchObject({ type: 'PAPER_HELP_STATE', askThread: [] });
+  });
+
+  it('sends at most the 3 latest answered turns, a clipped abstract and a clipped question', async () => {
+    const s = setup({ paper: { ...paper, abstract: 'a'.repeat(2000) } });
+    s.askThread = [
+      ...Array.from({ length: 5 }, (_, i) => ({ q: `q${i}`, a: `a${i}` })),
+      { q: 'unanswered', a: '' }
+    ];
+    ctx.runAsk(1, 'x'.repeat(900));
+    await flush();
+    expect(calls[0].context.thread).toEqual([{ q: 'q2', a: 'a2' }, { q: 'q3', a: 'a3' }, { q: 'q4', a: 'a4' }]);
+    expect(calls[0].context.abstract).toHaveLength(800);
+    expect(calls[0].input.question).toHaveLength(500);
+    expect(sent.find(m => m.type === 'PAPER_HELP_START').key).toBe('6'); // its index in the thread
+  });
+
+  it('keeps the latest 20 entries', async () => {
+    const s = setup();
+    s.askThread = Array.from({ length: 20 }, (_, i) => ({ q: `q${i}`, a: 'a' }));
+    ctx.runAsk(1, 'next');
+    expect(s.askThread).toHaveLength(20);
+    expect(s.askThread[0].q).toBe('q1');
+    await flush();
+    expect(sent.find(m => m.type === 'PAPER_HELP_START').key).toBe('19');
+  });
+
+  it('an entry pushed out of the thread before its turn never calls the model', async () => {
+    const s = setup();
+    const first = ctx.runAsk(1, 'first');
+    const second = ctx.runAsk(1, 'second');
+    await flush();
+    expect(calls).toHaveLength(1);
+    s.askThread = s.askThread.filter(e => e.q !== 'second'); // what the 20-entry cap does to the oldest
+    await finish(0, 'one', first);
+    await second;
+    await flush();
+    expect(calls).toHaveLength(1);
+    expect(s.askThread).toEqual([{ q: 'first', a: 'one' }]);
+  });
+
+  it('a tab that moved on during the stream writes and publishes nothing', async () => {
+    const s = setup();
+    const p = ctx.runAsk(1, 'Why?');
+    await flush();
+    const publishedBefore = sent.filter(m => m.type === 'PAPER_HELP_STATE').length;
+    ctx.tabState.set(1, { paper });
+    calls[0].onChunk('late answer');
+    calls[0].onDone();
+    calls[0].resolve();
+    await p;
+    expect(s.askThread).toEqual([{ q: 'Why?', a: '' }]);
+    expect(sent.filter(m => m.type === 'PAPER_HELP_STATE')).toHaveLength(publishedBefore);
+    expect(ctx.tabState.get(1).askThread).toBeUndefined();
+  });
+
+  it('ignores an empty question or a tab without a paper', () => {
+    ctx.tabState.set(1, {});
+    expect(ctx.runAsk(1, 'Why?')).toBeUndefined();
+    setup();
+    expect(ctx.runAsk(1, '   ')).toBeUndefined();
+    expect(sent).toEqual([]);
+  });
+});

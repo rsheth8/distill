@@ -232,7 +232,8 @@ const AI_TUNING = {
       quiz_skipped_review: 170,
       analysis: 260,
       overview: 420,
-      section_guide: 380
+      section_guide: 380,
+      ask: 320
     }
   },
   'ultra-lean': {
@@ -244,7 +245,8 @@ const AI_TUNING = {
       quiz_skipped_review: 120,
       analysis: 180,
       overview: 300,
-      section_guide: 260
+      section_guide: 260,
+      ask: 220
     }
   }
 };
@@ -979,6 +981,12 @@ chrome.runtime.onConnect.addListener(port => {
         void (async () => {
           await ensureTabHydrated(msg.tabId);
           void runSectionGuide(msg.tabId, String(msg.heading || '').slice(0, 120));
+        })();
+        break;
+      case 'ASK_PAPER':
+        void (async () => {
+          await ensureTabHydrated(msg.tabId);
+          void runAsk(msg.tabId, msg.question);
         })();
         break;
       case 'SCROLL_TO_TERM':
