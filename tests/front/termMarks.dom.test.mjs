@@ -18,6 +18,11 @@ describe('distillMarkTerms', () => {
     expect(mark.tabIndex).toBe(0);
     expect(root.querySelectorAll('.distill-term').length).toBe(1);
   });
+  it('marks longer terms first and ignores malformed entries', () => {
+    const root = dom('<p>Only self-attention here.</p>');
+    expect(distillMarkTerms([root.firstElementChild], [T[0], null, { term: 7 }, { term: 'self-attention', definition: 'd' }])).toBe(1);
+    expect(root.querySelector('.distill-term').textContent).toBe('self-attention');
+  });
   it('skips links, code and math', () => {
     const root = dom('<p><a href="#">attention</a> <code>attention</code> then attention</p>');
     distillMarkTerms([root.querySelector('p')], T);

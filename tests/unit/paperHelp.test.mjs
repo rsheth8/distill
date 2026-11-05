@@ -107,6 +107,16 @@ describe('distillParseTerms', () => {
   });
 });
 
+describe('term and heading edge cases', () => {
+  it('keeps inner underscores, strips edge markers', () => {
+    expect(help.distillParseTerms('- **k_means** — clustering\n- `p-value` — chance').map(t => t.term)).toEqual(['k_means', 'p-value']);
+  });
+  it('matches headings the content script cut to 120 chars', () => {
+    const long = 'H'.repeat(150);
+    expect(help.distillFindSection({ sections: [{ heading: long, kind: '', text: 'x' }] }, long.slice(0, 120))?.text).toBe('x');
+  });
+});
+
 describe('distillFindSection', () => {
   it('finds by heading, ignoring case and spaces; Abstract maps to the abstract', () => {
     expect(help.distillFindSection(paper(), '  methods ')).toEqual({ heading: 'Methods', kind: 'methods', text: 'METH' });

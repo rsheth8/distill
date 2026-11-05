@@ -65,7 +65,7 @@ function distillParseTerms(block) {
   for (const line of String(block || '').split('\n')) {
     const m = /^\s*(?:[-*•]|\d+[.)])?\s*(.+?)\s*(?:—|–|:|\s-\s)\s*(.+)$/.exec(line);
     if (!m) continue;
-    const term = m[1].replace(/[*_"]/g, '').trim();
+    const term = m[1].trim().replace(/^[*_"`]+|[*_"`]+$/g, '').trim();
     if (!term || term.length > 60) continue;
     terms.push({ term, definition: m[2].trim() });
     if (terms.length === 12) break;
@@ -76,10 +76,12 @@ function distillParseTerms(block) {
 /** The paper section with this heading (case and spacing ignored); "Abstract" is the abstract. */
 function distillFindSection(paper, heading) {
   const p = paper || {};
-  const want = String(heading || '').trim().toLowerCase();
+  // The content script cuts headings to 120 chars, so compare that much.
+  const norm = h => String(h || '').trim().toLowerCase().slice(0, 120);
+  const want = norm(heading);
   if (!want) return null;
   if (want === 'abstract') return p.abstract ? { heading: 'Abstract', kind: '', text: p.abstract } : null;
-  const s = (Array.isArray(p.sections) ? p.sections : []).find(x => String(x.heading).trim().toLowerCase() === want);
+  const s = (Array.isArray(p.sections) ? p.sections : []).find(x => norm(x.heading) === want);
   return s ? { heading: s.heading, kind: s.kind, text: s.text } : null;
 }
 

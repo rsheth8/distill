@@ -11,9 +11,12 @@ function distillEscapeRegExp(s) {
 /** Wrap the first whole-word match of each term in each element. Returns the number of marks added. */
 function distillMarkTerms(elements, terms) {
   let added = 0;
+  // Longest first, so "self-attention" is marked before "attention" can claim part of it.
+  const ordered = (terms || []).filter(t => typeof t?.term === 'string' && t.term)
+    .sort((a, b) => b.term.length - a.term.length);
   for (const el of elements) {
     const doc = el.ownerDocument;
-    for (const { term, definition } of terms) {
+    for (const { term, definition = '' } of ordered) {
       const already = [...el.querySelectorAll('.distill-term')].some(s => s.dataset.term.toLowerCase() === term.toLowerCase());
       if (already) continue;
       const re = new RegExp(`(^|[^\\p{L}\\p{N}])(${distillEscapeRegExp(term)})(?=$|[^\\p{L}\\p{N}])`, 'iu');
