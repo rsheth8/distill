@@ -51,3 +51,22 @@ describe('terminal stream edge cases',()=>{
   expect(await run(chunk('partial','content_filter')+'data: [DONE]\n\n')).toEqual([['text','partial'],['error','CHAT_INCOMPLETE']]);
  });
 });
+
+describe('local setup discovery',()=>{
+ it('filters known embedding-only Ollama models without loading/downloading anything',async()=>{
+  const requests=[];
+  const ctx=vm.createContext({
+   AbortSignal,chrome:{runtime:{id:'test'}},...helpers,
+   localChatConfig:async()=>({baseUrl:'http://localhost:11434'}),
+   fetch:async(url,init)=>{requests.push({url,method:init.method||'GET'});return new Response(JSON.stringify({models:[{name:'reader',capabilities:['completion']},{name:'embedding',capabilities:['embedding']}]}));}
+  });
+  const start=source.indexOf('async function listLocalModels('),end=source.indexOf('/** One-token request',start);
+  vm.runInContext(source.slice(start,end),ctx);
+  expect((await ctx.listLocalModels()).models).toEqual(['reader']);
+  expect(requests).toEqual([{url:'http://localhost:11434/api/tags',method:'GET'}]);
+ });
+ it('gives LM Studio-specific CORS recovery at its standard endpoint',()=>{
+  const error=helpers.distillClassifyLocalError(403,{baseUrl:'http://localhost:1234',model:'reader',extensionId:'test'});
+  expect(error.message).toContain('LM Studio');expect(error.message).not.toContain('OLLAMA_ORIGINS');
+ });
+});

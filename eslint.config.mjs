@@ -77,7 +77,7 @@ export default [
         tabState: 'readonly', toPanel: 'readonly', streamTask: 'readonly', schedulePersistTab: 'readonly',
         readingLevel: 'readonly', distillPaperExcerpt: 'readonly', distillTrustFacts: 'readonly',
         distillParseLabelled: 'readonly', distillParseTerms: 'readonly', distillFindSection: 'readonly',
-        distillMergeGlossary: 'readonly', distillPickSections: 'readonly', distillPickPassages: 'readonly', distillByline: 'readonly'
+        distillMergeGlossary: 'readonly', distillPickSections: 'readonly', distillPickPassages: 'readonly', distillUnsupportedDemographicCounts: 'readonly', distillByline: 'readonly'
       }
     },
     rules: { 'no-unused-vars': 'off' }

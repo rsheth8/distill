@@ -312,3 +312,60 @@ describe('first useful reading-note export',()=>{
     }
   });
 });
+
+describe('background population versus study sample evidence',()=>{
+ it('includes the recruitment passage when answering a generic result question',()=>{
+  const paper={abstract:'Over 500 million people use the platform. '+ 'The result is an association. '.repeat(100),sections:[
+    {heading:'Methods',kind:'methods',text:'Participants\n\nEighty-two people were recruited for a study. Mean age was 19.52 years.'},
+    {heading:'Results',kind:'results',text:'The result was an association, not a randomized effect.'}
+  ]};
+  const passages=help.distillPickPassages(paper,'What is the key result, including units and uncertainty?',2000);
+  expect(passages.some(p=>p.text.includes('Eighty-two people were recruited'))).toBe(true);
+ });
+});
+
+describe('design reservation is bounded',()=>{
+ it('keeps result evidence when many methods paragraphs mention randomization',()=>{
+  const paper={sections:[
+   {heading:'Methods',kind:'methods',text:Array.from({length:8},(_,i)=>`We randomized group ${i}. `+'Protocol details. '.repeat(60)).join('\n\n')},
+   {heading:'Results',kind:'results',text:'The result was 12 mg (95% CI 10–14 mg).'}
+  ]};
+  const picked=help.distillPickPassages(paper,'What is the key result?',2200);
+  expect(picked.some(p=>p.text.includes('12 mg'))).toBe(true);
+ });
+});
+
+describe('unreported demographic complements',()=>{
+ it('flags a fabricated male count despite valid source IDs',()=>{
+   const passages=[{id:'S2P1',text:'Eighty-two people were recruited, including 53 females.'}];
+   expect(help.distillUnsupportedDemographicCounts('82 people, 53 females and 49 males [S2P1].',passages)).toEqual([{count:49,group:'male'}]);
+   expect(help.distillUnsupportedDemographicCounts('82 people, including 53 women [S2P1].',passages)).toEqual([]);
+ });
+});
+
+describe('checking unsupported count claims',()=>{
+ it('allows a supported abstention/refutation instead of blocking a claim-checking task',()=>{
+  const p=[{text:'82 people, including 53 females.'}];
+  expect(help.distillUnsupportedDemographicCounts('The supplied text does not report 49 males. That count is unsupported.',p)).toEqual([]);
+  expect(help.distillUnsupportedDemographicCounts('The sample included 49 males.',p)).toEqual([{count:49,group:'male'}]);
+ });
+});
+
+describe('design questions retain enrollment rather than irrelevant analysis exclusions',()=>{
+ it('does not crowd a design/population answer with subgroup moderation exclusions',()=>{
+  const paper={abstract:'An observational study of well-being.',sections:[
+   {heading:'Methods',kind:'methods',text:'Eighty-two people were recruited for this study. Participants completed surveys.'},
+   {heading:'Results',kind:'results',text:'Data from one person were excluded only from the BDI moderation analysis.'}
+  ]};
+  const picked=help.distillPickPassages(paper,'What is the study design and population or data?');
+  expect(picked.some(p=>p.text.includes('Eighty-two'))).toBe(true);
+  expect(picked.some(p=>p.text.includes('moderation analysis'))).toBe(false);
+  expect(help.distillPickPassages(paper,'What data were excluded from the moderation analysis?').some(p=>p.text.includes('moderation analysis'))).toBe(true);
+ });
+});
+
+describe('demographic proportions are not literal head counts',()=>{
+ it('does not misread a decimal percentage after a group label as a count',()=>{
+  expect(help.distillUnsupportedDemographicCounts('Women (60.5%) were represented.',[])).toEqual([]);
+ });
+});

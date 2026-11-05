@@ -516,3 +516,15 @@ describe('empty extraction must not become generated evidence',()=>{
     expect(sent).toContainEqual(expect.objectContaining({type:'PAPER_HELP_ERROR',code:'EXTRACTION_INCOMPLETE'}));
   });
 });
+
+describe('do not save an answer with an unsupported demographic count',()=>{
+ beforeEach(load);
+ it('rejects before completed answer publication',async()=>{
+  ctx.tabState.set(1,{paper:{}});
+  const p=ctx.streamPaperHelp(1,{kind:'ask',key:'0',task:'ask',level:'close',validate:()=> 'Unverified count.'});
+  calls[0].onChunk('49 males [S2P1]');calls[0].onDone();calls[0].resolve();
+  expect(await p).toBe('');
+  expect(sent.some(m=>m.type==='PAPER_HELP_DONE')).toBe(false);
+  expect(sent).toContainEqual(expect.objectContaining({type:'PAPER_HELP_ERROR',code:'UNVERIFIED_QUANTITY'}));
+ });
+});

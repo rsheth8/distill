@@ -2386,7 +2386,7 @@ async function validateAiKey(provider, key, local = {}) {
 /** Read-only discovery. Never pulls or loads a model. */
 async function listLocalModels(baseUrl) {
   const cfg = await localChatConfig({ baseUrl });
-  for (const route of ['/v1/models', '/api/tags']) {
+  for (const route of ['/api/tags', '/v1/models']) {
     try {
       const response = await fetch(cfg.baseUrl + route, { signal: AbortSignal.timeout(5000) });
       if (!response.ok) {

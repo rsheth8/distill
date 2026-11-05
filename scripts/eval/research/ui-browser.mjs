@@ -21,10 +21,11 @@ const server=http.createServer(async(req,res)=>{
   if(!body.stream){res.setHeader('Content-Type','application/json');res.end('{}');return;}
   if(mode==='context'){res.writeHead(400,{'Content-Type':'application/json'});res.end(JSON.stringify({error:{message:'maximum context length exceeded'}}));return;}
   const sys=body.messages[0].content;
-  const answer=sys.includes('overview')?'ASKED: Does sleep relate to memory?\nDID: Observed 42 adults.\nFOUND: A positive association.\nWHY: May motivate further study.\nSTUDY: Observational, 42 adults.\nLIMITS:\n- Cannot establish causation.'
+  let answer=sys.includes('overview')?'ASKED: Does sleep relate to memory?\nDID: Observed 42 adults.\nFOUND: A positive association.\nWHY: May motivate further study.\nSTUDY: Observational, 42 adults.\nLIMITS:\n- Cannot establish causation.'
    :sys.includes('one section')?'This section describes the study design.\nTERMS:\nobservational — Researchers measured rather than assigned exposure.'
    :sys.includes('highlighted')?'The study measured an association, not causation.'
    :'The sample included 42 adults [S2P0]. The observational design cannot establish causation [S4P0].\nFROM: S2P0, S4P0, S99P99';
+  if(mode==='bad-count') answer='The sample included 49 males [S2P0].\nFROM: S2P0';
   res.writeHead(200,{'Content-Type':'text/event-stream'});
   res.write('data: '+JSON.stringify({choices:[{delta:{content:answer}}]})+'\n\n');
   if(mode==='slow'){const interval=setInterval(()=>res.write(': keepalive\n\n'),1000);res.on('close',()=>clearInterval(interval));return;}
@@ -84,6 +85,9 @@ try{
  mode='interrupted';await panel.fill('#askInput','Interrupted question');await panel.locator('#askForm button').click();await panel.waitForFunction(()=>document.querySelector('#askStatus').textContent.includes('ended before'));
  check('interrupted answer is not saved as completed',await panel.evaluate(()=>!paperView.state.askThread.some(e=>e.q==='Interrupted question'&&e.a)));
  mode='context';await panel.fill('#askInput','Context question');await panel.locator('#askForm button').click();await panel.waitForFunction(()=>document.querySelector('#askStatus').textContent.includes('context window'));check('context failure offers actionable message',true);
+ mode='bad-count';await panel.fill('#askInput','How many males were included?');await panel.locator('#askForm button').click();
+ await panel.waitForFunction(()=>document.querySelector('#askStatus').textContent.includes('demographic count'));
+ check('unmatched demographic count is withheld before saving',await panel.evaluate(()=>!paperView.state.askThread.some(e=>e.q==='How many males were included?'&&e.a)));
  mode='complete';await panel.click('#settingsBtn');
  if(process.env.DISTILL_EXTENSION_DIR) check('packaged build hides hosted-backend settings',await panel.locator('#advancedBackendDetails').isHidden());await panel.click('#discoverModelsBtn');await panel.waitForFunction(()=>document.querySelectorAll('#localModelsList option').length===1);check('model discovery lists installed ID',await panel.locator('#localModelsList option').getAttribute('value')==='fixture-reader');
  await panel.click('#checkBrowserModelBtn');await panel.waitForFunction(()=>document.querySelector('#browserModelStatus').textContent);check('Chrome availability is explicit without download',await panel.locator('#browserModelStatus').innerText().then(t=>t.includes('unavailable')||t.includes('not yet verified')||t.includes('download')));

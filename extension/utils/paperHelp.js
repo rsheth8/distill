@@ -170,18 +170,23 @@ function distillPickSections(paper, question, maxChars = 5000) {
  */
 function distillPickPassages(paper, question, maxChars = 5000) {
   const q = new Set(distillWords(question));
+  const designIntent = /\b(study design|study population|design and population)\b/i.test(question) && !/result|outcome|exclu|inclusion|effect|association/i.test(question);
   const sections = [{ heading: 'Abstract', text: paper?.abstract || '' }, ...(paper?.sections || [])];
   const candidates = [];
   sections.forEach((s, si) => String(s.text || '').split('\n\n').forEach((raw, pi) => {
+    if (designIntent && si > 0 && s.kind !== 'methods') return;
     const para = raw.trim();
     for (let start = 0; start < para.length; start += 1000) {
       const text = para.slice(start, start + 1200);
       const words = new Set(distillWords(text));
       const hits = [...q].filter(w => words.has(w)).length;
       const headingHits = distillWords(s.heading).filter(w => q.has(w)).length;
-      candidates.push({ id: `S${si}P${pi}`, heading: s.heading, text, start, si, pi, score: hits * 3 + Math.min(2, headingHits) });
+      candidates.push({ id: `S${si}P${pi}`, heading: s.heading, text, start, si, pi, score: hits * 3 + Math.min(2, headingHits), designScore: s.kind === 'methods' && /\b(study|design|population|sample|result|participants)\b/i.test(question) ? (/recruited|enrolled|sample.*included|study population/i.test(text) ? 2 : /randomi[sz]ed/i.test(text) ? 1 : 0) : 0 });
     }
   }));
+  // Reserve one design passage, so methods do not crowd out the actual results.
+  const design = candidates.filter(x => x.designScore > 0).sort((a, b) => b.designScore - a.designScore || b.score - a.score)[0];
+  if (design) design.score += 20;
   candidates.sort((a, b) => b.score - a.score || a.si - b.si || a.pi - b.pi || a.start - b.start);
   const selected = [], seen = new Set();
   let used = 0;
@@ -202,6 +207,25 @@ function distillPickPassages(paper, question, maxChars = 5000) {
 function distillCitedPassages(text, supplied) {
   const ids = new Set((String(text || '').match(/\bS\d+P\d+\b/g) || []));
   return (Array.isArray(supplied) ? supplied : []).filter(p => ids.has(p.id));
+}
+
+/** Conservative check for explicit demographic counts; does not validate other claims. */
+function distillUnsupportedDemographicCounts(answer, passages) {
+  const group = value => /^female|^women/i.test(value) ? 'female' : 'male';
+  const counts = (text, allowRefutations = false) => {
+    const found = [];
+    const refutes = index => {
+      if (!allowRefutations) return false;
+      const before = String(text).slice(0, index).split(/[.!?;\n]/).pop();
+      const after = String(text).slice(index).split(/[.!?;\n]/)[0];
+      return /\b(?:not (?:reported|stated|supported|confirmed)|(?:do|does|did) not (?:report|state|support|confirm)|(?:don't|doesn't|didn't) (?:report|state|support|confirm)|unsupported|unreported|unverified|incorrect|no evidence|cannot confirm)\b/i.test(before + after);
+    };
+    for (const m of String(text || '').matchAll(/\b(\d{1,7}(?:,\d{3})*)\s+(women|men|females?|males?)\b/gi)) if (!refutes(m.index)) found.push({ count: Number(m[1].replace(/,/g, '')), group: group(m[2]) });
+    for (const m of String(text || '').matchAll(/\b(women|men|females?|males?)\s*[:=(]\s*(?:n\s*=\s*)?(\d{1,7})(?![\d.,%])\b/gi)) if (!refutes(m.index)) found.push({ count: Number(m[2]), group: group(m[1]) });
+    return found;
+  };
+  const supplied = counts((passages || []).map(p => p.text || '').join('\n'));
+  return counts(answer, true).filter(c => !supplied.some(s => s.count === c.count && s.group === c.group));
 }
 
 /** Include paper-help evidence even before a running summary has been generated. */
@@ -265,5 +289,5 @@ function distillGroupBullets(bullets, bulletSections, sectionOrder) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { distillPaperNotesText, distillPickPassages, distillCitedPassages, distillBulletKey, distillGroupBullets, distillPaperExcerpt, distillTrustFacts, distillParseLabelled, distillParseTerms, distillFindSection, distillMergeGlossary, distillPickSections, distillSectionMap, distillByline };
+  module.exports = { distillUnsupportedDemographicCounts, distillPaperNotesText, distillPickPassages, distillCitedPassages, distillBulletKey, distillGroupBullets, distillPaperExcerpt, distillTrustFacts, distillParseLabelled, distillParseTerms, distillFindSection, distillMergeGlossary, distillPickSections, distillSectionMap, distillByline };
 }

@@ -64,6 +64,7 @@ for (const spec of manifest.papers.filter(p=>!only||only.includes(p.id))) {
   const tasks = [ ['overview',{}, {excerpt:distillPaperExcerpt(paper)}], ['section_guide',{section},{sectionText:section.text}], ['analysis',{section,opener:paper.abstract},{selection:section.text.slice(0,900)}], ...spec.questions.map(q=>['ask',baseline?{abstract:paper.abstract}:{},{question:q.question,excerpts:(baseline?distillPickSections:distillPickPassages)(paper,q.question)},q.id]) ];
   for(const [task,ctx,input,qid] of tasks) {
    if (arg('tasks') && !arg('tasks').split(',').includes(task)) continue;
+   if (qid && arg('questions') && !arg('questions').split(',').includes(qid)) continue;
    const file = `${dest}/${model.replace(/[^a-z0-9.-]/gi,'_')}-${level}${baseline && expertise === 'newcomer' ? '' : '-'+expertise}-${qid||task}.json`;
    try { await fs.access(file); continue; } catch { /* resume missing runs only */ }
    const prompt=distillBuildPrompt(task,{title:paper.title,level,expertise,...ctx},input);

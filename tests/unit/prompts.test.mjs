@@ -15,7 +15,7 @@ describe('distillBuildPrompt', () => {
     quiz_skipped_review: [{ recent: 'R' }, { question: 'Q?' }, ['R', 'Q?', 'model answer']],
     analysis: [{ title: 'T', opener: 'ABS', priorGist: 'G', recent: 'R' }, { selection: 'SEL' }, ['T', 'ABS', 'G', 'R', '"SEL"']],
     overview: [{ title: 'T' }, { excerpt: 'EXC' }, ['T', 'EXC', 'ASKED:', 'DID:', 'FOUND:', 'WHY:', 'STUDY:', 'LIMITS:']],
-    section_guide: [{ title: 'T', section: { heading: 'Methods', kind: 'methods' } }, { sectionText: 'SEC' }, ['T', '"Methods"', 'SEC', 'TERMS:', 'up to 12']],
+    section_guide: [{ title: 'T', section: { heading: 'Methods', kind: 'methods' } }, { sectionText: 'SEC' }, ['T', '"Methods"', 'SEC', 'TERMS:', 'up to 6']],
     ask: [{ title: 'T', abstract: 'ABS', thread: [{ q: 'OLDQ', a: 'OLDA' }] }, { question: 'Q?', excerpts: [{ heading: 'Results', text: 'RES' }] },
       ['T', 'ABS', 'OLDQ', 'OLDA', 'Q?', '[Results]', 'RES', 'BACKGROUND:', 'FROM:', "could not find that in the supplied passages"]],
   };

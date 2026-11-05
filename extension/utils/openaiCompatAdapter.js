@@ -153,6 +153,9 @@ function distillClassifyLocalError(status, { baseUrl, model, extensionId = '<ext
   if (status === 0) {
     return { code: 'LOCAL_UNREACHABLE', message: `Can’t reach your local model at ${baseUrl}. Is Ollama or LM Studio running?`, retryable: true };
   }
+  if (status === 403 && /:1234(?:\/|$)/.test(baseUrl)) {
+    return { code: 'LOCAL_FORBIDDEN', message: `LM Studio blocked Distill. Enable CORS in its Developer server settings, then retry chrome-extension://${extensionId}.`, retryable: false };
+  }
   if (status === 403) {
     return { code: 'LOCAL_FORBIDDEN', message: `Ollama blocked Distill. Allow it with OLLAMA_ORIGINS=chrome-extension://${extensionId}, then restart Ollama (see Settings).`, retryable: false };
   }

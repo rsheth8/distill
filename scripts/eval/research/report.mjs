@@ -1,5 +1,8 @@
 // Sanitized evidence: outputs/timing, no full paper caches or raw prompts.
 import fs from 'node:fs/promises';import path from 'node:path';import {createHash} from 'node:crypto';
+import {createRequire} from 'node:module';
+const require=createRequire(import.meta.url);
+const {distillUnsupportedDemographicCounts}=require('../../../extension/utils/paperHelp.js');
 const root=path.resolve(import.meta.dirname,'../../..');
 const arg=n=>process.argv.find(a=>a.startsWith(`--${n}=`))?.split('=').slice(1).join('=');
 const run=arg('run')||'baseline';const input=path.resolve(arg('input')||`${root}/dist/evaluation/${run}`);
@@ -14,7 +17,10 @@ for(const dir of await fs.readdir(input,{withFileTypes:true}))if(dir.isDirectory
   const status=data.status === 'complete' && !data.output.trim() ? 'empty' : data.status;
   const suppliedIds=[...new Set((data.prompt?.blocks?.join('\n').match(/\bS\d+P\d+\b/g)||[]))];
   const outputIds=[...new Set((data.output.match(/\bS\d+P\d+\b/g)||[]))];
-  records.push({paper,model,level,expertise,task,questionId,started, ...(task==='ask'&&suppliedIds.length?{citationAudit:{suppliedIds,outputIds,unknownIds:outputIds.filter(id=>!suppliedIds.includes(id)),scope:'ID membership only; not claim support'}}:{}),maxTokens:maxTokens||700,status,completionMs,firstTokenMs,finishReason,error,output:data.output.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi,'[redacted-email]'),outputSha256:createHash('sha256').update(data.output).digest('hex'),promptSha256:createHash('sha256').update(JSON.stringify(data.prompt)).digest('hex')});
+  const sourceBlock=data.prompt?.blocks?.find(b=>b.startsWith('Parts of the paper:'))||'';
+  const sources=sourceBlock.replace(/^Parts of the paper:\s*/, '').split(/\n\n(?=\[S\d+P\d+\])/).map(b=>/^\[(S\d+P\d+)\] ([^\n]+)\n([\s\S]*)/.exec(b)).filter(Boolean).map(m=>({id:m[1],heading:m[2],text:m[3]}));
+  const unsupportedDemographicCounts=sources.length?distillUnsupportedDemographicCounts(data.output,sources):[];
+  records.push({paper,model,level,expertise,task,questionId,started, ...(task==='ask'&&suppliedIds.length?{citationAudit:{suppliedIds,outputIds,unknownIds:outputIds.filter(id=>!suppliedIds.includes(id)),unsupportedDemographicCounts,expectedQuantityGuardDisposition:unsupportedDemographicCounts.length?'withhold-unmatched-demographic-count':'no-flag',scope:'ID membership and limited literal count checks only; not claim support. Expected guard disposition is an audit, not live browser-model validation.'}}:{}),maxTokens:maxTokens||700,status,completionMs,firstTokenMs,finishReason,error,output:data.output.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi,'[redacted-email]'),outputSha256:createHash('sha256').update(data.output).digest('hex'),promptSha256:createHash('sha256').update(JSON.stringify(data.prompt)).digest('hex')});
  }else if(name==='extraction.json'||name==='production-pdf.json')extraction.push({paper:dir.name,...data});
 }
 records.sort((a,b)=>[a.paper,a.model,a.level,a.expertise,a.task,a.questionId].join('/').localeCompare([b.paper,b.model,b.level,b.expertise,b.task,b.questionId].join('/')));

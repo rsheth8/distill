@@ -19,7 +19,7 @@ const paperHelpAbort = new Map(); // tabId -> { ctrl, kind, key } of the paper-h
  * or when the tab moved on (clearPaperHelp, or tabState replaced by a new paper): a stale call
  * sends and stores nothing, and settles so the queue never hangs.
  */
-function streamPaperHelp(tabId, { kind, key, task, context, input, level }) {
+function streamPaperHelp(tabId, { kind, key, task, context, input, level, validate }) {
   const s = tabState.get(tabId);
   const ctrl = new AbortController();
   paperHelpAbort.set(tabId, { ctrl, kind, key });
@@ -53,6 +53,8 @@ function streamPaperHelp(tabId, { kind, key, task, context, input, level }) {
       onDone: () => {
         if (settled) return;
         if (stale()) { ctrl.abort(); return; }
+        const validationError = validate?.(text);
+        if (validationError) return fail(Object.assign(new Error(validationError), { code: 'UNVERIFIED_QUANTITY' }));
         if (!text.trim()) return fail(Object.assign(new Error('No answer came back.'), { code: 'EMPTY' })); // so the panel can offer Retry
         toPanel({ type: 'PAPER_HELP_DONE', tabId, kind, key, level, text });
         finish(text.trim());
@@ -234,7 +236,9 @@ function runAsk(tabId, question) {
     const text = await streamPaperHelp(tabId, {
       kind: 'ask', key, task: 'ask', level,
       context: { title: s.title || s.paper.title, thread: earlier },
-      input: { question: q, excerpts: entry.passages }
+      input: { question: q, excerpts: entry.passages },
+      validate: answer => distillUnsupportedDemographicCounts(answer, entry.passages).length
+        ? 'The answer added a demographic count that could not be matched to the supplied passages. It was not saved. Check the source or retry with a narrower question.' : ''
     });
     if (tabState.get(tabId) !== s) return; // the tab moved on: write and publish nothing
     if (text) entry.a = text;
