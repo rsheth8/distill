@@ -184,3 +184,33 @@ describe('distillPickSections budget', () => {
     expect(r.map(x => x.text).join('').length).toBeLessThanOrEqual(5000);
   });
 });
+
+describe('distillSectionMap', () => {
+  const secs = [
+    { heading: 'Introduction', kind: 'intro', chars: 1000 },
+    { heading: 'Methods', kind: 'methods', chars: 4000 },
+    { heading: 'Results', kind: 'results', chars: 0 },
+    { heading: 'Related work', kind: 'other', chars: 2000 }
+  ];
+  it('marks sections before the current one read, the current one current, the rest ahead', () => {
+    expect(help.distillSectionMap(secs, 'methods').map(s => s.state)).toEqual(['read', 'current', 'ahead', 'ahead']);
+  });
+  it('scales width into 0.5–2 by length', () => {
+    const m = help.distillSectionMap(secs, '');
+    expect(m[1].flex).toBe(2);
+    expect(m[2].flex).toBe(0.5);
+    expect(m[0].flex).toBeCloseTo(0.88, 2);
+  });
+  it('gives each known kind a plain line and other kinds none', () => {
+    const m = help.distillSectionMap(secs, '');
+    expect(m[1].line).toBe('How they did it. Fine to skim.');
+    expect(m[3].line).toBe('');
+  });
+  it('treats an unknown current heading as all ahead', () => {
+    expect(help.distillSectionMap(secs, 'Appendix').every(s => s.state === 'ahead')).toBe(true);
+  });
+  it('survives empty and malformed input', () => {
+    expect(help.distillSectionMap(null, 'x')).toEqual([]);
+    expect(help.distillSectionMap([null, { kind: 'intro' }], 'x')).toEqual([]);
+  });
+});

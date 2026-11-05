@@ -176,7 +176,7 @@ export default [
     }
   },
   {
-    files: ['extension/utils/exportClip.js', 'extension/utils/accentColor.js', 'extension/utils/articleExtractor.js', 'extension/utils/paperExtractor.js', 'extension/utils/prompts.js', 'extension/utils/paperHelp.js', 'extension/utils/geminiAdapter.js', 'extension/utils/openaiCompatAdapter.js', 'extension/utils/pageStore.js', 'extension/utils/buildConfig.js', 'extension/utils/termMarks.js'],
+    files: ['extension/utils/exportClip.js', 'extension/utils/accentColor.js', 'extension/utils/articleExtractor.js', 'extension/utils/paperExtractor.js', 'extension/utils/prompts.js', 'extension/utils/paperHelp.js', 'extension/utils/geminiAdapter.js', 'extension/utils/openaiCompatAdapter.js', 'extension/utils/pageStore.js', 'extension/utils/buildConfig.js', 'extension/utils/termMarks.js', 'extension/utils/sectionMap.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',

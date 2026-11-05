@@ -148,6 +148,28 @@ function distillPickSections(paper, question, maxChars = 5000) {
   return out;
 }
 
+const DISTILL_SECTION_LINES = {
+  intro: 'The question and why it matters.',
+  methods: 'How they did it. Fine to skim.',
+  results: 'What they found.',
+  discussion: 'What it means, and its limits.'
+};
+
+/** Segments for the panel's section map: width by length, read/current/ahead by position. */
+function distillSectionMap(sections, currentHeading) {
+  const norm = h => String(h || '').trim().toLowerCase().slice(0, 120);
+  const list = (Array.isArray(sections) ? sections : []).filter(s => s && s.heading);
+  const longest = Math.max(1, ...list.map(s => s.chars || 0));
+  const cur = list.findIndex(s => norm(s.heading) === norm(currentHeading));
+  return list.map((s, i) => ({
+    heading: s.heading,
+    kind: s.kind || 'other',
+    flex: Math.round((0.5 + 1.5 * Math.min(1, (s.chars || 0) / longest)) * 100) / 100,
+    state: cur === -1 || i > cur ? 'ahead' : i === cur ? 'current' : 'read',
+    line: DISTILL_SECTION_LINES[s.kind] || ''
+  }));
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { distillPaperExcerpt, distillTrustFacts, distillParseLabelled, distillParseTerms, distillFindSection, distillMergeGlossary, distillPickSections };
+  module.exports = { distillPaperExcerpt, distillTrustFacts, distillParseLabelled, distillParseTerms, distillFindSection, distillMergeGlossary, distillPickSections, distillSectionMap };
 }
