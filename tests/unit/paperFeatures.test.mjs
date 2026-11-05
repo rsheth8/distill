@@ -126,6 +126,13 @@ describe('paperFeatures', () => {
     expect(types()).toEqual(['PAPER_HELP_START:a']);
   });
 
+  it('streamPaperHelp opts out of the generic Retry, so it never replaces the reader\'s own', async () => {
+    ctx.tabState.set(1, { paper: {} });
+    void ctx.streamPaperHelp(1, { kind: 'overview', key: 'overview', task: 'overview', level: 'everyday' });
+    await tick();
+    expect(calls[0].retry).toBe(false);
+  });
+
   it('runOverview reads the level once, passes it through and stores it', async () => {
     const s = { paper: { title: 'P' }, title: 'T' };
     ctx.tabState.set(1, s);
@@ -271,6 +278,53 @@ describe('section guides', () => {
     await ctx.runSectionGuide(1, 'Methods');
     expect(calls).toHaveLength(0);
     expect(tabMsgs).toHaveLength(1);
+  });
+
+  describe('guides queued behind another job', () => {
+    const p3 = { title: 'P', sections: ['A', 'B', 'C'].map(h => ({ heading: h, kind: 'other', text: h })) };
+    // A slow overview holds the queue while the guides wait their turn.
+    const slowOverview = async () => {
+      const ov = ctx.runOverview(1);
+      await flush();
+      expect(calls).toHaveLength(1);
+      return async () => { calls[0].onChunk('x'); calls[0].onDone(); calls[0].resolve(); await ov; await flush(); };
+    };
+
+    it('dwell guides for sections the reader has left never call the model', async () => {
+      const s = { paper: p3, title: 'T', section: { heading: 'A' } };
+      ctx.tabState.set(1, s);
+      const finish = await slowOverview();
+      void ctx.runSectionGuide(1, 'A', { dwell: true });
+      s.section = { heading: 'B' };
+      void ctx.runSectionGuide(1, 'B', { dwell: true });
+      s.section = { heading: 'C' };
+      await finish();
+      expect(calls).toHaveLength(1); // only the overview
+    });
+
+    it('a guide queued before the tab state was replaced does nothing', async () => {
+      const s = { paper: p3, title: 'T', section: { heading: 'A' } };
+      ctx.tabState.set(1, s);
+      const finish = await slowOverview();
+      void ctx.runSectionGuide(1, 'A', { dwell: true });
+      void ctx.runSectionGuide(1, 'A'); // even a tap: it was meant for the old paper
+      ctx.tabState.set(1, { paper: p3, title: 'T2', section: { heading: 'A' } });
+      await finish();
+      expect(calls).toHaveLength(1);
+      expect(sent.some(m => m.type === 'PAPER_HELP_ERROR')).toBe(false);
+    });
+
+    it('a tapped guide for a section the reader has left still runs', async () => {
+      const s = { paper: p3, title: 'T', section: { heading: 'A' } };
+      ctx.tabState.set(1, s);
+      const finish = await slowOverview();
+      void ctx.runSectionGuide(1, 'A'); // GUIDE_SECTION carries no dwell flag
+      s.section = { heading: 'C' };
+      await finish();
+      expect(calls).toHaveLength(2);
+      expect(calls[1].task).toBe('section_guide');
+      expect(calls[1].context.section.heading).toBe('A');
+    });
   });
 
   it('clearPaperHelp cancels the dwell timer', async () => {

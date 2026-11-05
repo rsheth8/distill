@@ -2089,11 +2089,12 @@ async function streamTask({
   input = {},
   onChunk,
   onDone,
-  onError
+  onError,
+  retry = true // false for background paper-help calls: they must not replace the Retry of the user's own request
 }) {
   context = { ...context, level: context.level || await readingLevel() };
   // Allow the side panel to offer a "Retry" button for the last AI call.
-  if (tabId) {
+  if (tabId && retry) {
     lastAiRetryByTab.set(tabId, () => streamTask({
       tabId,
       task,
