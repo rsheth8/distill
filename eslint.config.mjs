@@ -98,7 +98,7 @@ export default [
     rules: { 'no-unused-vars': 'off' }
   },
   {
-    files: ['extension/reader.js'],
+    files: ['extension/reader.js', 'extension/readAlong.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',

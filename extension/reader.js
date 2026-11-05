@@ -10,6 +10,10 @@ const statusEl = document.getElementById('status');
 const readingEl = document.getElementById('reading');
 const pagesEl = document.getElementById('pages');
 const toolbarEl = document.getElementById('toolbar');
+let pdfPageTexts = [];
+let pdfDocument;
+let pageObserver;
+let pdfResizePending = false;
 const src = new URLSearchParams(location.search).get('src') || '';
 
 function showStatus(text) {
@@ -39,17 +43,19 @@ async function renderPage(pdf, num, slot, scale) {
   textDiv.className = 'textLayer';
   slot.append(textDiv);
   await new pdfjs.TextLayer({ textContentSource: page.streamTextContent(), container: textDiv, viewport }).render();
+  document.dispatchEvent(new CustomEvent('distill-pdf-rendered'));
 }
 
 /** Lay out placeholders for every page and draw each one as it nears the viewport. */
 async function showPdfPages(pdf) {
   // Fit page 1 to the window width (capped), and use its size as every placeholder's.
   const first = (await pdf.getPage(1)).getViewport({ scale: 1 });
-  const scale = Math.min(1.6, (pagesEl.clientWidth - 32) / first.width);
+  const scale = Math.max(0.1, Math.min(1.6, (pagesEl.clientWidth - 32) / first.width));
   // ponytail: scale is fixed when the pages are first shown; re-render on resize/zoom if readers ask for it.
 
   // A 40-page paper at 2x is hundreds of MB of canvas, so pages render lazily.
-  const observer = new IntersectionObserver(entries => {
+  pageObserver?.disconnect();
+  const observer = pageObserver = new IntersectionObserver(entries => {
     for (const e of entries) {
       if (!e.isIntersecting) continue;
       observer.unobserve(e.target);
@@ -77,6 +83,7 @@ async function pdfTextPages(pdf) {
     const page = await pdf.getPage(n);
     const viewport = page.getViewport({ scale: 1 });
     const { items } = await page.getTextContent();
+    pdfPageTexts[n - 1] = items.map(it => (it.str || '') + (it.hasEOL ? '\n' : '')).join('');
     pages.push({
       width: viewport.width,
       height: viewport.height,
@@ -123,17 +130,47 @@ function setUpToggle(pdf) {
     pagesEl.hidden = !pdfMode;
     readingBtn.setAttribute('aria-pressed', String(!pdfMode));
     pdfBtn.setAttribute('aria-pressed', String(pdfMode));
+    if (pdfMode && pdfResizePending) { pagesEl.replaceChildren(); pagesShown = false; pdfResizePending = false; }
     if (pdfMode && !pagesShown) {
       pagesShown = true;
       showPdfPages(pdf).catch(err => showStatus(`Couldn't show the PDF pages (${err?.message || err}).`));
     }
-    scrollTo(0, 0);
+    document.dispatchEvent(new CustomEvent('distill-reader-view'));
   };
+  document.addEventListener('distill-show-reading', () => show(false));
   readingBtn.addEventListener('click', () => show(false));
   pdfBtn.addEventListener('click', () => show(true));
   toolbarEl.hidden = false;
   return show;
 }
+
+const pageMatches = new Map();
+globalThis.distillPdfResolve = text => {
+  if (!pageMatches.has(text)) pageMatches.set(text, globalThis.DistillReadAlong.pageFor(pdfPageTexts, text));
+  return pageMatches.get(text);
+};
+
+// Resolve the canonical block before scrolling; lazy pages may not have a text layer yet.
+document.addEventListener('distill-pdf-source', event => {
+  const page = globalThis.distillPdfResolve(event.detail.text);
+  if (!page) return;
+  const slot = pagesEl.querySelector(`[data-page="${page}"]`);
+  if (slot) slot.scrollIntoView({ block: 'center', behavior: 'instant' });
+});
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (!pdfDocument || !pagesEl.children.length) return;
+    if (pagesEl.hidden) { pdfResizePending = true; return; }
+    const visible = [...pagesEl.children].find(el => el.getBoundingClientRect().bottom > 80)?.dataset.page;
+    pagesEl.replaceChildren();
+    showPdfPages(pdfDocument).then(() => {
+      pagesEl.querySelector(`[data-page="${visible}"]`)?.scrollIntoView({ block: 'start', behavior: 'instant' });
+      document.dispatchEvent(new CustomEvent('distill-reader-view'));
+    }).catch(err => showStatus(`PDF resize failed: ${err.message}`));
+  }, 250);
+});
 
 async function open() {
   if (!src) return showStatus('No PDF to open.');
@@ -154,6 +191,7 @@ async function open() {
     return showStatus(`Couldn't open this PDF (${err?.message || err}).${hint}`);
   }
 
+  pdfDocument = pdf;
   const show = setUpToggle(pdf);
   showStatus('Reading the paper…');
   const meta = await pdf.getMetadata().catch(() => null);

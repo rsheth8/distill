@@ -415,6 +415,7 @@
         const target = [...(articleEl || document.body).querySelectorAll('p, li')]
           .find(el => distillNodeText(el).includes(quote));
         if (target) {
+          document.dispatchEvent(new CustomEvent('distill-source-position', { detail: { element: target } }));
           target.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'center' });
           target.setAttribute('tabindex', '-1');
           target.focus({ preventScroll: true });
@@ -427,6 +428,7 @@
         // The paper's sections are h2s; a heading the extractor took from a deeper level is found in the article.
         const head = sectionHeads.find(h => headingIs(h, want)) ||
           [...(articleEl || document.body).querySelectorAll('h1, h2, h3, h4')].find(h => headingIs(h, want));
+        if (head) document.dispatchEvent(new CustomEvent('distill-source-position', { detail: { element: head } }));
         head?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         break;
       }
@@ -645,8 +647,13 @@
   } else {
     paragraphs = Array.from(
       articleEl.querySelectorAll('h1, h2, h3, h4, p, li')
-    ).filter(el => el.innerText.trim().length >= MIN_PARA_LEN);
+    ).filter(el => el.innerText.trim().length > 0 && !el.querySelector('p, li'));
     sectionHeads = Array.from(articleEl.querySelectorAll('h2'));
+    globalThis.distillStartReadAlong?.(paragraphs, globalThis.distillReaderPaper?.url || pageUrlNorm);
+    document.addEventListener('distill-reading-position', event => {
+      const index = paragraphs.indexOf(event.detail.element);
+      if (index >= 0) sendActiveParagraph(index);
+    });
 
     const titleEl = articleEl.querySelector('h1') || document.querySelector('h1');
     const title   = (paper.title || titleEl?.innerText.trim() || document.title || '').slice(0, 140);
