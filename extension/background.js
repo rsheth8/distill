@@ -1,6 +1,6 @@
 'use strict';
 
-importScripts('utils/readingAssistance.js', 'utils/buildConfig.js', 'utils/pageUrlKey.js', 'utils/backendEnv.js', 'utils/aiResultCache.js', 'utils/geminiAdapter.js', 'utils/openaiCompatAdapter.js', 'utils/pageStore.js', 'utils/paperExtractor.js', 'utils/prompts.js', 'utils/paperHelp.js', 'paperFeatures.js');
+importScripts('utils/performanceMetrics.js', 'utils/readingAssistance.js', 'utils/buildConfig.js', 'utils/pageUrlKey.js', 'utils/backendEnv.js', 'utils/aiResultCache.js', 'utils/geminiAdapter.js', 'utils/openaiCompatAdapter.js', 'utils/pageStore.js', 'utils/paperExtractor.js', 'utils/prompts.js', 'utils/paperHelp.js', 'paperFeatures.js');
 
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
 
@@ -723,6 +723,11 @@ function pagePayloadToState(payload) {
 }
 
 async function ensureTabHydratedFromPageState(tabId) {
+  const measure = globalThis.distillPerformance?.start('restore_load');
+  try {const result=await ensureTabHydratedFromPageStateUnmeasured(tabId);measure?.finish('success');return result;}
+  catch(error){measure?.finish('error');throw error;}
+}
+async function ensureTabHydratedFromPageStateUnmeasured(tabId) {
   if (tabState.has(tabId)) return true;
 
   // Prefer existing session snapshot if present.
@@ -1847,12 +1852,52 @@ async function runAutomaticTask(options) {
   }
 }
 
-async function streamTask({
+async function streamTask(options) {
+  if (options.origin === 'automatic') return runAutomaticTask(options);
+  if (!globalThis.distillPerformance?.enabled) return streamTaskUnmeasured(options);
+  const measure = globalThis.distillPerformance.start('ai_complete', { task: options.task });
+  let terminal = false;
+  let hasText = false;
+  let cancelMeasure;
+  const aborted = () => {
+    if (terminal || cancelMeasure) return;
+    cancelMeasure = globalThis.distillPerformance.start('cancel_ack');
+  };
+  options.signal?.addEventListener('abort', aborted, { once: true });
+  if (options.signal?.aborted) aborted();
+  try {
+    return await streamTaskUnmeasured({
+      ...options,
+      performanceMeasure: measure,
+      onChunk: chunk => {
+        if (typeof chunk === 'string' && chunk.trim().length) { hasText = true; measure.firstText(); }
+        return options.onChunk?.(chunk);
+      },
+      onDone: (...args) => {
+        terminal = true;
+        if (!options.signal?.aborted) measure.finish(hasText ? 'success' : 'error');
+        return options.onDone?.(...args);
+      },
+      onError: (...args) => {
+        terminal = true;
+        if (!options.signal?.aborted) measure.finish('error');
+        return options.onError?.(...args);
+      }
+    });
+  } finally {
+    options.signal?.removeEventListener('abort', aborted);
+    if (options.signal?.aborted || !terminal) measure.finish(options.signal?.aborted && cancelMeasure ? 'canceled' : 'error');
+    cancelMeasure?.finish('success');
+  }
+}
+
+async function streamTaskUnmeasured({
   tabId,
   task,
   s,
   signal,
   origin = 'user',
+  performanceMeasure,
   noAuthMessage = 'No API key set.',
   context = {},
   input = {},
@@ -1885,6 +1930,7 @@ async function streamTask({
   const taskMaxTokens = maxTokensForTask(task, aiMode);
   const provider = await getAiProvider();
   if (provider === 'local') {
+    performanceMeasure?.setLabels({provider:'local',route:'direct'});
     // "/no_think" is Qwen3's switch for LM Studio; Ollama uses reasoning_effort (set in streamOpenAiCompat).
     await streamOpenAiCompat({ apiKey: '', cfg: await localChatConfig(), signal, systemPrompt: `${systemPrompt || ''}\n/no_think`, messages, maxTokens: taskMaxTokens, onChunk, onDone, onError });
     return;
@@ -1900,6 +1946,7 @@ async function streamTask({
       const token = await ensureBackendToken();
       if (token) {
         void publishBackendStatus(tabId);
+        performanceMeasure?.setLabels({provider:'backend',route:'backend'});
         await streamViaBackend({
           token,
           signal,
@@ -1927,6 +1974,7 @@ async function streamTask({
     }
   }
 
+  performanceMeasure?.setLabels({provider,route:'direct'});
   const apiKey = await getProviderKey(provider);
   if (!apiKey) {
     if (preferBackend) {

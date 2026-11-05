@@ -1,3 +1,4 @@
+const panelReadyMeasure = globalThis.distillPerformance?.start('panel_ready');
 'use strict';
 
 const SAMPLE_PAPER_URL = 'https://arxiv.org/html/1706.03762';
@@ -974,6 +975,8 @@ function scheduleSummaryRender() {
 
 function handleMessage(msg) {
   if (msg.tabId && msg.tabId !== currentTabId) return;
+  if (msg.type==='ANALYSIS_CACHED') globalThis.distillPerformance?.presented('cache_presented',{cache:'hit'});
+  if (msg.type==='RESTORED') globalThis.distillPerformance?.presented('restore_presented');
   if (typeof handlePaperMessage === 'function') handlePaperMessage(msg); // connect() runs before sidepanelPaper.js loads
 
   switch (msg.type) {
@@ -1578,3 +1581,10 @@ function showToast(msg, type = 'error') {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { toast.className = 'toast hidden'; }, 4500);
 }
+
+if (globalThis.distillPerformance?.enabled) document.addEventListener('DOMContentLoaded',()=>requestAnimationFrame(()=>panelReadyMeasure.finish('success')),{once:true});
+document.addEventListener('click',event=>{
+  if (!globalThis.distillPerformance?.enabled) return;
+  const id=event.target.closest?.('button')?.id;
+  if (['analyzeBtn','overviewRetryBtn','guideBtn','saveKeyBtn','validateKeyBtn'].includes(id) || event.target.closest?.('.ask-starter')) globalThis.distillPerformance.presented('action_feedback');
+},true);

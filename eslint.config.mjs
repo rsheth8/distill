@@ -9,7 +9,8 @@ const extGlobals = {
 
 /** CI lint scope: service worker, side panel, shared utils, tests, and the smoke runner. */
 export default [
-  { files: ['extension/utils/readingAssistance.js', 'extension/utils/localConnection.js', 'extension/utils/sourceReturn.js'], languageOptions: {sourceType:'script',globals:{module:'readonly',crypto:'readonly',TextEncoder:'readonly'}}, rules:{'no-unused-vars':'off'} },
+  { files: ['extension/utils/readingAssistance.js', 'extension/utils/localConnection.js', 'extension/utils/sourceReturn.js', 'extension/utils/performanceMetrics.js'], languageOptions: {sourceType:'script',globals:{...globals.browser,module:'readonly',crypto:'readonly',TextEncoder:'readonly'}}, rules:{'no-unused-vars':'off'} },
+  {files:['scripts/perf/*.mjs'],languageOptions:{sourceType:'module',globals:{...globals.node,...globals.browser,distillExtractPaper:'readonly',extractArticle:'readonly'}}},
   { ignores: ['node_modules/**', 'backend/node_modules/**'] },
   js.configs.recommended,
   {

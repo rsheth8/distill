@@ -196,12 +196,14 @@ async function open() {
   const show = setUpToggle(pdf);
   showStatus('Reading the paper…');
   const meta = await pdf.getMetadata().catch(() => null);
+  const extractionMeasure=globalThis.distillPerformance?.start('extraction');
   let paper = null;
   try {
     paper = distillPdfPaper(await pdfTextPages(pdf), { url: src, info: meta?.info || {} });
   } catch (err) {
     console.warn('Distill: could not read paper text', err);
   }
+  extractionMeasure?.finish(paper ? 'success' : 'error');
   if (!paper || (!paper.abstract && !paper.sections.length)) {
     showStatus('');
     show(true);

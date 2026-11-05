@@ -553,10 +553,12 @@
     chrome.runtime.sendMessage({ type: 'TAB_NAVIGATING', pageUrl: pageUrlNorm }, () => { void chrome.runtime.lastError; });
   } catch (_) {}
 
+  const extractionMeasure=globalThis.distillPerformance?.start('extraction');
   let paper = null;
   try { paper = globalThis.distillReaderPaper || distillExtractPaper(document, location.href); } catch (_) {}
   // The article finder narrows tracking to the paper body; body is the fallback.
   const articleEl = paper ? (extractArticle() || document.body) : null;
+  extractionMeasure?.finish(paper ? 'success' : 'error');
   const readerUrl = pdf => `${chrome.runtime.getURL('reader.html')}?src=${encodeURIComponent(pdf)}`;
   if (document.contentType === 'application/pdf') {
     // Chrome's PDF viewer can't be read from here; the panel offers Distill's own reader instead.

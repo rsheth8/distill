@@ -40,11 +40,11 @@ describe('local inference privacy boundary', () => {
       getSiteBackendOnly: async () => true,
       probeBackend: async () => { attempts.push('REMOTE BACKEND'); return {reachable:true}; }
     });
-    const start = background.indexOf('async function streamTask(');
+    const start = background.indexOf('async function streamTaskUnmeasured(');
     const end = background.indexOf('\nasync function ', start + 1);
     vm.runInContext(background.slice(start,end),context);
     let done = false;
-    await context.streamTask({task:'ask',input:{question:'Q'},onDone:()=>{done=true;},onError:e=>{throw e;}});
+    await context.streamTaskUnmeasured({task:'ask',input:{question:'Q'},onDone:()=>{done=true;},onError:e=>{throw e;}});
     expect(attempts).toEqual(['http://localhost:11434/v1/chat/completions']);
     expect(done).toBe(true);
   });
