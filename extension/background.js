@@ -462,7 +462,8 @@ function tabSnapshotPayload(tabId) {
     currentQuestion: s.currentQuestion,
     lastSummary: s.lastSummary,
     highlightHistory: s.highlightHistory || [],
-    quiz: s.quiz || defaultQuizState()
+    quiz: s.quiz || defaultQuizState(),
+    ...distillPaperHelpFields(s)
   };
 }
 
@@ -520,7 +521,8 @@ function snapshotToState(snap) {
       answer: quiz.answer || '',
       feedback: quiz.feedback || '',
       history: Array.isArray(quiz.history) ? quiz.history : []
-    }
+    },
+    ...distillPaperHelpFields(snap)
   };
 }
 

@@ -47,6 +47,7 @@ export default [
         distillPagePayloadToState: 'readonly',
         distillHistoryPayloadToState: 'readonly',
         distillSelectPrunedKeys: 'readonly',
+        distillPaperHelpFields: 'readonly',
         DISTILL_INCLUDE_BACKEND: 'readonly',
         distillApplyAccentCssVars: 'readonly',
         distillNormalizeSelection: 'readonly',
