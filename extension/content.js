@@ -210,18 +210,6 @@
     return { el: bestEl, rect: bestRect, key: cacheKey };
   }
 
-  // ── Word-by-word teleprompter ──────────────────────────────────────────────
-  let scrollWpm     = 200;
-  let wordMode      = false;
-  let wordParaIdx   = 0;
-  let wordParaSpans = [];
-  let wordIdx       = 0;
-  let wordTimer     = null;
-  let wordRafId     = null;
-  let wordScrollTgt = null;
-
-  const WORD_EASE = 0.15;
-
   function countWords(text) {
     return (text || '').trim().split(/\s+/).filter(Boolean).length;
   }
@@ -299,141 +287,11 @@
     return parts.join('\n\n');
   }
 
-  function wordScrollTick() {
-    if (!wordMode) { wordRafId = null; return; }
-    if (wordScrollTgt !== null) {
-      const cur  = window.scrollY;
-      const diff = wordScrollTgt - cur;
-      if (Math.abs(diff) > 0.5) window.scrollTo(0, cur + diff * WORD_EASE);
-    }
-    wordRafId = requestAnimationFrame(wordScrollTick);
-  }
-
-  function wrapWords(el) {
-    if (!el || el._airWrapped) return [];
-    el._airOrigHTML = el.innerHTML;
-    el._airWrapped  = true;
-    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
-    const nodes = [];
-    let n;
-    while ((n = walker.nextNode())) { if (n.textContent.trim()) nodes.push(n); }
-    for (const node of nodes) {
-      const frag = document.createDocumentFragment();
-      for (const part of node.textContent.split(/(\s+)/)) {
-        if (/\S/.test(part)) {
-          const span = document.createElement('span');
-          span.className = 'air-word';
-          span.textContent = part;
-          frag.appendChild(span);
-        } else {
-          frag.appendChild(document.createTextNode(part));
-        }
-      }
-      node.parentNode.replaceChild(frag, node);
-    }
-    return Array.from(el.querySelectorAll('.air-word'));
-  }
-
-  function unwrapWords(el) {
-    if (!el || !el._airWrapped) return;
-    el.innerHTML   = el._airOrigHTML;
-    el._airWrapped = false;
-    delete el._airOrigHTML;
-  }
-
-  function advanceWord() {
-    if (!wordMode) return;
-
-    if (wordIdx >= wordParaSpans.length) {
-      const done = paragraphs[wordParaIdx];
-      if (done) {
-        unwrapWords(done);
-        readIds.add(done.dataset.airId);
-        safeSend({ type: 'PARAGRAPH_READ', text: done.innerText.trim() });
-        done.classList.remove('air-active');
-        done.classList.add('air-read');
-        if (focusMode) done.classList.add('air-dim');
-      }
-      wordParaIdx++;
-      if (wordParaIdx >= paragraphs.length) { stopWordMode(); safeSend({ type: 'SCROLL_ENDED' }); return; }
-      const next = paragraphs[wordParaIdx];
-      activeParagraphEl = next;
-      next.classList.remove('air-read', 'air-dim');
-      next.classList.add('air-active');
-      if (focusMode) setFocusMode(true);
-      sendActiveParagraph(wordParaIdx);
-      wordParaSpans = wrapWords(next);
-      wordIdx       = 0;
-      if (!wordParaSpans.length) { advanceWord(); return; }
-    }
-
-    const span = wordParaSpans[wordIdx];
-    setWordTrain(wordIdx);
-
-    const rect     = span.getBoundingClientRect();
-    const readingY = window.innerHeight * READING_LINE;
-    wordScrollTgt  = window.scrollY + (rect.top - readingY);
-
-    wordIdx++;
-    wordTimer = setTimeout(advanceWord, 60000 / scrollWpm);
-  }
-
-  function startWordMode() {
-    if (wordMode) return;
-    wordMode    = true;
-    wordParaIdx = Math.max(0, paragraphs.indexOf(activeParagraphEl));
-    wordIdx     = 0;
-    const para  = paragraphs[wordParaIdx];
-    if (!para) { stopWordMode(); return; }
-    activeParagraphEl = para;
-    wordParaSpans     = wrapWords(para);
-    wordScrollTgt     = window.scrollY;
-    wordRafId         = requestAnimationFrame(wordScrollTick);
-    advanceWord();
-  }
-
-  function stopWordMode() {
-    if (!wordMode) return;
-    wordMode = false;
-    clearTimeout(wordTimer); wordTimer = null;
-    if (wordRafId) { cancelAnimationFrame(wordRafId); wordRafId = null; }
-    const cur = paragraphs[wordParaIdx];
-    if (cur) unwrapWords(cur);
-    wordParaSpans = [];
-    wordIdx       = 0;
-    wordScrollTgt = null;
-  }
-
-  function setWordTrain(headIdx) {
-    for (let i = 0; i < wordParaSpans.length; i++) {
-      const node = wordParaSpans[i];
-      node.classList.remove(
-        'air-word-active',
-        'air-word-trail-1',
-        'air-word-trail-2',
-        'air-word-trail-3',
-        'air-word-trail-4',
-        'air-word-trail-5'
-      );
-    }
-    if (headIdx < 0 || headIdx >= wordParaSpans.length) return;
-    wordParaSpans[headIdx]?.classList.add('air-word-active');
-    wordParaSpans[headIdx - 1]?.classList.add('air-word-trail-1');
-    wordParaSpans[headIdx - 2]?.classList.add('air-word-trail-2');
-    wordParaSpans[headIdx - 3]?.classList.add('air-word-trail-3');
-    wordParaSpans[headIdx - 4]?.classList.add('air-word-trail-4');
-    wordParaSpans[headIdx - 5]?.classList.add('air-word-trail-5');
-  }
-
-  window.addEventListener('wheel',     () => { if (wordMode) { stopWordMode(); safeSend({ type: 'SCROLL_PAUSED' }); } }, { passive: true });
-  window.addEventListener('touchmove', () => { if (wordMode) { stopWordMode(); safeSend({ type: 'SCROLL_PAUSED' }); } }, { passive: true });
-
   // ── Freeze overlay (used during comprehension quiz) ────────────────────────
   let freezeOverlay     = null;
   let freezeScrollGuard = null;
 
   function freezeScroll() {
-    if (wordMode) { stopWordMode(); safeSend({ type: 'SCROLL_PAUSED' }); }
     if (freezeOverlay) return;
     const savedY = window.scrollY;
     freezeScrollGuard = () => window.scrollTo(0, savedY);
@@ -500,16 +358,6 @@
         break;
       case 'FOCUS_MODE':
         setFocusMode(msg.on);
-        break;
-      case 'START_SCROLL':
-        if (msg.speed) scrollWpm = msg.speed;
-        if (!freezeOverlay) startWordMode();
-        break;
-      case 'STOP_SCROLL':
-        stopWordMode();
-        break;
-      case 'SET_SCROLL_SPEED':
-        scrollWpm = msg.speed;
         break;
       case 'FREEZE_SCROLL':
         freezeScroll();
@@ -641,54 +489,6 @@
         width: 22px; height: 2px;
         background: var(--air-a22, rgba(37,99,235,0.22));
         border-radius: 999px;
-      }
-      .air-word {
-        position: relative;
-        border-radius: 8px;
-        padding: 0 2px;
-        transition: background-color 0.26s ease-out, box-shadow 0.26s ease-out, color 0.26s ease-out, transform 0.26s ease-out;
-      }
-      .air-word-active {
-        background: radial-gradient(120% 150% at 18% 50%, var(--air-a35, rgba(37,99,235,0.35)) 0%, var(--air-a22, rgba(37,99,235,0.22)) 48%, var(--air-a12, rgba(37,99,235,0.12)) 100%);
-        box-shadow:
-          0 0 0 1px var(--air-a12, rgba(37,99,235,0.12)),
-          0 0 14px var(--air-a12, rgba(37,99,235,0.12));
-        animation: air-word-ripple 0.55s ease-out;
-      }
-      .air-word-trail-1 {
-        background: linear-gradient(90deg, var(--air-a22, rgba(37,99,235,0.22)) 0%, var(--air-a12, rgba(37,99,235,0.12)) 100%);
-      }
-      .air-word-trail-2 {
-        background: linear-gradient(90deg, var(--air-a12, rgba(37,99,235,0.12)) 0%, var(--air-a05, rgba(37,99,235,0.05)) 100%);
-      }
-      .air-word-trail-3 {
-        background-color: var(--air-a05, rgba(37,99,235,0.05));
-      }
-      .air-word-trail-4 {
-        background-color: rgba(37,99,235,0.035);
-      }
-      .air-word-trail-5 {
-        background-color: rgba(37,99,235,0.02);
-      }
-      @keyframes air-word-ripple {
-        0% {
-          box-shadow:
-            0 0 0 0 var(--air-a12, rgba(37,99,235,0.12)),
-            0 0 0 0 var(--air-a12, rgba(37,99,235,0.12));
-          transform: translateY(0);
-        }
-        70% {
-          box-shadow:
-            0 0 0 5px rgba(37,99,235,0),
-            0 0 18px var(--air-a12, rgba(37,99,235,0.12));
-          transform: translateY(-0.2px);
-        }
-        100% {
-          box-shadow:
-            0 0 0 0 rgba(37,99,235,0),
-            0 0 12px var(--air-a12, rgba(37,99,235,0.12));
-          transform: translateY(0);
-        }
       }
       #air-freeze-overlay {
         position: fixed;
@@ -864,8 +664,6 @@
   // ── Reading-line scroll handler ────────────────────────────────────────────
 
   function onScroll() {
-    if (wordMode) return;
-
     const readingY = window.innerHeight * READING_LINE;
 
     for (const el of paragraphs) {

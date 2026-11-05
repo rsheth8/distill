@@ -166,73 +166,10 @@
     <!-- Main reading panel -->
     <div id="mainContent">
 
-      <!-- Assistant status -->
-      <section id="assistantStatus" class="section assistant-status">
-        <div class="status-top">
-          <div class="status-left">
-            <div class="status-title">Assistant</div>
-            <div class="status-meta">
-              <span id="progressLabel" class="progress-label">0 paragraphs read</span>
-              <span id="timeLabel" class="time-label"></span>
-            </div>
-          </div>
-          <div class="status-right">
-            <div class="status-pill">
-              <span id="routingDot" class="routing-dot"></span>
-              <span id="routingText" class="routing-text">Direct</span>
-            </div>
-            <div class="status-pill">
-              <span id="usageLabel" class="usage-label hidden"></span>
-              <span id="usageFallback" class="usage-fallback">Your key</span>
-            </div>
-          </div>
-        </div>
-        <div class="progress-wrap">
-          <div id="progressBar" class="progress-bar"></div>
-        </div>
-      </section>
-
-      <!-- Actions -->
-      <section id="actionsRow" class="section actions-row">
-        <div class="actions-row-top">
-          <button id="focusBtn" type="button" class="action-btn action-icon" title="Dim surrounding text" aria-pressed="false">
-            <span id="focusIcon" class="action-ico">◎</span>
-            <span class="action-label">Focus</span>
-          </button>
-          <button id="learnBtn" type="button" class="action-btn action-icon" title="Comprehension quizzes (Learn Mode)" aria-pressed="false">
-            <span class="action-ico">◈</span>
-            <span class="action-label">Learn</span>
-          </button>
-
-          <div class="tele-wrap">
-            <button id="scrollPlayBtn" type="button" class="action-btn action-icon tele-play" title="Auto-scroll word by word" aria-pressed="false">
-              <span class="action-ico">▶</span>
-              <span class="action-label">Scroll</span>
-            </button>
-            <button id="scrollSlowBtn" class="action-btn action-icon tele-adj" title="Slower">
-              <span class="action-ico">−</span>
-              <span class="sr-only">Slower</span>
-            </button>
-            <span id="scrollSpeedLabel" class="tele-speed">200</span>
-            <span class="tele-unit">wpm</span>
-            <button id="scrollFastBtn" class="action-btn action-icon tele-adj" title="Faster">
-              <span class="action-ico">+</span>
-              <span class="sr-only">Faster</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="actions-row-bottom">
-          <button id="analyzeActionBtn" type="button" class="action-btn action-icon" title="Analyze selected text" aria-pressed="false">
-            <span class="action-ico">✦</span>
-            <span class="action-label">Analyze</span>
-          </button>
-          <button id="historyActionBtn" type="button" class="action-btn action-icon" title="Open history" aria-pressed="false">
-            <span class="action-ico">≡</span>
-            <span class="action-label">History</span>
-          </button>
-        </div>
-      </section>
+      <p id="readingMeta" class="hint reading-meta">
+        <span id="progressLabel" class="progress-label">0 paragraphs read</span>
+        <span id="timeLabel" class="time-label"></span>
+      </p>
 
       <!-- Suggestions -->
       <section id="suggestionsCard" class="section suggestions-card hidden">
@@ -262,29 +199,19 @@
         <p id="quizNext" class="quiz-next hidden"></p>
       </section>
 
-      <!-- Now Reading -->
-      <section id="nowSection" class="section now-section hidden">
-        <div class="section-header">
-          <span class="now-dot"></span>
-          <span class="section-title">Now reading</span>
-          <div class="header-actions">
-            <span id="nowHintChip" class="now-hint-chip hidden" role="status">Dense section — tap Tip</span>
-            <span id="nowStatus" class="status-badge"></span>
-            <button id="nowTipBtn" type="button" class="btn-copy btn-export-mini" title="Get a one-line tip for this paragraph">Tip</button>
-            <button id="nowRefreshBtn" type="button" class="btn-copy btn-export-mini" title="Generate a new tip">Refresh</button>
-          </div>
-        </div>
-        <div id="nowText" class="body-text now-text"></div>
-      </section>
-
       <!-- So Far -->
       <section id="summarySection" class="section">
         <div class="section-header">
           <span class="section-title">So far</span>
           <div class="header-actions">
-            <button id="copyNotesBtn" class="btn-copy hidden" title="Copy notes as Markdown">Notes · MD</button>
-            <button id="copyNotesPlainBtn" class="btn-copy hidden" title="Copy notes as plain text">Notes · text</button>
-            <button id="copyBtn" class="btn-copy hidden" title="Copy summary">Copy</button>
+            <button id="focusBtn" type="button" class="action-btn action-icon" title="Dim surrounding text" aria-pressed="false">
+              <span id="focusIcon" class="action-ico">◎</span>
+              <span class="action-label">Focus</span>
+            </button>
+            <button id="learnBtn" type="button" class="action-btn action-icon" title="Comprehension quizzes (Learn Mode)" aria-pressed="false">
+              <span class="action-ico">◈</span>
+              <span class="action-label">Learn</span>
+            </button>
             <span id="summaryStatus" class="status-badge"></span>
           </div>
         </div>
@@ -296,8 +223,6 @@
         <div class="section-header">
           <span class="section-title">Highlight</span>
           <div class="header-actions">
-            <button id="exportAnalysisMdBtn" type="button" class="btn-copy btn-export-mini" disabled title="Copy analysis as Markdown">MD</button>
-            <button id="exportAnalysisTxtBtn" type="button" class="btn-copy btn-export-mini" disabled title="Copy analysis as plain text">Txt</button>
             <button id="analyzeBtn" class="btn-analyze">Analyze →</button>
           </div>
         </div>
@@ -309,50 +234,6 @@
           <button id="highlightNoteSaveBtn" class="btn-copy">Save note</button>
         </div>
       </section>
-
-      <!-- History drawer -->
-      <details id="historyDetails" class="more-details">
-        <summary class="more-summary">
-          <span class="more-title">History</span>
-          <span class="more-hint">
-            Pins • Check-ins • Resume
-            <span id="moreResumeBadge" class="more-badge hidden">Resume available</span>
-          </span>
-        </summary>
-
-        <section id="pinnedAnalysesSection" class="section hidden">
-          <div class="section-header">
-            <span class="section-title">Pinned analyses</span>
-          </div>
-          <p class="hint analyses-hint">Star an analysis from this page (below) to keep it here across visits.</p>
-          <div id="pinnedAnalysesList" class="analyses-list"></div>
-        </section>
-
-        <section id="pageAnalysesSection" class="section hidden">
-          <div class="section-header">
-            <span class="section-title">On this page</span>
-          </div>
-          <div id="pageAnalysesList" class="analyses-list"></div>
-        </section>
-
-        <!-- Recent check-ins -->
-        <section id="recentCheckinsSection" class="section hidden">
-          <div class="section-header">
-            <span class="section-title">Recent check-ins</span>
-          </div>
-          <div id="recentCheckinsList" class="checkins-list"></div>
-        </section>
-
-        <!-- Resume card -->
-        <section id="resumeCard" class="section resume-card hidden">
-          <div class="section-header">
-            <span class="section-title">Resume</span>
-            <button id="resumeClearBtn" class="btn-copy" title="Clear saved progress">Clear</button>
-          </div>
-          <div id="resumeMeta" class="hint"></div>
-          <div id="resumeText" class="body-text"></div>
-        </section>
-      </details>
 
     </div>
     </div>
@@ -458,37 +339,6 @@
           <label>Saved reading history</label>
           <p class="hint">Distill saves your progress, summaries, highlights and check-ins per page on this device so you can resume. Nothing leaves your browser. Recent pages are kept; old ones are pruned automatically.</p>
           <button id="clearAllHistoryBtn" type="button" class="btn-copy">Clear all saved history</button>
-        </div>
-        <div class="settings-row">
-          <label class="toggle-row">
-            <input id="autoResumeToggle" type="checkbox" />
-            <span>Auto-resume teleprompter after check-ins</span>
-          </label>
-        </div>
-        <div class="settings-row">
-          <label for="aiModeSelect">AI Mode</label>
-          <select id="aiModeSelect">
-            <option value="balanced">Balanced</option>
-            <option value="ultra-lean">Ultra-lean</option>
-          </select>
-          <p class="hint">Balanced for quality, Ultra-lean for lower cost.</p>
-        </div>
-        <div class="settings-row">
-          <label for="readerModeSelect">Reader mode</label>
-          <select id="readerModeSelect">
-            <option value="skim">Skim</option>
-            <option value="study">Study</option>
-            <option value="research">Research</option>
-          </select>
-          <p class="hint">One-click behavior presets (noise, quizzes, and costs).</p>
-        </div>
-        <div class="settings-row">
-          <label for="autoNowModeSelect">Auto "Now reading"</label>
-          <select id="autoNowModeSelect">
-            <option value="off">Off</option>
-            <option value="smart">Smart (only difficult sections)</option>
-          </select>
-          <p class="hint">Smart shows tips on dense paragraphs. Use <strong>Tip</strong> on the Now reading card anytime (cached when possible).</p>
         </div>
         <div id="sitePrefsSection" class="settings-row hidden">
           <label id="sitePrefsLabel">This site</label>

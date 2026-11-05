@@ -156,6 +156,20 @@ async function probeBackendHealth() {
 const read = file => readFileSync(join(extRoot, file), 'utf8');
 const bg = read('background.js') + read('paperFeatures.js');
 const sp = read('sidepanel.js') + read('sidepanelPaper.js');
+const removedIds = [
+  'scrollPlayBtn', 'scrollSlowBtn', 'scrollFastBtn', 'scrollSpeedLabel', 'autoResumeToggle',
+  'readerModeSelect', 'aiModeSelect', 'autoNowModeSelect',
+  'nowSection', 'nowText', 'nowStatus', 'nowTipBtn', 'nowRefreshBtn', 'nowHintChip',
+  'historyDetails', 'historyActionBtn', 'moreResumeBadge', 'pinnedAnalysesSection', 'pinnedAnalysesList',
+  'pageAnalysesSection', 'pageAnalysesList', 'recentCheckinsSection', 'recentCheckinsList',
+  'resumeCard', 'resumeMeta', 'resumeText', 'resumeClearBtn',
+  'assistantStatus', 'routingDot', 'routingText', 'usageLabel', 'usageFallback', 'progressBar',
+  'actionsRow', 'analyzeActionBtn', 'explainBtnMain',
+  'copyNotesBtn', 'copyNotesPlainBtn', 'copyBtn', 'exportAnalysisMdBtn', 'exportAnalysisTxtBtn'
+];
+const panelSources = sp + read('sidepanel.html');
+const leftover = removedIds.filter(id => new RegExp(`['"]${id}['"]`).test(panelSources));
+if (leftover.length) fail(`Removed panel ids still referenced: ${leftover.join(', ')}`);
 const server = readFileSync(join(root, 'backend', 'server.js'), 'utf8');
 
 const panelTypes = extractToPanelTypes(bg);
@@ -174,7 +188,9 @@ const unknown = [...bgTasks].filter(t => !taskCosts.has(t)).sort();
 if (unknown.length) {
   fail(`smoke: background AI task(s) not in backend TASK_COSTS: ${unknown.join(', ')}`);
 }
-const unused = [...taskCosts].filter(t => !bgTasks.has(t)).sort();
+// The panel no longer asks for "Now reading" tips, but the backend still accepts the task.
+const RETIRED_TASKS = new Set(['now']);
+const unused = [...taskCosts].filter(t => !bgTasks.has(t) && !RETIRED_TASKS.has(t)).sort();
 if (unused.length) {
   fail(`smoke: backend TASK_COSTS key(s) unused by background streamTask: ${unused.join(', ')}`);
 }
@@ -185,7 +201,7 @@ const tuningMismatch = [...tuningKeys].filter(t => !taskCosts.has(t)).sort();
 if (tuningMismatch.length) {
   fail(`smoke: AI_TUNING taskMaxTokens keys missing from TASK_COSTS: ${tuningMismatch.join(', ')}`);
 }
-const tuningMissing = [...taskCosts].filter(t => !tuningKeys.has(t)).sort();
+const tuningMissing = [...taskCosts].filter(t => !tuningKeys.has(t) && !RETIRED_TASKS.has(t)).sort();
 if (tuningMissing.length) {
   fail(`smoke: TASK_COSTS keys missing from AI_TUNING taskMaxTokens: ${tuningMissing.join(', ')}`);
 }

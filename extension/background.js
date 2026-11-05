@@ -222,7 +222,6 @@ async function useBackendProxy() {
   const r = await chrome.storage.local.get(USE_BACKEND_PROXY_KEY);
   return r[USE_BACKEND_PROXY_KEY] === true;
 }
-const AI_MODE_KEY = 'aiMode';
 const DEFAULT_AI_MODE = 'balanced';
 const MAX_READ_SO_FAR_CHARS = 12000;
 const MAX_CONTEXT_CHARS = 3200;
@@ -238,7 +237,6 @@ const SUMMARY_FORCE_INTERVAL_WORDS = 180;
 const AI_TUNING = {
   balanced: {
     taskMaxTokens: {
-      now: 70,
       summary: 280,
       quiz_question: 90,
       quiz_feedback: 180,
@@ -251,7 +249,6 @@ const AI_TUNING = {
   },
   'ultra-lean': {
     taskMaxTokens: {
-      now: 50,
       summary: 190,
       quiz_question: 70,
       quiz_feedback: 130,
@@ -270,34 +267,18 @@ const persistTimers = new Map();
 const quizArchiveTimers = new Map();
 const INSTALL_ID_KEY = 'distillInstallId';
 const BACKEND_TOKEN_KEY = 'distillBackendToken';
-const AUTO_NOW_MODE_KEY = 'autoNowMode';
-const READER_MODE_KEY = 'readerMode';
-const NOW_COOLDOWN_MS = 9000;
-const PAUSE_TO_EXPLAIN_MIN_MS = 3500;
-const PAUSE_TO_EXPLAIN_MAX_MS = 14000;
-const ESTIMATED_READING_WPM = 220;
 // Persistence prefixes + retention come from utils/pageStore.js (single source of truth).
 const HISTORY_KEY_PREFIX = DISTILL_HISTORY_PREFIX;
 const PAGE_STATE_KEY_PREFIX = DISTILL_PAGE_STATE_PREFIX;
 
 let sidePanelPort = null;
-const nowAssistState = new Map();
 const summaryCadenceState = new Map();
-const pauseExplainTimers = new Map();
 // Tabs whose state was just loaded from persistent (chrome.storage.local) save-state,
 // i.e. a genuine "restored from last time" — used to show the restore notice once.
 const restoredFromStorageTabs = new Set();
 
-let readerMode = 'skim';
-chrome.storage.local.get(READER_MODE_KEY, r => {
-  readerMode = r?.[READER_MODE_KEY] === 'study' ? 'study' : (r?.[READER_MODE_KEY] === 'research' ? 'research' : 'skim');
-});
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
-  if (changes[READER_MODE_KEY]) {
-    const v = changes[READER_MODE_KEY].newValue;
-    readerMode = v === 'study' ? 'study' : (v === 'research' ? 'research' : 'skim');
-  }
   if (changes.backendTarget || changes.backendBaseUrlOverride) {
     backendProbeCache = { checkedAt: 0, result: null };
     void ensureBackendToken();
@@ -306,15 +287,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (changes.readingLevel) onReadingLevelChanged();
 });
 
-function summaryCadenceForMode() {
-  if (readerMode === 'study') {
-    return { minNewWords: 70, minIntervalMs: 7000, forceIntervalWords: 140 };
-  }
-  if (readerMode === 'research') {
-    return { minNewWords: 110, minIntervalMs: 12000, forceIntervalWords: 220 };
-  }
-  return { minNewWords: 95, minIntervalMs: 11000, forceIntervalWords: 200 };
-}
+const SUMMARY_CADENCE = { minNewWords: 95, minIntervalMs: 11000, forceIntervalWords: 200 };
 
 function defaultQuizState() {
   return {
@@ -341,27 +314,6 @@ function countWords(text) {
 function stableStringHash(text) { return distillStableHash(text); }
 function historyKeyForPageUrl(pageUrl) { return distillHistoryKey(pageUrl); }
 function pageStateKeyForPageUrl(pageUrl) { return distillPageStateKey(pageUrl); }
-
-async function publishResume(tabId) {
-  const s = tabState.get(tabId);
-  const pageUrl = s?.pageUrl || '';
-  if (!pageUrl) {
-    toPanel({ type: 'RESUME_DATA', tabId, item: null });
-    return;
-  }
-  // Prefer the newer full page snapshot (it contains the same fields and more).
-  const keyNew = pageStateKeyForPageUrl(pageUrl);
-  const bagNew = await chrome.storage.local.get(keyNew).catch(() => ({}));
-  const hitNew = bagNew?.[keyNew] || null;
-  if (hitNew) {
-    toPanel({ type: 'RESUME_DATA', tabId, item: hitNew });
-    return;
-  }
-  // Back-compat: older minimal history snapshot.
-  const keyOld = historyKeyForPageUrl(pageUrl);
-  const bagOld = await chrome.storage.local.get(keyOld).catch(() => ({}));
-  toPanel({ type: 'RESUME_DATA', tabId, item: bagOld?.[keyOld] || null });
-}
 
 function persistHistorySnapshot(tabId) {
   const s = tabState.get(tabId);
@@ -394,16 +346,6 @@ function persistPageState(tabId) {
   chrome.storage.local.set({ [key]: payload }).catch(() => {});
 }
 
-async function clearHistorySnapshot(tabId) {
-  const s = tabState.get(tabId);
-  const pageUrl = s?.pageUrl || '';
-  if (!pageUrl) return;
-  const keyOld = historyKeyForPageUrl(pageUrl);
-  const keyNew = pageStateKeyForPageUrl(pageUrl);
-  await chrome.storage.local.remove([keyOld, keyNew]).catch(() => {});
-  toPanel({ type: 'RESUME_DATA', tabId, item: null });
-}
-
 /** Remove every saved per-page snapshot (new + legacy). Returns count of pages cleared. */
 async function clearAllSavedHistory() {
   let all;
@@ -433,18 +375,7 @@ function clearTab(tabId) {
   const q = quizArchiveTimers.get(tabId);
   if (q) clearTimeout(q);
   quizArchiveTimers.delete(tabId);
-  nowAssistState.delete(tabId);
-  const nd = nowDebounceTimers.get(tabId);
-  if (nd) clearTimeout(nd);
-  nowDebounceTimers.delete(tabId);
-  const nac = nowAbortControllers.get(tabId);
-  if (nac) nac.abort();
-  nowAbortControllers.delete(tabId);
-  lastActiveParagraphByTab.delete(tabId);
   summaryCadenceState.delete(tabId);
-  const p = pauseExplainTimers.get(tabId);
-  if (p) clearTimeout(p);
-  pauseExplainTimers.delete(tabId);
   focusModeByTab.delete(tabId);
   restoredFromStorageTabs.delete(tabId);
   chrome.storage.session.remove(SESSION_TAB_KEY(tabId)).catch(() => {});
@@ -706,14 +637,7 @@ function absorbParagraphIntoUnits(s, text) {
   return 0;
 }
 
-function getAiMode() {
-  return new Promise(resolve => {
-    chrome.storage.local.get(AI_MODE_KEY, bag => {
-      const raw = bag?.[AI_MODE_KEY];
-      resolve(raw === 'ultra-lean' ? 'ultra-lean' : DEFAULT_AI_MODE);
-    });
-  });
-}
+function getAiMode() { return Promise.resolve(DEFAULT_AI_MODE); } // everyone runs balanced tuning
 
 async function readingLevel() {
   const { readingLevel: level } = await chrome.storage.local.get('readingLevel');
@@ -824,11 +748,6 @@ chrome.tabs.onRemoved.addListener(tabId => {
   clearTab(tabId);
 });
 
-const nowDebounceTimers = new Map();
-const nowAbortControllers = new Map();
-/** Latest paragraph unit text from content script (for manual Now tip). */
-const lastActiveParagraphByTab = new Map();
-
 // ── Port connection from side panel ──────────────────────────────────────────
 
 chrome.runtime.onConnect.addListener(port => {
@@ -863,25 +782,12 @@ chrome.runtime.onConnect.addListener(port => {
           if (msg.tabId) await publishSitePrefs(msg.tabId);
         })();
         break;
-      case 'GET_RESUME':
-        void (async () => {
-          await ensureTabHydratedFromPageState(msg.tabId);
-          publishResume(msg.tabId);
-        })();
-        break;
-      case 'CLEAR_RESUME':
-        void (async () => {
-          await ensureTabHydratedFromPageState(msg.tabId);
-          await clearHistorySnapshot(msg.tabId);
-        })();
-        break;
       case 'CLEAR_ALL_HISTORY':
         void (async () => {
           const removed = await clearAllSavedHistory();
           toPanel({ type: 'ALL_HISTORY_CLEARED', tabId: msg.tabId, removed });
           if (msg.tabId != null) {
             restoredFromStorageTabs.delete(msg.tabId);
-            toPanel({ type: 'RESUME_DATA', tabId: msg.tabId, item: null });
           }
         })();
         break;
@@ -1015,22 +921,6 @@ chrome.runtime.onConnect.addListener(port => {
           analyzeSelection(msg.tabId, { force: !!msg.force });
         })();
         break;
-      case 'REQUEST_NOW_TIP':
-        void (async () => {
-          await ensureTabHydrated(msg.tabId);
-          const para = lastActiveParagraphByTab.get(msg.tabId) || '';
-          if (!para.trim()) {
-            toPanel({
-              type: 'TOAST',
-              tabId: msg.tabId,
-              message: 'Scroll to a paragraph first, then try again.',
-              variant: 'info'
-            });
-            return;
-          }
-          await streamNowReading(msg.tabId, para, { force: !!msg.force });
-        })();
-        break;
       case 'SUBMIT_ANSWER':
         void (async () => {
           await ensureTabHydrated(msg.tabId);
@@ -1046,13 +936,6 @@ chrome.runtime.onConnect.addListener(port => {
         if (msg.tabId != null) {
           focusModeByTab.set(msg.tabId, !!msg.on);
           chrome.tabs.sendMessage(msg.tabId, { type: 'FOCUS_MODE', on: !!msg.on }).catch(() => {});
-        }
-        break;
-      case 'START_SCROLL':
-      case 'STOP_SCROLL':
-      case 'SET_SCROLL_SPEED':
-        if (msg.tabId) {
-          chrome.tabs.sendMessage(msg.tabId, msg).catch(() => {});
         }
         break;
       case 'SKIP_QUIZ':
@@ -1154,7 +1037,6 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
           await restoreState(tabId); // republishes ARTICLE_DETECTED + progress + summary + quiz + highlights
           void runOverview(tabId);
           void resendTerms(tabId);
-          void publishResume(tabId);
           void publishSitePrefs(tabId);
           break;
         }
@@ -1201,7 +1083,6 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
         void runOverview(tabId);
         persistTabSnapshot(tabId);
         persistHistorySnapshot(tabId);
-        void publishResume(tabId);
         void publishSitePrefs(tabId);
         break;
       }
@@ -1218,15 +1099,11 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
         break;
 
       case 'ACTIVE_PARAGRAPH': {
-        const para = (msg.text || '').trim();
-        if (para) lastActiveParagraphByTab.set(tabId, para);
         const st = tabState.get(tabId);
         if (st && msg.section && st.section?.heading !== msg.section) {
           st.section = { heading: msg.section, kind: distillSectionKind(msg.section) };
           onSectionChanged(tabId, msg.section);
         }
-        scheduleMaybeAutoNow(tabId, para);
-        void schedulePauseToExplain(tabId, para);
         break;
       }
 
@@ -1243,23 +1120,6 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
         toPanel({ type: 'SELECTION_CHANGED', selectedText: msg.selectedText, tabId });
         break;
       }
-
-      case 'SCROLL_PAUSED':
-        toPanel({ type: 'SCROLL_PAUSED', tabId });
-        break;
-
-      case 'SCROLL_ENDED':
-        {
-          const s = tabState.get(tabId);
-          if (s) {
-            const emitted = flushPendingUnit(s);
-            if (emitted > 0) s.wordsSinceSummary += emitted;
-            if (!s.isUpdating && s.wordsSinceSummary > 0) updateSummary(tabId);
-            schedulePersistTab(tabId);
-          }
-        }
-        toPanel({ type: 'SCROLL_ENDED', tabId });
-        break;
 
     }
   })();
@@ -1291,7 +1151,7 @@ function onParagraphRead(tabId, text) {
   // "So far" summary every semantic unit window (whole paragraphs only).
   const cadence = summaryCadenceState.get(tabId) || { lastSummaryAt: 0 };
   const now = Date.now();
-  const cfg = summaryCadenceForMode();
+  const cfg = SUMMARY_CADENCE;
   const quietWindowPassed = now - cadence.lastSummaryAt >= cfg.minIntervalMs;
   const forceByVolume = s.wordsSinceSummary >= cfg.forceIntervalWords;
   if (!s.isUpdating && s.wordsSinceSummary >= cfg.minNewWords && (quietWindowPassed || forceByVolume)) {
@@ -1310,191 +1170,6 @@ function onParagraphRead(tabId, text) {
 
   schedulePersistTab(tabId);
   persistHistorySnapshot(tabId);
-}
-
-function paragraphDifficultyScore(text) {
-  const raw = (text || '').trim();
-  if (!raw) return 0;
-  const words = countWords(raw);
-  const sentences = raw.split(/[.!?]+/).map(s => s.trim()).filter(Boolean).length || 1;
-  const avgSentenceLen = words / sentences;
-  const digitDensity = (raw.match(/\d/g) || []).length;
-  const punctuationDensity = (raw.match(/[;:()-]/g) || []).length;
-  const longTokenCount = (raw.match(/\b[A-Za-z]{12,}\b/g) || []).length;
-  let score = 0;
-  // Length helps, but density matters more so short-but-dense paragraphs still qualify.
-  if (words >= 90) score += 1.2;
-  if (avgSentenceLen >= 22) score += 1.0;
-  if (digitDensity >= 6) score += 1.0;
-  if (punctuationDensity >= 6) score += 0.9;
-  if (longTokenCount >= 3) score += 0.9;
-  return score;
-}
-
-function getAutoNowMode() {
-  return new Promise(resolve => {
-    chrome.storage.local.get(AUTO_NOW_MODE_KEY, bag => {
-      resolve(bag?.[AUTO_NOW_MODE_KEY] === 'smart' ? 'smart' : 'off');
-    });
-  });
-}
-
-function defaultNowAssistState() {
-  return { lastAt: 0, lastHash: '', lastHintAt: 0, cache: null };
-}
-
-function nowParagraphHash(paragraphText) {
-  return stableStringHash(clampText((paragraphText || '').trim(), 1300));
-}
-
-function scheduleMaybeAutoNow(tabId, paragraphText) {
-  const prev = nowDebounceTimers.get(tabId);
-  if (prev) clearTimeout(prev);
-  nowDebounceTimers.set(tabId, setTimeout(() => {
-    nowDebounceTimers.delete(tabId);
-    void maybeAutoNowReading(tabId, paragraphText);
-  }, 2000));
-}
-
-function replayNowCached(tabId, text) {
-  toPanel({ type: 'NOW_CACHED', tabId, text: text || '', fromCache: true });
-}
-
-/** Auto "Now reading" while scrolling (Settings → Smart). */
-async function maybeAutoNowReading(tabId, paragraphText) {
-  const mode = await getAutoNowMode();
-  if (mode === 'off') return;
-
-  const raw = (paragraphText || '').trim();
-  if (!raw) return;
-  const hash = nowParagraphHash(raw);
-  const now = Date.now();
-  const prev = nowAssistState.get(tabId) || defaultNowAssistState();
-
-  if (prev.lastHash === hash) return;
-  if (now - (prev.lastAt || 0) < NOW_COOLDOWN_MS) return;
-
-  const score = paragraphDifficultyScore(raw);
-  if (score < 1.1) {
-    if (score >= 0.7 && now - (prev.lastHintAt || 0) > 45000) {
-      nowAssistState.set(tabId, { ...prev, lastHash: hash, lastHintAt: now });
-      toPanel({ type: 'NOW_HINT', tabId });
-    }
-    return;
-  }
-
-  nowAssistState.set(tabId, { ...prev, lastAt: now, lastHash: hash });
-  await streamNowReading(tabId, raw, { force: false });
-}
-
-/** Study mode: linger on a hard paragraph (only when Auto Now is off). */
-async function schedulePauseToExplain(tabId, paragraphText) {
-  if (readerMode !== 'study') return;
-  const mode = await getAutoNowMode();
-  if (mode === 'smart') return;
-
-  const raw = (paragraphText || '').trim();
-  if (!raw) return;
-
-  const hash = nowParagraphHash(raw);
-  const prev = nowAssistState.get(tabId) || defaultNowAssistState();
-
-  if (prev.lastHash === hash && Date.now() - (prev.lastAt || 0) < 45000) return;
-
-  const existing = pauseExplainTimers.get(tabId);
-  if (existing) clearTimeout(existing);
-
-  const words = countWords(raw);
-  const expectedReadMs = Math.max(900, (words / ESTIMATED_READING_WPM) * 60000);
-  const delayMs = Math.max(
-    PAUSE_TO_EXPLAIN_MIN_MS,
-    Math.min(PAUSE_TO_EXPLAIN_MAX_MS, expectedReadMs * 2.8)
-  );
-
-  const scheduledAt = Date.now();
-  pauseExplainTimers.set(tabId, setTimeout(async () => {
-    pauseExplainTimers.delete(tabId);
-
-    const cur = nowAssistState.get(tabId) || defaultNowAssistState();
-    if (cur.lastHash === hash && scheduledAt < (cur.lastAt || 0)) return;
-
-    const score = paragraphDifficultyScore(raw);
-    if (score < 1.9) return;
-
-    nowAssistState.set(tabId, { ...cur, lastAt: Date.now(), lastHash: hash });
-    await streamNowReading(tabId, raw, { force: false });
-  }, delayMs));
-}
-
-// ── "Now reading" (one-line reading tip for current paragraph) ───────────────
-
-async function streamNowReading(tabId, paragraphText, opts = {}) {
-  const force = opts.force === true;
-  const s = tabState.get(tabId);
-  if (!s) return;
-
-  const raw = (paragraphText || '').trim();
-  if (!raw) return;
-  const hash = nowParagraphHash(raw);
-  const prev = nowAssistState.get(tabId) || defaultNowAssistState();
-
-  if (!force && prev.cache?.hash === hash && prev.cache?.text) {
-    replayNowCached(tabId, prev.cache.text);
-    return;
-  }
-
-  const prevCtrl = nowAbortControllers.get(tabId);
-  if (prevCtrl) prevCtrl.abort();
-  const ctrl = new AbortController();
-  nowAbortControllers.set(tabId, ctrl);
-
-  toPanel({ type: 'NOW_START', tabId });
-
-  let nowText = '';
-  try {
-    const recentContext = tailParagraphsCapped(s, 5);
-    const clampedParagraph = clampText(raw, 1300);
-    await streamTask({
-      tabId,
-      task: 'now',
-      s,
-      signal: ctrl.signal,
-      noAuthMessage: 'No API key set — click ⚙ to add your Anthropic API key.',
-      context: {
-        title: s.title || '',
-        recent: recentContext || '',
-        section: s.section
-      },
-      input: { paragraph: clampedParagraph },
-      onChunk: chunk => {
-        nowText += chunk;
-        toPanel({ type: 'NOW_CHUNK', chunk, tabId });
-      },
-      onDone: () => {
-        nowAbortControllers.delete(tabId);
-        const text = nowText.trim();
-        const state = nowAssistState.get(tabId) || defaultNowAssistState();
-        if (text) {
-          nowAssistState.set(tabId, {
-            ...state,
-            lastAt: Date.now(),
-            lastHash: hash,
-            cache: { hash, text }
-          });
-        }
-        toPanel({ type: 'NOW_DONE', tabId });
-      },
-      onError: err => {
-        nowAbortControllers.delete(tabId);
-        if (err.name !== 'AbortError') {
-          toPanel({ type: 'ERROR', code: err.code, message: err.message, tabId });
-        }
-      }
-    });
-  } catch (e) {
-    nowAbortControllers.delete(tabId);
-    if (e.name !== 'AbortError') toPanel({ type: 'ERROR', code: e.code, message: e.message, tabId });
-  }
 }
 
 // ── "So far" summary ──────────────────────────────────────────────────────────
@@ -1559,7 +1234,6 @@ async function updateSummary(tabId) {
         toPanel({ type: 'SUMMARY_DONE', tabId });
         schedulePersistTab(tabId);
         persistHistorySnapshot(tabId);
-        void publishResume(tabId);
       },
       onError: err   => {
         s.isUpdating = false;
@@ -2386,7 +2060,7 @@ async function streamClaude({ apiKey, signal, systemPrompt, messages, maxTokens 
 // ── Gemini API streaming (direct, user's own free key) ────────────────────────
 
 // Serialize the START of Gemini calls with a minimum gap so a burst (progressive
-// summaries + "now" tips while scrolling) can't blow past the free-tier per-minute
+// summaries while scrolling) can't blow past the free-tier per-minute
 // limit. Calls still run to completion concurrently; only their kickoff is spaced.
 const GEMINI_MIN_GAP_MS = 1500;
 const GEMINI_RATELIMIT_MAX_WAIT_MS = 30_000; // cap auto-wait so the SW isn't parked too long
@@ -2945,7 +2619,6 @@ chrome.runtime.onInstalled.addListener(() => {
       if (bag[USE_BACKEND_PROXY_KEY] === undefined) patch[USE_BACKEND_PROXY_KEY] = false;
       if (!bag[AI_PROVIDER_KEY]) patch[AI_PROVIDER_KEY] = DEFAULT_AI_PROVIDER;
       if (!bag.backendTarget) patch.backendTarget = 'prod';
-      if (!bag.readerMode) patch.readerMode = 'skim';
     }
     if (Object.keys(patch).length) chrome.storage.local.set(patch).catch(() => {});
   });
