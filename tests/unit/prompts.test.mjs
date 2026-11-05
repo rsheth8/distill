@@ -45,6 +45,18 @@ describe('distillBuildPrompt', () => {
     expect(text(p).length).toBeLessThan(6000);
   });
 
+  it('reading level swaps one sentence of the persona', () => {
+    const sys = level => distillBuildPrompt('now', { level }, { paragraph: 'p' }).system;
+    expect(sys('simple')).toMatch(/no technical terms at all/);
+    expect(sys('close')).toMatch(/define each one the first time/);
+    expect(sys('everyday')).toMatch(/explain it in a few words/);
+    expect(sys(undefined)).toBe(sys('everyday'));
+    expect(sys('nonsense')).toBe(sys('everyday'));
+    expect(sys('constructor')).toBe(sys('everyday'));
+    expect(sys('__proto__')).toBe(sys('everyday'));
+    for (const level of ['simple', 'everyday', 'close']) expect(sys(level)).toMatch(/never invent findings/);
+  });
+
   it('throws for a task with no prompt', () => {
     expect(() => distillBuildPrompt('nope')).toThrow(/nope/);
   });

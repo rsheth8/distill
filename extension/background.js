@@ -700,6 +700,11 @@ function getAiMode() {
   });
 }
 
+async function readingLevel() {
+  const { readingLevel: level } = await chrome.storage.local.get('readingLevel');
+  return ['simple', 'everyday', 'close'].includes(level) ? level : 'everyday';
+}
+
 function maxTokensForTask(task, mode) {
   const resolvedMode = mode === 'ultra-lean' ? 'ultra-lean' : DEFAULT_AI_MODE;
   return AI_TUNING[resolvedMode].taskMaxTokens[task] || 128;
@@ -2147,6 +2152,7 @@ async function streamTask({
   onDone,
   onError
 }) {
+  context = { ...context, level: await readingLevel() };
   // Allow the side panel to offer a "Retry" button for the last AI call.
   if (tabId) {
     lastAiRetryByTab.set(tabId, () => streamTask({

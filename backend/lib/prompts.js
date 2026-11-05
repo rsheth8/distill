@@ -2,10 +2,17 @@
 // Edit here, then `npm run sync:prompts` copies it to backend/lib/prompts.js.
 // context/input arrive from the network on the backend, so everything is trimmed here.
 
-const DISTILL_PROMPT_PERSONA =
-  'You help someone with no academic background read a research paper. ' +
-  'Use everyday words. If you must use a technical term, explain it in a few words. ' +
-  'Stick to what the paper says; never invent findings, numbers or claims.';
+const DISTILL_LEVEL_STYLE = {
+  simple: 'Use short sentences and no technical terms at all; compare ideas to everyday things.',
+  everyday: 'Use everyday words. If you must use a technical term, explain it in a few words.',
+  close: "Keep the field's key terms, and define each one the first time you use it."
+};
+
+function distillPersona(level) {
+  return 'You help someone with no academic background read a research paper. ' +
+    (Object.hasOwn(DISTILL_LEVEL_STYLE, level) ? DISTILL_LEVEL_STYLE[level] : DISTILL_LEVEL_STYLE.everyday) +
+    ' Stick to what the paper says; never invent findings, numbers or claims.';
+}
 
 const DISTILL_SECTION_HINTS = {
   intro: 'This part sets up the problem and why it matters.',
@@ -37,7 +44,7 @@ function distillBuildPrompt(task, context = {}, input = {}) {
   const title = distillPromptClamp(c.title, 300) || '(untitled)';
   const recent = distillPromptClamp(c.recent, 3200);
   const section = distillSectionBlock(c.section);
-  const sys = extra => `${DISTILL_PROMPT_PERSONA} ${extra}`;
+  const sys = extra => `${distillPersona(c.level)} ${extra}`;
   const out = (system, blocks, extra) => ({ system, blocks: blocks.filter(Boolean), ...extra });
 
   switch (task) {
