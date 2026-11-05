@@ -278,6 +278,7 @@ function distillPdfPaper(rawPages, { url = '', info = {} } = {}) {
     authors: (info.Author || '').split(/;|,|\band\b/).map(s => s.trim()).filter(Boolean),
     doi,
     source: 'pdf',
+    date: '',
     isPreprint: !!arxivId || /bioRxiv preprint|medRxiv preprint/i.test(page1) || DISTILL_PREPRINT_HOST_RE.test(host),
     pdfUrl: url,
     abstract: abs ? abs.parts.join('\n\n') : abstract,

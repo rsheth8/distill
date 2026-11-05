@@ -59,6 +59,7 @@ function distillPaperMeta(doc) {
     title: one('citation_title'),
     authors: all('citation_author'),
     doi: one('citation_doi').replace(/^doi:\s*/i, ''),
+    date: (one('citation_publication_date') || one('citation_date') || one('citation_online_date')).slice(0, 10),
     pdfUrl: one('citation_pdf_url'),
     abstract: one('citation_abstract')
   };
@@ -100,6 +101,7 @@ function distillExtractArxiv(doc, url) {
     title: titleEl ? distillNodeText(titleEl) : distillNormSpace(doc.title),
     authors: distillArxivAuthors(doc),
     doi: id ? `10.48550/arXiv.${id}` : '',
+    date: '',
     pdfUrl: id ? `https://arxiv.org/pdf/${id}` : '',
     abstract: abstractEl ? Array.from(abstractEl.querySelectorAll('p')).map(distillNodeText).join('\n\n') : '',
     sections,

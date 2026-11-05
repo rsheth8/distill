@@ -197,3 +197,16 @@ describe('distillPaperText', () => {
     expect(distillPaperText({ title: 'T', abstract: '', sections: [{ heading: 'H', text: 'x' }] })).toBe('T\n\nH\n\nx');
   });
 });
+
+describe('paper date', () => {
+  const page = meta => parse(`<html><head><meta name="citation_title" content="T">${meta}</head>
+    <body><article><h2>Introduction</h2><p>${'word '.repeat(80)}</p></article></body></html>`);
+  it('reads citation_publication_date, then citation_date, then citation_online_date', () => {
+    expect(distillExtractPaper(page('<meta name="citation_publication_date" content="2021/03/04 extra">'), 'https://journal.test/a').date).toBe('2021/03/04');
+    expect(distillExtractPaper(page('<meta name="citation_date" content="2020-01-02">'), 'https://journal.test/a').date).toBe('2020-01-02');
+    expect(distillExtractPaper(page('<meta name="citation_online_date" content="2019">'), 'https://journal.test/a').date).toBe('2019');
+  });
+  it('is empty when unknown', () => {
+    expect(distillExtractPaper(page(''), 'https://journal.test/a').date).toBe('');
+  });
+});

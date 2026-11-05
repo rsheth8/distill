@@ -46,6 +46,7 @@ describe('distillPdfPaper', () => {
     const paper = distillPdfPaper([page], { url: 'https://example.org/p.pdf' });
     expect(paper.title).toBe('A Paper About Columns');
     expect(paper.source).toBe('pdf');
+    expect(paper.date).toBe('');
     expect(paper.sections.map(s => [s.heading, s.kind])).toEqual([['Introduction', 'intro'], ['Methods', 'methods']]);
     const intro = paper.sections[0].text;
     expect(intro.startsWith('This is the first line of the intro')).toBe(true);
