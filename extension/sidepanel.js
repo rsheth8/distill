@@ -120,6 +120,13 @@ const validateKeyBtn   = $('validateKeyBtn');
 const keyStatusLine    = $('keyStatusLine');
 const saveKeyBtn       = $('saveKeyBtn');
 const removeKeyBtn     = $('removeKeyBtn');
+const localFields      = $('localFields');
+const localBaseUrlInput = $('localBaseUrlInput');
+const localModelInput  = $('localModelInput');
+const localOriginsCmd  = $('localOriginsCmd');
+const copyLocalCmdBtn  = $('copyLocalCmdBtn');
+const DEFAULT_LOCAL_BASE_URL = 'http://localhost:11434';
+const DEFAULT_LOCAL_MODEL = 'qwen3:4b';
 const onboardGetKeyLink = $('onboardGetKeyLink');
 const onboardSubstep   = $('onboardSubstep');
 const onboardKeyInput  = $('onboardKeyInput');
@@ -192,6 +199,15 @@ const PROVIDER_META = {
     placeholder: 'Paste your Anthropic key (sk-ant-…)',
     quotaLink: 'https://console.anthropic.com/settings/usage',
     quotaText: 'Check your Anthropic usage →'
+  },
+  local: {
+    keyLink: 'https://ollama.com/download',
+    keyLinkText: 'Get Ollama (free) →',
+    keyNote: 'Or LM Studio (lmstudio.ai). Runs on your computer — no key, no quota.',
+    keySource: 'Ollama / LM Studio · runs on your computer',
+    placeholder: '',
+    quotaLink: 'https://ollama.com/library/qwen3',
+    quotaText: 'Browse local models →'
   }
 };
 const PROVIDER_STORAGE = { groq: 'groqApiKey', openai: 'openaiApiKey', gemini: 'geminiApiKey', anthropic: 'anthropicApiKey' };
@@ -217,7 +233,21 @@ function applyProviderUi(provider) {
   if (onboardGetKeyLink) { onboardGetKeyLink.href = meta.keyLink; onboardGetKeyLink.textContent = meta.keyLinkText; }
   if (onboardSubstep) onboardSubstep.textContent = meta.keySource;
   if (onboardKeyInput) onboardKeyInput.placeholder = meta.placeholder;
-  cachedHasApiKey = !!(providerKeys[currentProvider] && providerKeys[currentProvider].trim());
+  const isLocal = currentProvider === 'local';
+  apiKeyInput?.classList.toggle('hidden', isLocal);
+  removeKeyBtn?.classList.toggle('hidden', isLocal);
+  localFields?.classList.toggle('hidden', !isLocal);
+  if (validateKeyBtn) validateKeyBtn.textContent = isLocal ? 'Test connection' : 'Test key';
+  if (localOriginsCmd) localOriginsCmd.textContent = `launchctl setenv OLLAMA_ORIGINS "chrome-extension://${chrome.runtime.id}"`;
+  // Local needs no key; the URL/model fields always have defaults.
+  cachedHasApiKey = isLocal || !!(providerKeys[currentProvider] && providerKeys[currentProvider].trim());
+}
+
+function localFieldValues() {
+  return {
+    baseUrl: (localBaseUrlInput?.value || '').trim() || DEFAULT_LOCAL_BASE_URL,
+    model: (localModelInput?.value || '').trim() || DEFAULT_LOCAL_MODEL
+  };
 }
 
 function setKeyStatus(el, kind, text) {
@@ -474,11 +504,13 @@ async function refreshSitePrefsUi() {
   }
 }
 
-chrome.storage.local.get(['aiProvider', 'geminiApiKey', 'groqApiKey', 'openaiApiKey', 'anthropicApiKey', 'accentId', 'autoResumeAfterQuiz', 'aiMode', 'autoNowMode', 'readerMode', 'learnMode', 'useBackendProxy', 'backendTarget', 'backendBaseUrlOverride', 'distillSetupHintDismissed'], r => {
+chrome.storage.local.get(['localBaseUrl', 'localModel', 'aiProvider', 'geminiApiKey', 'groqApiKey', 'openaiApiKey', 'anthropicApiKey', 'accentId', 'autoResumeAfterQuiz', 'aiMode', 'autoNowMode', 'readerMode', 'learnMode', 'useBackendProxy', 'backendTarget', 'backendBaseUrlOverride', 'distillSetupHintDismissed'], r => {
   providerKeys.gemini = typeof r.geminiApiKey === 'string' ? r.geminiApiKey : '';
   providerKeys.groq = typeof r.groqApiKey === 'string' ? r.groqApiKey : '';
   providerKeys.openai = typeof r.openaiApiKey === 'string' ? r.openaiApiKey : '';
   providerKeys.anthropic = typeof r.anthropicApiKey === 'string' ? r.anthropicApiKey : '';
+  if (localBaseUrlInput) localBaseUrlInput.value = typeof r.localBaseUrl === 'string' ? r.localBaseUrl : '';
+  if (localModelInput) localModelInput.value = typeof r.localModel === 'string' ? r.localModel : '';
   applyProviderUi(normProvider(r.aiProvider));
   cachedSetupHintDismissed = !!r.distillSetupHintDismissed;
   if (useBackendProxyToggle) useBackendProxyToggle.checked = r.useBackendProxy === true;
@@ -520,6 +552,18 @@ for (const name of ['read', 'ask', 'glossary']) {
 
 /** Persist a key for the active provider and mark it the selected provider. */
 function saveProviderKey(key, { closePanel = false } = {}) {
+  if (currentProvider === 'local') {
+    const { baseUrl, model } = localFieldValues();
+    chrome.storage.local.set({ localBaseUrl: baseUrl, localModel: model, aiProvider: 'local' }, () => {
+      if (localBaseUrlInput) localBaseUrlInput.value = baseUrl;
+      if (localModelInput) localModelInput.value = model;
+      setKeyStatus(keyStatusLine, 'ok', 'Local model saved.');
+      syncSetupHintCard();
+      if (closePanel) setPanel('read');
+      showToast('Local model saved!', 'success');
+    });
+    return;
+  }
   const trimmed = String(key || '').trim();
   if (!trimmed) {
     showToast('Paste your API key first.');
@@ -561,6 +605,12 @@ aiProviderSelect?.addEventListener('change', () => {
 });
 
 validateKeyBtn?.addEventListener('click', () => {
+  if (currentProvider === 'local') {
+    pendingValidation = 'settings';
+    setKeyStatus(keyStatusLine, 'pending', 'Connecting to your local model… (first load can take ~30s)');
+    port?.postMessage({ type: 'VALIDATE_AI_KEY', provider: 'local', local: localFieldValues() });
+    return;
+  }
   const key = (apiKeyInput?.value || '').trim();
   if (!key) {
     setKeyStatus(keyStatusLine, 'err', 'Paste your API key first.');
@@ -580,6 +630,12 @@ onboardConnectBtn?.addEventListener('click', () => {
   pendingValidation = 'onboard';
   setKeyStatus(onboardStatusLine, 'pending', 'Checking your key…');
   port?.postMessage({ type: 'VALIDATE_AI_KEY', provider: currentProvider, key });
+});
+
+copyLocalCmdBtn?.addEventListener('click', () => {
+  navigator.clipboard.writeText(localOriginsCmd?.textContent || '')
+    .then(() => showToast('Copied — paste it in Terminal, then restart Ollama.', 'success'))
+    .catch(() => showToast('Copy failed — select the command and copy it manually.'));
 });
 
 useBackendProxyToggle?.addEventListener('change', () => {

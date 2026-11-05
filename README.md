@@ -47,6 +47,7 @@ The key idea is **bring-your-own-key (BYOK)**: Distill doesn't run its own AI se
 - **Comprehension check-ins** — occasional short questions about what was just read.
 - **Per-page state persistence** — reading progress, summaries, and highlights for a page are cached locally (`chrome.storage.local`) so returning to a paper restores where you left off.
 - **Multiple AI providers** — Groq (default, free tier), Google Gemini, OpenAI, and Anthropic Claude, selectable in Settings, each with its own stored key.
+- **Local models, no key** — run Qwen (or any model) on your own computer with Ollama or LM Studio; article text never leaves the machine. See [`docs/FREE_LLM.md`](docs/FREE_LLM.md#model-c--local-model-no-key).
 - **Optional hosted/self-hosted backend** — an Express API (`backend/`) that can proxy AI calls and track usage/quota server-side, for teams or users who don't want to manage a personal key. Off by default in the Chrome Web Store build.
 - **Keyboard shortcuts** — open the reader, toggle focus mode, explain the paper, or analyze a selection without touching the mouse.
 
@@ -110,7 +111,7 @@ flowchart TD
 - **Backend (optional):** Node.js + Express (`backend/server.js`), server-sent-event-style streaming (`backend/lib/llmStream.js`), file-based (`backend/data/state.json`) or Postgres-backed (via Supabase, `supabase/migrations/`) usage-state storage, deployable via Docker/`docker-compose.yml` or Fly.io (`backend/Dockerfile`, `backend/fly.toml`).
 - **PDF:** pdf.js (`pdfjs-dist`, pinned and vendored into `extension/vendor/pdfjs` by `npm run vendor:pdfjs`).
 - **Testing/tooling:** Vitest (unit + integration tests in `tests/`), `happy-dom` for DOM-dependent unit tests, ESLint (`eslint.config.mjs`), custom Node scripts for smoke tests, extension packaging, and an evaluation matrix against live provider APIs (`scripts/eval/`).
-- **AI providers integrated:** Groq, Google Gemini, OpenAI, Anthropic Claude — all via direct HTTPS streaming calls from the browser (or proxied through the optional backend).
+- **AI providers integrated:** Groq, Google Gemini, OpenAI, Anthropic Claude — all via direct HTTPS streaming calls from the browser (or proxied through the optional backend) — plus local Ollama / LM Studio servers through the same OpenAI-compatible adapter.
 
 ## Project structure
 
@@ -153,7 +154,7 @@ tests/                     Vitest unit, DOM, and backend integration tests
 1. Clone this repo.
 2. Open `chrome://extensions` in Chrome, enable **Developer mode**, click **Load unpacked**, and select the `extension/` folder (the one containing `manifest.json`).
 3. Open a research paper (for example an arXiv paper's HTML page), click the Distill icon (or use the `Alt+Shift+R` shortcut) to open the side panel.
-4. On first use, get a free API key (default provider is Groq — [console.groq.com/keys](https://console.groq.com/keys)), paste it into the side panel's setup/Settings screen, and connect. AI calls now go directly from your browser to that provider.
+4. On first use, get a free API key (default provider is Groq — [console.groq.com/keys](https://console.groq.com/keys)), paste it into the side panel's setup/Settings screen, and connect. AI calls now go directly from your browser to that provider. Prefer no key? Pick **Local model** in Settings instead (see [`docs/FREE_LLM.md`](docs/FREE_LLM.md#model-c--local-model-no-key)).
 
 ### Run the test/quality suite
 

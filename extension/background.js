@@ -135,7 +135,12 @@ const OPENAI_API_KEY_STORAGE = 'openaiApiKey';
 // Groq is the default: genuinely free tier with broad availability. Gemini/OpenAI/
 // Anthropic are quick-switch options for users who prefer them.
 const DEFAULT_AI_PROVIDER = 'groq';
-const AI_PROVIDERS = ['groq', 'openai', 'gemini', 'anthropic'];
+const AI_PROVIDERS = ['groq', 'openai', 'gemini', 'anthropic', 'local'];
+// Local = Ollama / LM Studio on the user's machine (OpenAI-compatible, no key).
+const LOCAL_BASE_URL_KEY = 'localBaseUrl';
+const LOCAL_MODEL_KEY = 'localModel';
+const DEFAULT_LOCAL_BASE_URL = 'http://localhost:11434';
+const DEFAULT_LOCAL_MODEL = 'qwen3:4b';
 const GEMINI_MODEL = 'gemini-2.0-flash';
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 // Groq + OpenAI share the OpenAI-compatible chat/completions wire format.
@@ -150,6 +155,14 @@ function chatProviderConfig(provider) {
     return { url: OPENAI_API_URL, model: OPENAI_MODEL, label: 'OpenAI', keyUrl: 'platform.openai.com/api-keys' };
   }
   return { url: GROQ_API_URL, model: GROQ_MODEL, label: 'Groq', keyUrl: 'console.groq.com/keys' };
+}
+
+/** Config for a local server; explicit values (unsaved Settings fields) win over storage. */
+async function localChatConfig({ baseUrl, model } = {}) {
+  const r = await chrome.storage.local.get([LOCAL_BASE_URL_KEY, LOCAL_MODEL_KEY]);
+  const base = String(baseUrl || r[LOCAL_BASE_URL_KEY] || DEFAULT_LOCAL_BASE_URL).trim().replace(/\/+$/, '').replace(/\/v1$/, '');
+  const m = String(model || r[LOCAL_MODEL_KEY] || DEFAULT_LOCAL_MODEL).trim();
+  return { url: `${base}/v1/chat/completions`, model: m, baseUrl: base, label: 'Local model', keyUrl: '', local: true };
 }
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -873,8 +886,8 @@ chrome.runtime.onConnect.addListener(port => {
         break;
       case 'VALIDATE_AI_KEY':
         void (async () => {
-          const provider = msg.provider === 'anthropic' ? 'anthropic' : 'gemini';
-          const result = await validateAiKey(provider, msg.key);
+          const provider = AI_PROVIDERS.includes(msg.provider) ? msg.provider : DEFAULT_AI_PROVIDER;
+          const result = await validateAiKey(provider, msg.key, msg.local);
           toPanel({ type: 'KEY_VALIDATION_RESULT', provider, ok: !!result.ok, message: result.message });
         })();
         break;
@@ -2148,6 +2161,12 @@ async function streamTask({
   }
 
   const provider = await getAiProvider();
+  if (provider === 'local') {
+    if (preferBackend) void publishBackendStatus(tabId, { status: 'fallback_direct' });
+    // "/no_think" is Qwen3's switch for LM Studio; Ollama uses reasoning_effort (set in streamOpenAiCompat).
+    await streamOpenAiCompat({ apiKey: '', cfg: await localChatConfig(), signal, systemPrompt: `${systemPrompt || ''}\n/no_think`, messages, maxTokens: taskMaxTokens, onChunk, onDone, onError });
+    return;
+  }
   const apiKey = await getProviderKey(provider);
   if (!apiKey) {
     if (preferBackend) {
@@ -2481,23 +2500,37 @@ async function streamGemini({ apiKey, signal, systemPrompt, messages, maxTokens 
 async function streamOpenAiCompat({ apiKey, cfg, signal, systemPrompt, messages, maxTokens = 256, onChunk, onDone, onError }) {
   const body = distillBuildChatRequestBody({ systemPrompt, messages, maxTokens, temperature: 0.5, model: cfg.model });
   const classifyOpts = { label: cfg.label, keyUrl: cfg.keyUrl };
+  const localOpts = { baseUrl: cfg.baseUrl, model: cfg.model, extensionId: chrome.runtime.id };
+  const headers = { 'Content-Type': 'application/json' };
+  if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+  const visible = distillMakeThinkFilter();
+  // Ollama: skip hidden reasoning, which would otherwise eat the whole token budget and return blank.
+  if (cfg.local) body.reasoning_effort = 'none';
 
   let response;
   let attempt = 0;
   for (;;) {
     try {
-      response = await fetch(cfg.url, {
-        method: 'POST', signal,
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify(body)
-      });
-    } catch (e) { onError(e); return; }
+      response = await fetch(cfg.url, { method: 'POST', signal, headers, body: JSON.stringify(body) });
+    } catch (e) {
+      if (cfg.local && e?.name !== 'AbortError') {
+        const info = distillClassifyLocalError(0, localOpts);
+        const err = new Error(info.message);
+        err.code = info.code;
+        onError(err);
+        return;
+      }
+      onError(e);
+      return;
+    }
 
     if (response.ok) break;
 
     let errBody = null;
     try { errBody = await response.clone().json(); } catch { /* non-JSON error */ }
-    const info = distillClassifyChatError(response.status, errBody, classifyOpts);
+    const info = cfg.local
+      ? distillClassifyLocalError(response.status, localOpts)
+      : distillClassifyChatError(response.status, errBody, classifyOpts);
 
     if (info.retryable && response.status >= 500 && attempt < 1) {
       attempt++;
@@ -2541,19 +2574,27 @@ async function streamOpenAiCompat({ apiKey, cfg, signal, systemPrompt, messages,
         if (!line.startsWith('data:')) continue;
         const raw = line.slice(5).trim();
         if (!raw) continue;
-        if (raw === '[DONE]') { onDone(); return; }
+        if (raw === '[DONE]') {
+          const tail = visible('', true);
+          if (tail) onChunk(tail);
+          onDone();
+          return;
+        }
         let obj;
         try { obj = JSON.parse(raw); } catch { continue; }
-        const parsed = distillParseChatChunk(obj);
-        if (parsed.text) onChunk(parsed.text);
+        const text = visible(distillParseChatChunk(obj).text);
+        if (text) onChunk(text);
       }
     }
   } catch (e) { onError(e); return; }
+  const tail = visible('', true);
+  if (tail) onChunk(tail);
   onDone();
 }
 
 /** One-shot key check used by onboarding + Settings. Returns { ok, message }. */
-async function validateAiKey(provider, key) {
+async function validateAiKey(provider, key, local = {}) {
+  if (provider === 'local') return validateLocal(local);
   const trimmed = typeof key === 'string' ? key.trim() : '';
   if (!trimmed) return { ok: false, message: 'Paste your API key first.' };
   try {
@@ -2601,6 +2642,24 @@ async function validateAiKey(provider, key) {
   } catch {
     return { ok: false, message: 'Network error — check your connection and try again.' };
   }
+}
+
+/** One-token request to the local server: checks it's up, Distill is allowed, and the model exists. */
+async function validateLocal(local) {
+  const cfg = await localChatConfig(local);
+  const opts = { baseUrl: cfg.baseUrl, model: cfg.model, extensionId: chrome.runtime.id };
+  let r;
+  try {
+    r = await fetch(cfg.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 })
+    });
+  } catch {
+    return { ok: false, message: distillClassifyLocalError(0, opts).message };
+  }
+  if (r.ok) return { ok: true, message: `Connected to ${cfg.model} — runs on your computer.` };
+  return { ok: false, message: distillClassifyLocalError(r.status, opts).message };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -2755,7 +2814,8 @@ async function publishUsage(tabId) {
       anthropic: 'Using your own Anthropic key — usage counts against your account.',
       openai: 'Using your own OpenAI key — usage counts against your account.',
       groq: 'Using your own Groq key — usage counts against your free Groq quota.',
-      gemini: 'Using your own Gemini key — usage counts against your free Google quota.'
+      gemini: 'Using your own Gemini key — usage counts against your free Google quota.',
+      local: 'Running on your own computer — no quota, and article text never leaves this device.'
     };
     toPanel({ type: 'USAGE_UNAVAILABLE', tabId, message: labels[provider] || labels.groq });
     return;
