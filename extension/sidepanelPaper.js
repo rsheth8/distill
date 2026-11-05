@@ -4,7 +4,8 @@
 
 const DISTILL_LEVELS = ['simple', 'everyday', 'close'];
 // state: last PAPER_HELP_STATE; section: heading the reader is in; streams: text arriving per "kind:key".
-const paperView = { level: 'everyday', state: null, section: '', streams: {} };
+// canGuide: false when the section is not in the paper object (no guide to offer).
+const paperView = { level: 'everyday', state: null, section: '', canGuide: true, streams: {} };
 
 const levelSelect = $('levelSelect');
 chrome.storage.local.get('readingLevel').then(({ readingLevel }) => {
@@ -80,15 +81,53 @@ function renderTrust(parsed) {
   $('trustCard').classList.toggle('hidden', !facts.length);
 }
 
+function renderGuide() {
+  const heading = paperView.section;
+  const card = $('guideCard');
+  if (!heading || !paperView.state) return hide(card);
+  show(card);
+  $('guideHeading').textContent = heading;
+  const stored = paperView.state.guides?.[heading];
+  const current = stored?.level === paperView.level ? stored : null;
+  const text = paperView.streams[`guide:${heading}`] ?? current?.text ?? '';
+  const body = paperView.canGuide ? distillParseLabelled(text, ['TERMS']).lead : 'No guide for this part.';
+  $('guideBody').textContent = body;
+  $('guideBtn').classList.toggle('hidden', !paperView.canGuide || !!text || `guide:${heading}` in paperView.streams);
+  const n = current?.terms?.length || 0;
+  $('guideTermsBtn').textContent = n === 1 ? '1 term in the Glossary' : `${n} terms in the Glossary`;
+  $('guideTermsBtn').classList.toggle('hidden', !n);
+}
+
+function renderGlossary() {
+  const items = [...(paperView.state?.glossary || [])]
+    .sort((a, b) => a.term.localeCompare(b.term, undefined, { sensitivity: 'base' }));
+  const list = $('glossaryList');
+  list.replaceChildren();
+  $('glossaryEmpty').classList.toggle('hidden', items.length > 0);
+  for (const g of items) {
+    const dt = document.createElement('dt');
+    const btn = addText(dt, 'button', g.term, 'paper-link-btn');
+    btn.type = 'button';
+    btn.title = 'Show in the paper';
+    btn.addEventListener('click', () => sendPaper({ type: 'SCROLL_TO_TERM', term: g.term }));
+    list.append(dt);
+    const dd = addText(list, 'dd', g.definition);
+    addText(dd, 'span', ` · ${g.section}`, 'glossary-section');
+  }
+}
+
 function renderAll() {
   renderOverview();
+  renderGuide();
+  renderGlossary();
 }
 
 function resetPaperView() {
   paperView.state = null;
   paperView.section = '';
+  paperView.canGuide = true;
   paperView.streams = {};
-  for (const id of ['overviewCard', 'trustCard']) hide($(id));
+  for (const id of ['overviewCard', 'trustCard', 'guideCard']) hide($(id));
 }
 
 function handlePaperMessage(msg) {
@@ -97,6 +136,7 @@ function handlePaperMessage(msg) {
     case 'PAPER_HELP_STATE':
       paperView.state = msg;
       paperView.section = msg.section || paperView.section;
+      if (msg.section) paperView.canGuide = msg.canGuide !== false;
       paperView.streams = {};
       renderAll();
       break;
@@ -106,6 +146,7 @@ function handlePaperMessage(msg) {
         hide($('overviewRetryBtn'));
         setStatus('overviewStatus', '⟳ Reading the paper…', 'updating');
       }
+      if (msg.kind === 'guide') setStatus('guideStatus', '⟳ Reading this section…', 'updating');
       renderAll();
       break;
     case 'PAPER_HELP_CHUNK':
@@ -120,6 +161,7 @@ function handlePaperMessage(msg) {
       } else {
         paperView.streams[k] = msg.text;
       }
+      if (msg.kind === 'guide') setStatus('guideStatus', '', '');
       renderAll();
       break;
     case 'PAPER_HELP_ERROR':
@@ -128,7 +170,17 @@ function handlePaperMessage(msg) {
         setStatus('overviewStatus', msg.message || 'Something went wrong.', 'error');
         show($('overviewRetryBtn'));
       }
+      if (msg.kind === 'guide') {
+        if (msg.code === 'NO_SECTION') paperView.canGuide = false;
+        setStatus('guideStatus', msg.code === 'NO_SECTION' ? '' : msg.message || 'Something went wrong.', 'error');
+      }
       renderAll();
+      break;
+    case 'SECTION_CHANGED':
+      paperView.section = msg.heading;
+      paperView.canGuide = msg.canGuide !== false;
+      setStatus('guideStatus', '', '');
+      renderGuide();
       break;
     case 'ARTICLE_NAVIGATING':
     case 'NO_ARTICLE':
@@ -140,3 +192,6 @@ function handlePaperMessage(msg) {
 }
 
 $('overviewRetryBtn').addEventListener('click', () => sendPaper({ type: 'RETRY_OVERVIEW' }));
+$('guideBtn').addEventListener('click', () => sendPaper({ type: 'GUIDE_SECTION', heading: paperView.section }));
+$('guideTermsBtn').addEventListener('click', () => setPanel('glossary'));
+levelSelect.addEventListener('change', renderGuide);

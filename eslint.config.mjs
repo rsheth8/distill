@@ -53,7 +53,7 @@ export default [
         distillFindCachedHighlight: 'readonly',
         importScripts: 'readonly',
         queuePaperHelp: 'readonly', runOverview: 'readonly', publishPaperHelp: 'readonly', clearPaperHelp: 'readonly',
-        runSectionGuide: 'readonly', runAsk: 'readonly', onSectionChanged: 'readonly', resendTerms: 'readonly',
+        runSectionGuide: 'readonly', runAsk: 'readonly', onSectionChanged: 'readonly', resendTerms: 'readonly', onReadingLevelChanged: 'readonly',
         handlePaperMessage: 'readonly', distillTrustFacts: 'readonly', distillParseLabelled: 'readonly'
       }
     },

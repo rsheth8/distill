@@ -15,6 +15,7 @@ describe('distillBuildPrompt', () => {
     quiz_skipped_review: [{ recent: 'R' }, { question: 'Q?' }, ['R', 'Q?', 'model answer']],
     analysis: [{ title: 'T', opener: 'ABS', priorGist: 'G', recent: 'R' }, { selection: 'SEL' }, ['T', 'ABS', 'G', 'R', '"SEL"']],
     overview: [{ title: 'T' }, { excerpt: 'EXC' }, ['T', 'EXC', 'ASKED:', 'DID:', 'FOUND:', 'WHY:', 'STUDY:', 'LIMITS:']],
+    section_guide: [{ title: 'T', section: { heading: 'Methods', kind: 'methods' } }, { sectionText: 'SEC' }, ['T', '"Methods"', 'SEC', 'TERMS:', 'up to 12']],
   };
 
   for (const [task, [context, input, wanted]] of Object.entries(tasks)) {
@@ -27,6 +28,10 @@ describe('distillBuildPrompt', () => {
 
   it('overview trims the excerpt to 7,000 chars', () => {
     expect(text(distillBuildPrompt('overview', {}, { excerpt: 'x'.repeat(20000) })).length).toBeLessThan(8000);
+  });
+
+  it('section_guide trims the section to 6,000 chars', () => {
+    expect(text(distillBuildPrompt('section_guide', {}, { sectionText: 'x'.repeat(20000) })).length).toBeLessThan(7000);
   });
 
   it('explain_page is gone (the overview replaces it)', () => {

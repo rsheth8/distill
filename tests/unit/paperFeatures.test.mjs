@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -7,15 +7,27 @@ import { dirname, join } from 'node:path';
 const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../../extension/paperFeatures.js'), 'utf8');
 const tick = () => new Promise(r => setTimeout(r, 0));
 
-let ctx, sent, calls, levelReads;
+const helpSrc = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../../extension/utils/paperHelp.js'), 'utf8');
+
+let ctx, sent, calls, levelReads, tabMsgs, activeTabs;
 
 // A streamTask whose calls the test drives by hand; like the real one, abort ends in onError(AbortError).
 function load() {
   sent = [];
   calls = [];
   levelReads = 0;
+  tabMsgs = [];
+  activeTabs = [];
   ctx = vm.createContext({
-    console, AbortController, Map, Promise,
+    console, AbortController, Map, Promise, Object, Array, String,
+    setTimeout: (...a) => setTimeout(...a),
+    clearTimeout: id => clearTimeout(id),
+    chrome: {
+      tabs: {
+        sendMessage: (tabId, m) => { tabMsgs.push({ tabId, ...m }); return Promise.resolve(); },
+        query: () => Promise.resolve(activeTabs)
+      }
+    },
     tabState: new Map(),
     toPanel: m => sent.push(m),
     schedulePersistTab: () => {},
@@ -30,6 +42,7 @@ function load() {
       });
     })
   });
+  vm.runInContext(helpSrc, ctx);
   vm.runInContext(src, ctx);
 }
 
@@ -122,5 +135,120 @@ describe('paperFeatures', () => {
     expect(levelReads).toBe(1);
     expect(sent.find(m => m.type === 'PAPER_HELP_DONE').level).toBe('everyday');
     expect(s.overview).toEqual({ level: 'everyday', text: 'ASKED: x' });
+  });
+});
+
+describe('section guides', () => {
+  const paper = { title: 'P', sections: [{ heading: 'Methods', kind: 'methods', text: 'We trained it.' }] };
+  const guideText = 'It trains the model.\nTERMS:\nbackprop — how it learns';
+  const flush = () => vi.advanceTimersByTimeAsync(0);
+  const setup = (heading = 'Methods') => {
+    const s = { paper, title: 'T', section: { heading } };
+    ctx.tabState.set(1, s);
+    return s;
+  };
+
+  beforeEach(() => { load(); vi.useFakeTimers(); });
+  afterEach(() => vi.useRealTimers());
+
+  it('guides a findable section after 8 s of dwell, once', async () => {
+    setup();
+    ctx.onSectionChanged(1, 'Methods');
+    expect(sent.find(m => m.type === 'SECTION_CHANGED')).toMatchObject({ heading: 'Methods', hasGuide: false, canGuide: true });
+    await vi.advanceTimersByTimeAsync(7999);
+    expect(calls).toHaveLength(0);
+    await vi.advanceTimersByTimeAsync(1);
+    await flush();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].task).toBe('section_guide');
+    expect(calls[0].context).toEqual({ title: 'T', section: { heading: 'Methods', kind: 'methods' }, level: 'everyday' });
+    expect(calls[0].input).toEqual({ sectionText: 'We trained it.' });
+    await vi.advanceTimersByTimeAsync(20000);
+    expect(calls).toHaveLength(1);
+  });
+
+  it('leaving the section before 8 s runs no guide', async () => {
+    const s = setup();
+    ctx.onSectionChanged(1, 'Methods');
+    await vi.advanceTimersByTimeAsync(5000);
+    s.section = { heading: 'Results' };
+    ctx.onSectionChanged(1, 'Results');
+    await vi.advanceTimersByTimeAsync(3000); // Methods' timer would have fired by now
+    await flush();
+    expect(calls).toHaveLength(0);
+  });
+
+  it('a heading not in the paper never calls the model and says canGuide: false', async () => {
+    setup('Figure 3');
+    ctx.onSectionChanged(1, 'Figure 3');
+    expect(sent.find(m => m.type === 'SECTION_CHANGED').canGuide).toBe(false);
+    await vi.advanceTimersByTimeAsync(9000);
+    await flush();
+    expect(calls).toHaveLength(0);
+  });
+
+  it('GUIDE_SECTION on an unfindable heading reports NO_SECTION', async () => {
+    setup('Figure 3');
+    await ctx.runSectionGuide(1, 'Figure 3');
+    expect(calls).toHaveLength(0);
+    expect(sent.find(m => m.type === 'PAPER_HELP_ERROR')).toMatchObject({ kind: 'guide', code: 'NO_SECTION', message: 'No guide for this part.' });
+  });
+
+  it('a finished guide is stored, merged into the glossary and underlined in the page', async () => {
+    const s = setup();
+    const p = ctx.runSectionGuide(1, 'Methods');
+    await flush();
+    calls[0].onChunk(guideText);
+    calls[0].onDone();
+    calls[0].resolve();
+    await p;
+    expect(levelReads).toBe(1);
+    expect(sent.find(m => m.type === 'PAPER_HELP_DONE').level).toBe('everyday');
+    expect(s.guides.Methods).toMatchObject({ level: 'everyday', text: guideText, terms: [{ term: 'backprop', definition: 'how it learns' }] });
+    expect(s.glossary).toEqual([{ term: 'backprop', definition: 'how it learns', section: 'Methods' }]);
+    expect(tabMsgs).toEqual([{ tabId: 1, type: 'SHOW_TERMS', heading: 'Methods', terms: [{ term: 'backprop', definition: 'how it learns' }] }]);
+    expect(sent.at(-1)).toMatchObject({ type: 'PAPER_HELP_STATE', section: 'Methods' });
+    expect(sent.at(-1).guides.Methods.level).toBe('everyday');
+  });
+
+  it('a guide that finishes after the tab moved on stores nothing', async () => {
+    const s = setup();
+    const p = ctx.runSectionGuide(1, 'Methods');
+    await flush();
+    ctx.tabState.set(1, { paper });
+    calls[0].onChunk(guideText);
+    calls[0].onDone();
+    calls[0].resolve();
+    await p;
+    expect(s.guides).toBeUndefined();
+    expect(tabMsgs).toEqual([]);
+  });
+
+  it('an existing guide at the current level is re-underlined, not regenerated', async () => {
+    const s = setup();
+    s.guides = { Methods: { level: 'everyday', text: 'x', terms: [{ term: 'a', definition: 'b' }] } };
+    await ctx.runSectionGuide(1, 'Methods');
+    expect(calls).toHaveLength(0);
+    expect(tabMsgs).toHaveLength(1);
+  });
+
+  it('clearPaperHelp cancels the dwell timer', async () => {
+    setup();
+    ctx.onSectionChanged(1, 'Methods');
+    ctx.clearPaperHelp(1);
+    await vi.advanceTimersByTimeAsync(9000);
+    expect(calls).toHaveLength(0);
+  });
+
+  it('a level change clears underlines on paper tabs and re-runs the overview in view', async () => {
+    ctx.tabState.set(1, { paper, title: 'T', overview: { level: 'simple', text: 'old' } });
+    ctx.tabState.set(2, { paper });
+    ctx.tabState.set(3, {});
+    activeTabs = [{ id: 1 }];
+    ctx.onReadingLevelChanged();
+    await flush();
+    expect(tabMsgs.map(m => `${m.tabId}:${m.type}`)).toEqual(['1:CLEAR_TERMS', '2:CLEAR_TERMS']);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].task).toBe('overview');
   });
 });

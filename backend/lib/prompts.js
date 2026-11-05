@@ -109,6 +109,16 @@ function distillBuildPrompt(task, context = {}, input = {}) {
       ]);
     }
 
+    case 'section_guide':
+      return out(sys('Guide them through one section of the paper.'), [
+        `Paper title: ${title}`,
+        section,
+        `Section text:\n\n${distillPromptClamp(i.sectionText, 6000)}`,
+        'In 2-5 plain sentences, say what this section is doing and what to take from it. ' +
+          'Then write a line "TERMS:" and list up to 12 technical words or phrases that appear in the section, ' +
+          'copied exactly as written there, one per line as "term — short definition". No markdown.'
+      ]);
+
     case 'overview':
       return out(sys('Give them a plain overview of the whole paper.'), [
         `Paper title: ${title}`,

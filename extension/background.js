@@ -231,7 +231,8 @@ const AI_TUNING = {
       quiz_feedback: 180,
       quiz_skipped_review: 170,
       analysis: 260,
-      overview: 420
+      overview: 420,
+      section_guide: 380
     }
   },
   'ultra-lean': {
@@ -242,7 +243,8 @@ const AI_TUNING = {
       quiz_feedback: 130,
       quiz_skipped_review: 120,
       analysis: 180,
-      overview: 300
+      overview: 300,
+      section_guide: 260
     }
   }
 };
@@ -286,6 +288,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     void ensureBackendToken();
   }
   if (changes[USE_BACKEND_PROXY_KEY]?.newValue === true) void ensureBackendToken();
+  if (changes.readingLevel) onReadingLevelChanged();
 });
 
 function summaryCadenceForMode() {
@@ -972,6 +975,15 @@ chrome.runtime.onConnect.addListener(port => {
           void runOverview(msg.tabId);
         })();
         break;
+      case 'GUIDE_SECTION':
+        void (async () => {
+          await ensureTabHydrated(msg.tabId);
+          void runSectionGuide(msg.tabId, String(msg.heading || '').slice(0, 120));
+        })();
+        break;
+      case 'SCROLL_TO_TERM':
+        chrome.tabs.sendMessage(msg.tabId, { type: 'SCROLL_TO_TERM', term: String(msg.term || '') }).catch(() => {});
+        break;
       case 'ANALYZE_SELECTION':
         void (async () => {
           await ensureTabHydrated(msg.tabId);
@@ -1116,6 +1128,7 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
           persistHistorySnapshot(tabId);
           await restoreState(tabId); // republishes ARTICLE_DETECTED + progress + summary + quiz + highlights
           void runOverview(tabId);
+          void resendTerms(tabId);
           void publishResume(tabId);
           void publishSitePrefs(tabId);
           break;
@@ -1183,7 +1196,10 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
         const para = (msg.text || '').trim();
         if (para) lastActiveParagraphByTab.set(tabId, para);
         const st = tabState.get(tabId);
-        if (st && msg.section) st.section = { heading: msg.section, kind: distillSectionKind(msg.section) };
+        if (st && msg.section && st.section?.heading !== msg.section) {
+          st.section = { heading: msg.section, kind: distillSectionKind(msg.section) };
+          onSectionChanged(tabId, msg.section);
+        }
         scheduleMaybeAutoNow(tabId, para);
         void schedulePauseToExplain(tabId, para);
         break;
