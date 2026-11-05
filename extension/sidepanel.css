@@ -1778,7 +1778,7 @@ html[data-theme="dark"] {
   }
 }
 
-.level-select { font: inherit; font-size: 12px; padding: 2px 4px; border-radius: 6px; border: 1px solid var(--border-mid); background: transparent; color: inherit; max-width: 9.5em; }
+.level-select { margin-left: auto; margin-right: 8px; font: inherit; font-size: 12px; padding: 2px 4px; border-radius: 6px; border: 1px solid var(--border-mid); background: transparent; color: inherit; max-width: 9.5em; }
 .paper-link-btn { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; font-size: 12px; cursor: pointer; text-decoration: underline; }
 .ask-thread { display: flex; flex-direction: column; gap: 12px; }
 .ask-q { font-weight: 600; margin: 0 0 4px; }
