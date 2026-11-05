@@ -475,7 +475,8 @@ function tabSnapshotPayload(tabId) {
     currentQuestion: s.currentQuestion,
     lastSummary: s.lastSummary,
     highlightHistory: s.highlightHistory || [],
-    quiz: s.quiz || defaultQuizState()
+    quiz: s.quiz || defaultQuizState(),
+    ...distillPaperHelpFields(s)
   };
 }
 
@@ -533,7 +534,8 @@ function snapshotToState(snap) {
       answer: quiz.answer || '',
       feedback: quiz.feedback || '',
       history: Array.isArray(quiz.history) ? quiz.history : []
-    }
+    },
+    ...distillPaperHelpFields(snap)
   };
 }
 
@@ -831,6 +833,7 @@ const lastActiveParagraphByTab = new Map();
 
 chrome.runtime.onConnect.addListener(port => {
   if (port.name !== 'sidepanel') return;
+  if (!port.sender?.url?.startsWith(chrome.runtime.getURL('sidepanel.html'))) return; // only our own panel page
   sidePanelPort = port;
 
   port.onMessage.addListener(msg => {
@@ -839,6 +842,7 @@ chrome.runtime.onConnect.addListener(port => {
         void (async () => {
           await ensureTabHydratedFromPageState(msg.tabId);
           await restoreState(msg.tabId);
+          void runOverview(msg.tabId); // returns early when the overview is already at the current reading level
           await publishSitePrefs(msg.tabId);
           toPanel({ type: 'FOCUS_SYNC', tabId: msg.tabId, on: !!focusModeByTab.get(msg.tabId) });
         })();
@@ -2100,11 +2104,12 @@ async function streamTask({
   input = {},
   onChunk,
   onDone,
-  onError
+  onError,
+  retry = true // false for background paper-help calls: they must not replace the Retry of the user's own request
 }) {
   context = { ...context, level: context.level || await readingLevel() };
   // Allow the side panel to offer a "Retry" button for the last AI call.
-  if (tabId) {
+  if (tabId && retry) {
     lastAiRetryByTab.set(tabId, () => streamTask({
       tabId,
       task,

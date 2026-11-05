@@ -12,7 +12,7 @@ function queuePaperHelp(tabId, job) {
   return next;
 }
 
-const paperHelpAbort = new Map(); // tabId -> AbortController of the paper-help call now streaming
+const paperHelpAbort = new Map(); // tabId -> { ctrl, kind, key } of the paper-help call now streaming
 
 /**
  * Stream one task to the panel. Resolves with the trimmed text, or '' after an error, an abort
@@ -22,14 +22,14 @@ const paperHelpAbort = new Map(); // tabId -> AbortController of the paper-help 
 function streamPaperHelp(tabId, { kind, key, task, context, input, level }) {
   const s = tabState.get(tabId);
   const ctrl = new AbortController();
-  paperHelpAbort.set(tabId, ctrl);
+  paperHelpAbort.set(tabId, { ctrl, kind, key });
   return new Promise(resolve => {
     let text = '';
     let settled = false;
     const finish = value => {
       if (settled) return;
       settled = true;
-      if (paperHelpAbort.get(tabId) === ctrl) paperHelpAbort.delete(tabId);
+      if (paperHelpAbort.get(tabId)?.ctrl === ctrl) paperHelpAbort.delete(tabId);
       resolve(value);
     };
     const stale = () => ctrl.signal.aborted || tabState.get(tabId) !== s;
@@ -42,7 +42,7 @@ function streamPaperHelp(tabId, { kind, key, task, context, input, level }) {
     };
     toPanel({ type: 'PAPER_HELP_START', tabId, kind, key });
     streamTask({
-      tabId, task, s, signal: ctrl.signal, context: { ...context, level }, input,
+      tabId, task, s, signal: ctrl.signal, retry: false, context: { ...context, level }, input,
       noAuthMessage: 'No API key set — click ⚙ to add one.',
       onChunk: chunk => {
         if (settled) return;
@@ -98,9 +98,16 @@ function runOverview(tabId) {
   });
 }
 
-/** Abort the running call. The queue tail stays, so the next job waits for the aborted one to settle. */
+/**
+ * Abort the running call. The queue tail stays, so the next job waits for the aborted one to settle.
+ * The panel is told (ABORTED) so it drops that stream's "Reading…" status.
+ */
 function clearPaperHelp(tabId) {
-  paperHelpAbort.get(tabId)?.abort();
+  const running = paperHelpAbort.get(tabId);
+  if (running) {
+    toPanel({ type: 'PAPER_HELP_ERROR', tabId, kind: running.kind, key: running.key, code: 'ABORTED', message: '' });
+    running.ctrl.abort();
+  }
   clearTimeout(guideDwellTimers.get(tabId));
   guideDwellTimers.delete(tabId);
 }
@@ -113,9 +120,11 @@ function sendTerms(tabId, heading, terms) {
 }
 
 /** Guide for one section; on success its terms are underlined in the page and added to the glossary. */
-function runSectionGuide(tabId, heading) {
+function runSectionGuide(tabId, heading, opts = {}) {
+  const s = tabState.get(tabId);
   return queuePaperHelp(tabId, async () => {
-    const s = tabState.get(tabId);
+    if (tabState.get(tabId) !== s) return; // the tab moved on (new paper) while this waited its turn
+    if (opts.dwell && s?.section?.heading !== heading) return; // an automatic guide for a section the reader has since left
     const section = s?.paper && distillFindSection(s.paper, heading);
     if (!section) {
       toPanel({ type: 'PAPER_HELP_ERROR', tabId, kind: 'guide', key: heading, code: 'NO_SECTION', message: 'No guide for this part.' });
@@ -155,7 +164,7 @@ function onSectionChanged(tabId, heading) {
     if (now?.section?.heading !== heading) return;
     const level = await readingLevel();
     if (tabState.get(tabId) !== now || now.section?.heading !== heading || now.guides?.[heading]?.level === level) return;
-    void runSectionGuide(tabId, heading);
+    void runSectionGuide(tabId, heading, { dwell: true });
   }, GUIDE_DWELL_MS));
 }
 

@@ -52,7 +52,10 @@ developer-operated backend in the default build.
 > Features:
 > • Plain-language "so far" summaries that never spoil what's ahead
 > • Highlight any sentence for an explanation in everyday words
-> • One-tap plain-language overview of the whole paper
+> • Overview and trust check when a paper opens: the question, findings and why they matter, plus the study's size and the authors' own limits
+> • Section guides: a plain guide to each section, with jargon underlined and defined in a Glossary tab
+> • Reading level: Simple, Everyday or Closer to the paper
+> • Ask the paper: questions answered from the paper itself, naming the sections used
 > • Optional comprehension check-ins
 > • A reading view for PDF papers, plus reading time and focus mode
 > • Bring your own key: Groq (free), Gemini (free where eligible), OpenAI, or Anthropic
@@ -100,7 +103,9 @@ and downloads PDFs the user opens, but does not download or `eval` external scri
 > open the side panel on a research paper (for example https://arxiv.org/html/2310.06825v1),
 > complete onboarding or open Settings, paste a Groq key (https://console.groq.com/keys)
 > or Gemini key (https://aistudio.google.com/apikey), click Connect/Test key, then scroll
-> the paper or use Explain. For a PDF, open https://arxiv.org/pdf/1810.04805 and click
+> the paper or open the Ask tab. For a PDF, open https://arxiv.org/pdf/1810.04805 and click
 > "Open in Distill" in the side panel. Pages that are not research papers show a short
 > "not a paper" message. The extension contacts only the chosen AI provider with the
 > user's key; the Web Store build has no developer backend.
+>
+> Ask, guides and the overview send only excerpts of the open paper to the AI provider the user chose.

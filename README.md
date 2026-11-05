@@ -27,7 +27,7 @@ Distill is a browser side panel that helps people outside academia read research
 
 - A plain-language summary that fills in as you scroll, so you always know what you've read.
 - Explanations of any sentence you select, with the jargon spelled out.
-- A one-click plain-language overview of the whole paper.
+- A plain-language overview of the whole paper, with a trust check on the study behind it.
 - Short check-in questions to make sure the main ideas landed.
 - A clean reading view for PDFs, plus reading time and a focus mode that dims everything but the current paragraph.
 
@@ -42,21 +42,24 @@ The key idea is **bring-your-own-key (BYOK)**: Distill doesn't run its own AI se
 - **Plain-language prompts** — every prompt lives in `utils/prompts.js`, is written for readers with no academic background, and is told which part of the paper (intro, methods, results, discussion) the reader is in.
 - **Progressive summaries** — the paper is broken into "reading units" (roughly paragraph-sized chunks) and summarized incrementally as the reader scrolls, rather than all at once.
 - **Highlight analysis** — select text in the paper and ask the AI to explain it in plain words in the side panel.
-- **Explain this paper** — a single command that asks the AI for a plain-language overview of the whole paper.
+- **Overview and trust check** — when a paper opens: the question, what they did, what they found, why it matters; plus preprint/journal, date, authors, DOI, study size and the authors' own limits.
+- **Section guide** — after a few seconds in a section (or on tap), a plain guide to it; its jargon gets a dotted underline with a definition on hover, and lands in the Glossary tab.
+- **Reading level** — Simple, Everyday or Closer to the paper, for every explanation.
+- **Ask the paper** — questions answered from the paper, naming the sections used; outside knowledge is marked "Background".
 - **Focus mode** — dims everything except the paragraph being read.
 - **Comprehension check-ins** — occasional short questions about what was just read.
 - **Per-page state persistence** — reading progress, summaries, and highlights for a page are cached locally (`chrome.storage.local`) so returning to a paper restores where you left off.
 - **Multiple AI providers** — Groq (default, free tier), Google Gemini, OpenAI, and Anthropic Claude, selectable in Settings, each with its own stored key.
 - **Local models, no key** — run Qwen (or any model) on your own computer with Ollama or LM Studio; article text never leaves the machine. See [`docs/FREE_LLM.md`](docs/FREE_LLM.md#model-c--local-model-no-key).
 - **Optional hosted/self-hosted backend** — an Express API (`backend/`) that can proxy AI calls and track usage/quota server-side, for teams or users who don't want to manage a personal key. Off by default in the Chrome Web Store build.
-- **Keyboard shortcuts** — open the reader, toggle focus mode, explain the paper, or analyze a selection without touching the mouse.
+- **Keyboard shortcuts** — open the reader, toggle focus mode, or analyze a selection without touching the mouse.
 
 ## How it works
 
 **Extension components (Manifest V3):**
 
 - **Content script** (`extension/content.js` + `extension/utils/paperExtractor.js` + `extension/utils/articleExtractor.js`) — injected into every HTTP(S) page. It checks whether the page is a research paper; if not, it tells the panel and stops. On a paper it finds the paper body, splits it into paragraph-level "reading units," tracks which unit and section the reader is on, and lets the reader select text for analysis. On PDF tabs it offers Distill's reader instead, and the reader page loads the same content script on its reading view.
-- **Background service worker** (`extension/background.js`, ~3000 lines — the hub of the extension) — owns per-tab reading state, decides whether to call an AI provider directly or via the optional backend, builds each task's prompt (progressive summary, explain paper, analyze selection, quiz) from `utils/prompts.js`, streams AI responses back to the UI, and persists reading state to `chrome.storage.local` (see `extension/utils/pageStore.js`) keyed by a hash of the page URL.
+- **Background service worker** (`extension/background.js`, ~3000 lines — the hub of the extension) — owns per-tab reading state, decides whether to call an AI provider directly or via the optional backend, builds each task's prompt (progressive summary, overview, section guide, ask, analyze selection, quiz) from `utils/prompts.js`, streams AI responses back to the UI, and persists reading state to `chrome.storage.local` (see `extension/utils/pageStore.js`) keyed by a hash of the page URL.
 - **Side panel UI** (`extension/sidepanel.html/.js/.css`) — the reading pane the user actually looks at. It renders the streaming summary/explanation, lets the user manage the API key and provider settings, shows connection/backend status, and communicates with the background worker over a long-lived `chrome.runtime.connect` port plus one-off messages.
 - **Shared prompts** (`extension/utils/prompts.js`) — one builder for every AI task, used by the extension and, through a committed copy at `backend/lib/prompts.js`, by the backend. Run `npm run sync:prompts` after editing it; `npm test` fails if the copies differ.
 - **Provider adapters** (`extension/utils/geminiAdapter.js`, `extension/utils/openaiCompatAdapter.js`, and inline Claude streaming logic in `background.js`) — thin wrappers that translate a common `{systemPrompt, messages}` shape into each provider's streaming HTTP API (Anthropic Messages API, Gemini generateContent, and the OpenAI-compatible chat-completions format shared by Groq/OpenAI).
@@ -82,7 +85,7 @@ flowchart TD
 
     subgraph SW["Background service worker (background.js)"]
         State["Per-tab reading state<br/>+ chrome.storage.local<br/>(pageStore.js)"]
-        Router["Task router:<br/>progressive summary / explain paper /<br/>analyze selection / quiz"]
+        Router["Task router:<br/>progressive summary / overview /<br/>section guide / ask /<br/>analyze selection / quiz"]
         Adapters["Provider adapters<br/>(geminiAdapter.js,<br/>openaiCompatAdapter.js,<br/>Claude streaming)"]
     end
 
@@ -186,7 +189,7 @@ The backend listens on `http://localhost:8787` by default (`curl http://localhos
 - **Storage is URL-hash-keyed and capped.** `pageStore.js` keys per-page reading state by a stable FNV-1a hash of the normalized page URL, caps stored history to a fixed number of pages (`DISTILL_MAX_SAVED_PAGES = 60`) with a 45-day TTL, and caps individual field sizes (summary chars, highlight count, quiz history) to stay well under Chrome's storage quota.
 - **The key never leaves the browser in BYOK mode.** Provider keys live only in `chrome.storage.local`; the streaming adapters attach them directly to outbound requests to the provider's own domain (Anthropic, Google, Groq, or OpenAI), so Distill's own infrastructure never sees them unless the user explicitly opts into the hosted backend path, which uses a separate short-lived bearer token instead.
 - **Backend is fully optional and excluded from the public build.** `extension/utils/buildConfig.js` gates whether the backend/Advanced UI is even shown; the Web Store package produced by `npm run pack` is BYOK-only.
-- **Offline resilience.** `background.js` maintains an offline job queue (`OFFLINE_QUEUE_KEY`) that dedupes and retries AI tasks (like "explain paper") if they fail while the backend or network is unreachable, flushing them once connectivity returns.
+- **Offline resilience.** `background.js` maintains an offline job queue (`OFFLINE_QUEUE_KEY`) that dedupes and retries AI tasks (like analyzing a selection) if they fail while the backend or network is unreachable, flushing them once connectivity returns.
 - **Per-site preferences.** Users can force "backend-only" mode for specific origins (`SITE_PREFS_KEY`), useful for sites where they don't want their own key used.
 - **Content script exclusions.** The content script deliberately does not run on sensitive Google properties (Gmail, Docs, Drive, Calendar, Meet, Chat) or AI console pages, to avoid interfering with those apps or extracting irrelevant/sensitive content.
 

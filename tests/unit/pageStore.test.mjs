@@ -140,3 +140,64 @@ describe('distillSelectPrunedKeys', () => {
     expect(distillSelectPrunedKeys([], { maxPages: 5, ttlMs: 10000, now })).toEqual([]);
   });
 });
+
+describe('paper help fields', () => {
+  it('round-trip with caps', () => {
+    const guides = Object.fromEntries(Array.from({ length: 40 }, (_, i) => [`H${i}`, { level: 'everyday', text: 'g'.repeat(9000), terms: new Array(20).fill({ term: 't', definition: 'd' }) }]));
+    const p = distillBuildPageStatePayload({
+      overview: { level: 'simple', text: 'o'.repeat(9000) },
+      guides,
+      glossary: new Array(200).fill({ term: 't', definition: 'd', section: 's' }),
+      askThread: Array.from({ length: 30 }, (_, i) => ({ q: `q${i}`.padEnd(900, 'q'), a: 'a'.repeat(9000) }))
+    }, 1);
+    expect(p.overview).toEqual({ level: 'simple', text: 'o'.repeat(3500) });
+    expect(Object.keys(p.guides).length).toBe(30);
+    expect(p.guides.H0.text.length).toBe(2500);
+    expect(p.guides.H0.terms.length).toBe(12);
+    expect(p.glossary.length).toBe(150);
+    expect(p.askThread.length).toBe(20);
+    expect(p.askThread[19].q.startsWith('q29')).toBe(true); // newest kept
+    expect(p.askThread[0].q.length).toBe(500);
+    expect(p.askThread[0].a.length).toBe(2500);
+    const s = distillPagePayloadToState(p);
+    expect(s.overview).toEqual(p.overview);
+    expect(s.guides).toEqual(p.guides);
+    expect(s.glossary).toEqual(p.glossary);
+    expect(s.askThread).toEqual(p.askThread);
+  });
+  it('defaults when missing (old snapshots, legacy history)', () => {
+    const empty = { overview: null, guides: {}, glossary: [], askThread: [] };
+    const p = distillBuildPageStatePayload({}, 1);
+    expect({ overview: p.overview, guides: p.guides, glossary: p.glossary, askThread: p.askThread }).toEqual(empty);
+    const s = distillPagePayloadToState({ v: 1 });
+    expect({ overview: s.overview, guides: s.guides, glossary: s.glossary, askThread: s.askThread }).toEqual(empty);
+    const h = distillHistoryPayloadToState({});
+    expect({ overview: h.overview, guides: h.guides, glossary: h.glossary, askThread: h.askThread }).toEqual(empty);
+  });
+  it('restore drops malformed saved entries instead of crashing', () => {
+    const s = distillPagePayloadToState({
+      v: 1,
+      glossary: [{ term: 'ok', definition: 'd', section: 's' }, { term: 5, definition: 'd' }, null, { term: 't' }],
+      guides: {
+        Good: { level: 'everyday', text: 'g', terms: [{ term: 'a', definition: 'b' }, null, { term: 1 }] },
+        NoText: { level: 'everyday', text: 7, terms: [] },
+        BadTerms: { level: 'everyday', text: 'g', terms: 'x' },
+        Null: null
+      },
+      askThread: [{ q: 'kept', a: 'A' }, { q: 3, a: 'x' }, null],
+      overview: { level: 'simple', text: 42 }
+    });
+    expect(s.overview).toBeNull();
+    expect(s.guides.Good.terms).toEqual([{ term: 'a', definition: 'b' }]);
+    expect(s.glossary).toEqual([{ term: 'ok', definition: 'd', section: 's' }]);
+    expect(Object.keys(s.guides)).toEqual(['Good']);
+    expect(s.askThread).toEqual([{ q: 'kept', a: 'A' }]);
+  });
+  it('save drops questions still in flight (empty answer)', () => {
+    const p = distillBuildPageStatePayload({
+      askThread: [{ q: 'answered', a: 'A' }, { q: 'in flight', a: '' }, { q: 'also answered', a: 'B' }]
+    }, 1);
+    expect(p.askThread).toEqual([{ q: 'answered', a: 'A' }, { q: 'also answered', a: 'B' }]);
+    expect(distillPagePayloadToState(p).askThread).toEqual(p.askThread);
+  });
+});

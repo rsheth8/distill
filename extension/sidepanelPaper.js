@@ -119,7 +119,8 @@ function renderGlossary() {
 
 let lastAskQuestion = '';
 
-function renderAsk() {
+/** scroll: only when ask activity changed the thread, not on every unrelated render. */
+function renderAsk(scroll = false) {
   const thread = paperView.state?.askThread || [];
   const box = $('askThread');
   box.replaceChildren();
@@ -133,7 +134,7 @@ function renderAsk() {
     if (parsed.FROM) addText(item, 'p', `From: ${parsed.FROM}`, 'ask-meta');
   });
   $('askStarters').classList.toggle('hidden', thread.length > 0);
-  box.lastElementChild?.scrollIntoView({ block: 'nearest' });
+  if (scroll) box.lastElementChild?.scrollIntoView({ block: 'nearest' });
 }
 
 /** Returns true when the question was sent. */
@@ -153,11 +154,19 @@ function askPaper(question) {
   return true;
 }
 
-function renderAll() {
+function renderAll(scrollAsk = false) {
   renderOverview();
   renderGuide();
   renderGlossary();
-  renderAsk();
+  renderAsk(scrollAsk);
+}
+
+// A stream event only changes its own view; rendering the rest on every chunk is wasted work.
+function renderKind(kind) {
+  if (kind === 'overview') renderOverview();
+  else if (kind === 'guide') renderGuide();
+  else if (kind === 'ask') renderAsk(true);
+  else renderAll();
 }
 
 function resetPaperView() {
@@ -172,13 +181,15 @@ function resetPaperView() {
 function handlePaperMessage(msg) {
   const k = `${msg.kind}:${msg.key}`;
   switch (msg.type) {
-    case 'PAPER_HELP_STATE':
+    case 'PAPER_HELP_STATE': {
+      const grew = (msg.askThread?.length || 0) > (paperView.state?.askThread?.length || 0); // a question was just added
       paperView.state = msg;
       paperView.section = msg.section || paperView.section;
       if (msg.section) paperView.canGuide = msg.canGuide !== false;
       paperView.streams = Object.fromEntries(Object.entries(paperView.streams).filter(([key]) => paperView.live.has(key)));
-      renderAll();
+      renderAll(grew);
       break;
+    }
     case 'PAPER_HELP_START':
       paperView.live.add(k);
       paperView.streams[k] = '';
@@ -187,11 +198,11 @@ function handlePaperMessage(msg) {
         setStatus('overviewStatus', '⟳ Reading the paper…', 'updating');
       }
       if (msg.kind === 'guide' && msg.key === paperView.section) setStatus('guideStatus', '⟳ Reading this section…', 'updating');
-      renderAll();
+      renderKind(msg.kind);
       break;
     case 'PAPER_HELP_CHUNK':
       paperView.streams[k] = (paperView.streams[k] || '') + msg.chunk;
-      renderAll();
+      renderKind(msg.kind);
       break;
     case 'PAPER_HELP_DONE':
       paperView.live.delete(k);
@@ -203,11 +214,17 @@ function handlePaperMessage(msg) {
         paperView.streams[k] = msg.text;
       }
       if (msg.kind === 'guide' && msg.key === paperView.section) setStatus('guideStatus', '', '');
-      renderAll();
+      renderKind(msg.kind);
       break;
     case 'PAPER_HELP_ERROR':
       paperView.live.delete(k);
       delete paperView.streams[k];
+      if (msg.code === 'ABORTED') { // the background dropped the job (a new paper): nothing failed, so no error and no Retry
+        if (msg.kind === 'overview') setStatus('overviewStatus', '', '');
+        if (msg.kind === 'guide' && msg.key === paperView.section) setStatus('guideStatus', '', '');
+        renderKind(msg.kind);
+        break;
+      }
       if (msg.kind === 'overview') {
         setStatus('overviewStatus', msg.message || 'Something went wrong.', 'error');
         show($('overviewRetryBtn'));
@@ -221,7 +238,7 @@ function handlePaperMessage(msg) {
         if (msg.code === 'NO_SECTION') paperView.canGuide = false;
         setStatus('guideStatus', msg.code === 'NO_SECTION' ? '' : msg.message || 'Something went wrong.', 'error');
       }
-      renderAll();
+      renderKind(msg.kind);
       break;
     case 'SECTION_CHANGED':
       paperView.section = msg.heading;
