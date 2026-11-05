@@ -32,7 +32,7 @@
         "https://meet.google.com/*",
         "https://chat.google.com/*"
       ],
-      "js": ["utils/articleExtractor.js", "utils/paperExtractor.js", "content.js"],
+      "js": ["utils/articleExtractor.js", "utils/paperExtractor.js", "utils/termMarks.js", "content.js"],
       "run_at": "document_idle"
     }
   ],

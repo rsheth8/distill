@@ -239,6 +239,39 @@
     return heading ? distillCleanHeading(distillNodeText(heading)).slice(0, 120) : '';
   }
 
+  /** The tracked paragraphs between this section's h2 and the next one. */
+  function sectionParagraphs(heading) {
+    const want = String(heading || '').trim().toLowerCase();
+    const i = sectionHeads.findIndex(h => distillCleanHeading(distillNodeText(h)).slice(0, 120).toLowerCase() === want);
+    if (i === -1) return [];
+    const start = sectionHeads[i];
+    const end = sectionHeads[i + 1];
+    return paragraphs.filter(p => (start.compareDocumentPosition(p) & Node.DOCUMENT_POSITION_FOLLOWING) &&
+      (!end || (end.compareDocumentPosition(p) & Node.DOCUMENT_POSITION_PRECEDING)));
+  }
+
+  let termCard = null;
+  function showTermCard(span) {
+    if (!termCard) {
+      termCard = document.createElement('div');
+      termCard.className = 'distill-term-card';
+      termCard.setAttribute('role', 'tooltip');
+      document.body.append(termCard);
+    }
+    termCard.textContent = `${span.dataset.term}: ${span.dataset.definition}`;
+    const r = span.getBoundingClientRect();
+    termCard.style.left = `${Math.max(8, Math.min(r.left, innerWidth - 300)) + scrollX}px`;
+    termCard.style.top = `${r.bottom + scrollY + 6}px`;
+    termCard.hidden = false;
+  }
+  const onTermPointer = e => {
+    const span = e.target.closest?.('.distill-term');
+    if (span) showTermCard(span);
+    else if (termCard) termCard.hidden = true;
+  };
+  document.addEventListener('mouseover', onTermPointer);
+  document.addEventListener('focusin', onTermPointer);
+
   function sendActiveParagraph(idx) {
     safeSend({ type: 'ACTIVE_PARAGRAPH', text: getParagraphUnitText(idx), section: sectionOf(paragraphs[idx]) });
   }
@@ -523,6 +556,22 @@
         }
         break;
       }
+      case 'SHOW_TERMS':
+        distillMarkTerms(sectionParagraphs(msg.heading), Array.isArray(msg.terms) ? msg.terms : []);
+        break;
+      case 'CLEAR_TERMS':
+        distillUnmarkTerms(document.body);
+        if (termCard) termCard.hidden = true;
+        break;
+      case 'SCROLL_TO_TERM': {
+        const want = String(msg.term || '').toLowerCase();
+        const span = [...document.querySelectorAll('.distill-term')].find(s => s.dataset.term.toLowerCase() === want);
+        if (span) {
+          span.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          span.focus({ preventScroll: true });
+        }
+        break;
+      }
       case 'GET_SELECTION_ANCHOR': {
         sendResponse({
           selectedText: window.getSelection()?.toString().trim() || '',
@@ -704,6 +753,11 @@
         100% { transform: translateY(0) scale(1); opacity: 1; }
       }
       #air-anno-popup { display: none !important; }
+      .distill-term { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
+      .distill-term:focus { outline: 2px solid var(--air-a95); outline-offset: 1px; }
+      .distill-term-card { position: absolute; z-index: 2147483647; max-width: 280px; padding: 8px 10px;
+        background: #fff; color: #222; border: 1px solid rgba(0,0,0,.15); border-radius: 8px;
+        box-shadow: 0 4px 16px rgba(0,0,0,.15); font: 13px/1.4 system-ui, sans-serif; }
     `;
     document.head.appendChild(s);
 
