@@ -1123,6 +1123,7 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
 
         // Fresh article (new page or no saved progress) → reset.
         restoredFromStorageTabs.delete(tabId);
+        clearPaperHelp(tabId); // stop a stream still running for the previous paper
         tabState.set(tabId, {
           articleText,
           paper,
@@ -2064,7 +2065,7 @@ async function streamTask({
   onDone,
   onError
 }) {
-  context = { ...context, level: await readingLevel() };
+  context = { ...context, level: context.level || await readingLevel() };
   // Allow the side panel to offer a "Retry" button for the last AI call.
   if (tabId) {
     lastAiRetryByTab.set(tabId, () => streamTask({

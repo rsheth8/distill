@@ -12,31 +12,49 @@ function queuePaperHelp(tabId, job) {
   return next;
 }
 
-/** Stream one task to the panel. Resolves with the trimmed text, or '' after an error. */
-function streamPaperHelp(tabId, { kind, key, task, context, input }) {
+const paperHelpAbort = new Map(); // tabId -> AbortController of the paper-help call now streaming
+
+/**
+ * Stream one task to the panel. Resolves with the trimmed text, or '' after an error, an abort
+ * or when the tab moved on (clearPaperHelp, or tabState replaced by a new paper): a stale call
+ * sends and stores nothing, and settles so the queue never hangs.
+ */
+function streamPaperHelp(tabId, { kind, key, task, context, input, level }) {
   const s = tabState.get(tabId);
+  const ctrl = new AbortController();
+  paperHelpAbort.set(tabId, ctrl);
   return new Promise(resolve => {
     let text = '';
     let settled = false;
-    const fail = err => {
+    const finish = value => {
       if (settled) return;
       settled = true;
+      if (paperHelpAbort.get(tabId) === ctrl) paperHelpAbort.delete(tabId);
+      resolve(value);
+    };
+    const stale = () => ctrl.signal.aborted || tabState.get(tabId) !== s;
+    ctrl.signal.addEventListener('abort', () => finish(''));
+    const fail = err => {
+      if (settled) return;
+      if (stale()) { ctrl.abort(); return; }
       toPanel({ type: 'PAPER_HELP_ERROR', tabId, kind, key, code: err?.code, message: err?.message || String(err) });
-      resolve('');
+      finish('');
     };
     toPanel({ type: 'PAPER_HELP_START', tabId, kind, key });
     streamTask({
-      tabId, task, s, context, input,
+      tabId, task, s, signal: ctrl.signal, context: { ...context, level }, input,
       noAuthMessage: 'No API key set — click ⚙ to add one.',
       onChunk: chunk => {
+        if (settled) return;
+        if (stale()) { ctrl.abort(); return; }
         text += chunk;
         toPanel({ type: 'PAPER_HELP_CHUNK', tabId, kind, key, chunk });
       },
       onDone: () => {
         if (settled) return;
-        settled = true;
-        toPanel({ type: 'PAPER_HELP_DONE', tabId, kind, key, text });
-        resolve(text.trim());
+        if (stale()) { ctrl.abort(); return; }
+        toPanel({ type: 'PAPER_HELP_DONE', tabId, kind, key, level, text });
+        finish(text.trim());
       },
       onError: fail
     }).catch(fail);
@@ -65,9 +83,10 @@ function runOverview(tabId) {
     const s = tabState.get(tabId);
     if (!s?.paper) return;
     const level = await readingLevel();
+    if (tabState.get(tabId) !== s) return; // the tab moved on while we read the level
     if (s.overview?.text && s.overview.level === level) return;
     const text = await streamPaperHelp(tabId, {
-      kind: 'overview', key: 'overview', task: 'overview',
+      kind: 'overview', key: 'overview', task: 'overview', level,
       context: { title: s.title || s.paper.title },
       input: { excerpt: distillPaperExcerpt(s.paper) }
     });
@@ -77,6 +96,7 @@ function runOverview(tabId) {
   });
 }
 
+/** Abort the running call. The queue tail stays, so the next job waits for the aborted one to settle. */
 function clearPaperHelp(tabId) {
-  paperHelpQueue.delete(tabId);
+  paperHelpAbort.get(tabId)?.abort();
 }

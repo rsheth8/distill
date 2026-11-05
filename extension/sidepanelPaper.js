@@ -115,7 +115,7 @@ function handlePaperMessage(msg) {
     case 'PAPER_HELP_DONE':
       if (msg.kind === 'overview') {
         delete paperView.streams[k];
-        if (paperView.state) paperView.state.overview = { level: paperView.level, text: msg.text };
+        if (paperView.state) paperView.state.overview = { level: msg.level, text: msg.text };
         setStatus('overviewStatus', '', '');
       } else {
         paperView.streams[k] = msg.text;
