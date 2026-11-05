@@ -369,3 +369,44 @@ describe('demographic proportions are not literal head counts',()=>{
   expect(help.distillUnsupportedDemographicCounts('Women (60.5%) were represented.',[])).toEqual([]);
  });
 });
+
+// Reproduce the generic-question misses observed in the preserved accuracy cohort.
+describe('generic result and limitation evidence', () => {
+  it('keeps the abstract result and interval convention together ahead of comparison studies', () => {
+    const p = { abstract: 'We quote 68% errors. For the base model H0 = (67.3 ± 1.2) km s−1 Mpc−1. ' + 'Cosmological context. '.repeat(65) + 'Other key result comparisons and uncertainty.', sections: [
+      { heading: 'Comparison', kind: 'other', text: Array.from({length: 8}, () => 'The key result including units and uncertainty from another survey is discussed. ' + 'Comparison context. '.repeat(50)).join('\n\n') }
+    ] };
+    const picked = help.distillPickPassages(p, 'What is the key result, including units and uncertainty when reported?', 2000);
+    expect(picked.some(x => x.text.includes('68% errors') && x.text.includes('67.3 ± 1.2'))).toBe(true);
+  });
+  it('retrieves the causal limitation rather than filling the budget with the research gap', () => {
+    const p = { abstract: 'A study of platform use.', sections: [
+      { heading: 'Introduction', kind: 'intro', text: Array.from({length: 8}, () => 'The authors identify a central research gap. ' + 'No earlier study. '.repeat(50)).join('\n\n') },
+      { heading: 'Discussion', kind: 'discussion', text: 'Future research\n\nExperiments that manipulate use are needed to establish definitive causal relations.' }
+    ] };
+    const picked = help.distillPickPassages(p, 'What central limitation do the authors identify?', 2000);
+    expect(picked.some(x => x.text.includes('establish definitive causal relations'))).toBe(true);
+  });
+});
+
+// Without result-aware retrieval, generic queries select the regression procedure
+// and introduction instead of the observed outcomes and their time scales.
+describe('headline result evidence coverage', () => {
+ it('retains both outcome estimates rather than methods for a generic result question', () => {
+  const paper = {abstract: 'Use predicts worse affect and lower life satisfaction.', sections: [
+   {heading:'Introduction',kind:'intro',text: ('The key result including units and uncertainty remains a research question. ' + 'Background. '.repeat(50)+'\n\n').repeat(8)},
+   {heading:'Methods',kind:'methods',text:'Eighty-two people were recruited for the study.'},
+   {heading:'Results',kind:'results',text:'The relationship between mean use and life satisfaction was assessed using OLS regressions.\n\nBetween messages, more use predicted worse affect, B = .08, p<.0001.\n\nAverage use over 14 days predicted lower life satisfaction, B = −.012, p = .02.'}
+  ]};
+  const passages = help.distillPickPassages(paper,'What is the key result, including units and uncertainty when reported?',2000);
+  expect(passages.some(p=>p.text.includes('B = .08'))).toBe(true);
+  expect(passages.some(p=>p.text.includes('14 days') && p.text.includes('−.012'))).toBe(true);
+ });
+});
+
+it('keeps a later confidence interval with an earlier coefficient in one long paragraph',()=>{
+ const paper={abstract:'',sections:[{heading:'Results',kind:'results',text:'The main result is B = 0.08. '+ 'Supporting context. '.repeat(80)+' The 95% confidence interval is 0.02 to 0.14.'}]};
+ const passages=help.distillPickPassages(paper,'What is the key result, including units and uncertainty?',5000);
+ expect(passages.some(p=>p.text.includes('B = 0.08') && p.text.includes('95% confidence interval'))).toBe(true);
+ expect(new Set(passages.map(p=>p.id)).size).toBe(passages.length);
+});

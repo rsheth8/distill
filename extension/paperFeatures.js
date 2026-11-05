@@ -6,8 +6,16 @@
 
 const paperHelpQueue = new Map(); // tabId -> tail of a promise chain: one paper-help call at a time per tab
 
+const paperHelpEpoch = new Map();
+const paperHelpExecutingEpoch = new Map();
+
 function queuePaperHelp(tabId, job) {
-  const next = (paperHelpQueue.get(tabId) || Promise.resolve()).then(job).catch(err => console.warn('Distill paper help', err));
+  const epoch = paperHelpEpoch.get(tabId) || 0;
+  const next = (paperHelpQueue.get(tabId) || Promise.resolve()).then(() => {
+    if (epoch !== (paperHelpEpoch.get(tabId) || 0)) return;
+    paperHelpExecutingEpoch.set(tabId, epoch);
+    return job();
+  }).catch(err => console.warn('Distill paper help', err));
   paperHelpQueue.set(tabId, next);
   return next;
 }
@@ -20,6 +28,7 @@ const paperHelpAbort = new Map(); // tabId -> { ctrl, kind, key } of the paper-h
  * sends and stores nothing, and settles so the queue never hangs.
  */
 function streamPaperHelp(tabId, { kind, key, task, context, input, level, validate, origin = 'user' }) {
+  if (paperHelpExecutingEpoch.has(tabId) && paperHelpExecutingEpoch.get(tabId) !== (paperHelpEpoch.get(tabId) || 0)) return Promise.resolve('');
   const s = tabState.get(tabId);
   const ctrl = new AbortController();
   paperHelpAbort.set(tabId, { ctrl, kind, key });
@@ -119,10 +128,11 @@ function runOverview(tabId) {
 }
 
 /**
- * Abort the running call. The queue tail stays, so the next job waits for the aborted one to settle.
+ * Abort the running call and invalidate jobs queued before this stop. New jobs still serialize.
  * The panel is told (ABORTED) so it drops that stream's "Reading…" status.
  */
 function clearPaperHelp(tabId, userCancelled = false) {
+  paperHelpEpoch.set(tabId, (paperHelpEpoch.get(tabId) || 0) + 1);
   const running = paperHelpAbort.get(tabId);
   if (running) {
     toPanel({ type: 'PAPER_HELP_ERROR', tabId, kind: running.kind, key: running.key, code: userCancelled ? 'CANCELLED' : 'ABORTED', message: userCancelled ? 'Stopped. Retry when you are ready.' : '' });
@@ -245,5 +255,12 @@ function runAsk(tabId, question) {
     else s.askThread = s.askThread.filter(e => e !== entry); // failed: the panel keeps the question for Retry
     schedulePersistTab(tabId);
     publishPaperHelp(tabId);
+  }).then(() => {
+    // A job invalidated before it starts never enters the callback above.
+    if (tabState.get(tabId) === s && !entry.a && s.askThread.includes(entry)) {
+      s.askThread = s.askThread.filter(e => e !== entry);
+      schedulePersistTab(tabId);
+      publishPaperHelp(tabId);
+    }
   });
 }

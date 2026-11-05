@@ -148,4 +148,22 @@ describe('side panel', () => {
     onPortMessage({type:'ANALYSIS_DONE',tabId:TAB,requestId:'explicit'});
     expect(document.getElementById('analysisText').textContent).toBe('The explicit answer.');
   });
+  it('quiz feedback failure cannot discard a concurrent explicit explanation',async()=>{
+    await boot();
+    onPortMessage({type:'ANALYSIS_START',tabId:TAB,requestId:'explain-feedback',selection:'Source.'});
+    onPortMessage({type:'ERROR',tabId:TAB,task:'quiz_feedback',message:'Feedback failed.'});
+    onPortMessage({type:'ANALYSIS_CHUNK',tabId:TAB,requestId:'explain-feedback',chunk:'The complete explanation.'});
+    onPortMessage({type:'ANALYSIS_DONE',tabId:TAB,requestId:'explain-feedback'});
+    expect(document.getElementById('analysisText').textContent).toBe('The complete explanation.');
+  });
+
+  it('an unscoped retry error preserves the explanation request owner',async()=>{
+    await boot();
+    onPortMessage({type:'ANALYSIS_START',tabId:TAB,requestId:'keep-owner',selection:'Source.'});
+    onPortMessage({type:'ERROR',tabId:TAB,code:'NO_RETRY',message:'Nothing to retry.'});
+    onPortMessage({type:'ANALYSIS_CHUNK',tabId:TAB,requestId:'keep-owner',chunk:'Still completes.'});
+    onPortMessage({type:'ANALYSIS_DONE',tabId:TAB,requestId:'keep-owner'});
+    expect(document.getElementById('analysisText').textContent).toBe('Still completes.');
+  });
+
 });

@@ -171,6 +171,8 @@ function distillPickSections(paper, question, maxChars = 5000) {
 function distillPickPassages(paper, question, maxChars = 5000) {
   const q = new Set(distillWords(question));
   const designIntent = /\b(study design|study population|design and population)\b/i.test(question) && !/result|outcome|exclu|inclusion|effect|association/i.test(question);
+  const resultIntent = /\b(key|main|principal) results?\b/i.test(question);
+  const limitationIntent = /\b(limitations?|caveats?)\b/i.test(question);
   const sections = [{ heading: 'Abstract', text: paper?.abstract || '' }, ...(paper?.sections || [])];
   const candidates = [];
   sections.forEach((s, si) => String(s.text || '').split('\n\n').forEach((raw, pi) => {
@@ -187,18 +189,56 @@ function distillPickPassages(paper, question, maxChars = 5000) {
   // Reserve one design passage, so methods do not crowd out the actual results.
   const design = candidates.filter(x => x.designScore > 0).sort((a, b) => b.designScore - a.designScore || b.score - a.score)[0];
   if (design) design.score += 20;
+  // Generic questions have few discriminating terms. Reserve the abstract opening for
+  // headline results (including their interval convention), and prioritize actual
+  // discussion caveats over the introduction's research gap. Keep IDs/windows intact.
+  if (resultIntent) {
+    const headline = candidates.find(x => x.si === 0 && x.pi === 0 && x.start === 0);
+    if (headline) headline.score += 40;
+    for (const x of candidates) {
+      if (sections[x.si].kind === 'results') {
+        x.score += 10;
+        // Quantified findings outrank procedural descriptions in generic queries.
+        if (/[=<>≤≥±]\s*[−-]?(?:\d|\.\d)/u.test(x.text)) x.score += 20;
+      }
+    }
+  }
+  if (limitationIntent) {
+    for (const x of candidates) {
+      if (sections[x.si].kind === 'discussion' || /discussion|conclusion/i.test(x.heading)) {
+        x.score += 15;
+        if (/limit|caveat|causal|generaliz|generalis|foreground|poor fit|anomal|cannot|may not|too late/i.test(x.text)) x.score += 15;
+      }
+    }
+  }
   candidates.sort((a, b) => b.score - a.score || a.si - b.si || a.pi - b.pi || a.start - b.start);
-  const selected = [], seen = new Set();
+  const selected = [], seen = new Map();
   let used = 0;
   for (const x of candidates) {
-    if (seen.has(x.id)) continue;
+    if (seen.has(x.id)) {
+      const previous = seen.get(x.id);
+      const start = Math.min(previous.start, x.start);
+      const end = Math.max(previous.start + previous.text.length, x.start + x.text.length);
+      const para = String(sections[x.si].text).split('\n\n')[x.pi].trim();
+      const text = para.slice(start, end);
+      const added = text.length - previous.text.length;
+      // Merge contiguous source context under the same paragraph ID. Do not
+      // silently drop a later interval when the bounded evidence budget fits it.
+      if (added <= maxChars - used) {
+        previous.start = start; previous.text = text;
+        previous.truncated = start > 0 || end < para.length;
+        used += added;
+      }
+      continue;
+    }
     const overhead = x.id.length + x.heading.length + 8;
     const room = maxChars - used - overhead;
-    if (room < 80 || selected.length >= 12) break;
+    if (room < 80) break;
+    if (selected.length >= 12) continue;
     const text = x.text.slice(0, room);
     selected.push({ id: x.id, heading: x.heading, text, start: x.start, truncated: x.start > 0 || text.length < String(sections[x.si].text).split('\n\n')[x.pi].trim().length });
     used += text.length + overhead;
-    seen.add(x.id);
+    seen.set(x.id, selected[selected.length - 1]);
   }
   return selected;
 }

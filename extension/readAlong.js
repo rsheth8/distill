@@ -202,7 +202,8 @@
         if (target) {target.scrollIntoView({block:'center',behavior:'instant'});target.setAttribute('tabindex','-1');target.focus({preventScroll:true});}
         else if(anchor.view==='pdf') status('Returning to the saved PDF page. Use Reading view if text alignment is unavailable.');
       } else {
-        if(currentView()!=='pdf'||saved.pdf.paperKey!==key||saved.pdf.sourceVersion!==version)return false;
+        if(saved.pdf.paperKey!==key||saved.pdf.sourceVersion!==version)return false;
+        if(currentView()!=='pdf')document.dispatchEvent(new CustomEvent('distill-show-pdf'));
         const page=document.querySelector(`#pages [data-page="${saved.pdf.page}"]`);
         if(!page)return false;
         window.scrollTo({top:scrollY+page.getBoundingClientRect().top+saved.pdf.relativeY,behavior:'instant'});
@@ -216,7 +217,8 @@
       jump:async text=>{
         const aligned=core.align(m.text,text);
         if(!aligned)return false;
-        if(!await captureReturn())return false;
+        if(elements.map(el=>el.textContent).join('\n\n')!==m.text)return false;
+        if(!returnAnchor && !await captureReturn())return false;
         if(currentView()==='pdf' && !globalThis.distillPdfResolve?.(text))document.dispatchEvent(new CustomEvent('distill-show-reading'));
         seek(aligned.start);
         if(currentView()==='pdf')document.dispatchEvent(new CustomEvent('distill-pdf-source',{detail:{text}}));

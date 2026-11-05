@@ -116,6 +116,24 @@ describe('paperFeatures', () => {
     expect(sent.find(m => m.type === 'PAPER_HELP_ERROR')).toMatchObject({ tabId: 1, kind: 'overview', key: 'a', code: 'ABORTED', message: '' });
   });
 
+  it('Stop invalidates queued jobs but permits a new request', async () => {
+    ctx.tabState.set(1, {paper:{}});
+    const a=ctx.queuePaperHelp(1,job(1,'a'));
+    const b=ctx.queuePaperHelp(1,job(1,'b'));
+    await tick();ctx.clearPaperHelp(1,true);await a;await b;await tick();
+    expect(calls).toHaveLength(1);
+    const c=ctx.queuePaperHelp(1,job(1,'c'));await tick();
+    expect(calls).toHaveLength(2);calls[1].onChunk('fresh');calls[1].onDone();calls[1].resolve();await c;
+    expect(types()).not.toContain('PAPER_HELP_START:b');
+  });
+
+  it('Stop removes canceled queued questions from the saved thread',async()=>{
+    const state={paper:{title:'Paper',abstract:'A result.',sections:[]},askThread:[]};ctx.tabState.set(1,state);
+    const a=ctx.runAsk(1,'First question');const b=ctx.runAsk(1,'Second question');await tick();
+    ctx.clearPaperHelp(1,true);await a;await b;
+    expect(state.askThread).toHaveLength(0);expect(calls).toHaveLength(1);
+  });
+
   it('clearPaperHelp with nothing running tells the panel nothing', () => {
     ctx.clearPaperHelp(1);
     expect(sent).toEqual([]);

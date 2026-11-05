@@ -59,7 +59,7 @@ for (const spec of manifest.papers.filter(p=>!only||only.includes(p.id))) {
  if (!paper || extraction.status !== 'extracted' || process.argv.includes('--extract-only')) continue;
  // Cached source stays in ignored dist, never bundled in the extension or committed.
  await fs.writeFile(`${dest}/paper.json`,JSON.stringify(paper));
- for(const model of models) for(const level of ['simple','everyday','close']) for (const expertise of (arg('audiences') || 'newcomer').split(',')) {
+ for(const model of models) for(const level of (arg('levels') || 'simple,everyday,close').split(',')) for (const expertise of (arg('audiences') || 'newcomer').split(',')) {
   const section = paper.sections.find(s=>s.kind==='results') || paper.sections[0];
   const tasks = [ ['overview',{}, {excerpt:distillPaperExcerpt(paper)}], ['section_guide',{section},{sectionText:section.text}], ['analysis',{section,opener:paper.abstract},{selection:section.text.slice(0,900)}], ...spec.questions.map(q=>['ask',baseline?{abstract:paper.abstract}:{},{question:q.question,excerpts:(baseline?distillPickSections:distillPickPassages)(paper,q.question)},q.id]) ];
   for(const [task,ctx,input,qid] of tasks) {

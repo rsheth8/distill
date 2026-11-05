@@ -1313,6 +1313,11 @@ function handleMessage(msg) {
     }
 
     case 'ERROR':
+      if(msg.task==='quiz_feedback'){
+        setThinking('quiz',false);
+        showToast(msg.message || 'Check-in feedback failed.');
+        break;
+      }
       if (msg.origin==='automatic') {
         if(msg.task==='summary'){
           setThinking('summary',false);summarySection.classList.remove('summary-section-streaming');
@@ -1320,9 +1325,13 @@ function handleMessage(msg) {
         } else if(msg.task==='quiz_question'){setThinking('quiz',false);dismissQuiz();}
         break;
       }
+      if(!msg.task && !msg.requestId && msg.code!=='CANCELLED'){
+        showToast(msg.message || 'Request failed.');
+        break;
+      }
       if (msg.requestId && pendingAnalysis && pendingAnalysis.requestId !== msg.requestId) break;
       pendingAnalysis=null;$('analysisPending').textContent='';hide($('analysisPending'));
-      clearThinking();
+      setThinking('analysis',false);
       if (msg.code === 'BACKEND_DOWN') {
         backendDownTitle.textContent = "Can't reach Distill cloud.";
         backendDownHint.textContent = msg.message || 'Check your connection, then tap Retry.';

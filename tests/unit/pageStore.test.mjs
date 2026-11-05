@@ -222,3 +222,9 @@ describe('saved provenance and audience compatibility',()=>{
     expect(restored.askThread[0].passages).toEqual([{id:'S2P0',heading:'Methods',text:'42 adults'}]);
   });
 });
+
+it('retains a merged source passage and its later interval after save and restore',()=>{
+ const text='B = 0.08. '+ 'Context. '.repeat(180)+'95% interval 0.02 to 0.14.';
+ const payload=distillBuildPageStatePayload({askThread:[{q:'Result?',a:'Reported coefficient.',passages:[{id:'S1P0',heading:'Results',text}]}]},1);
+ expect(distillPagePayloadToState(payload).askThread[0].passages[0].text).toBe(text);
+});

@@ -1400,7 +1400,7 @@ async function evaluateAnswer(tabId, question, answer) {
           s.quiz = { ...defaultQuizState(), history };
           schedulePersistTab(tabId);
         }
-        toPanel({ type: 'ERROR', code: err.code, message: err.message, tabId });
+        toPanel({ type: 'ERROR', task: 'quiz_feedback', code: err.code, message: err.message, tabId });
       }
     });
   } catch (e) {
@@ -1409,7 +1409,7 @@ async function evaluateAnswer(tabId, question, answer) {
       s.quiz = { ...defaultQuizState(), history };
       schedulePersistTab(tabId);
     }
-    toPanel({ type: 'ERROR', code: e.code, message: e.message, tabId });
+    toPanel({ type: 'ERROR', task: 'quiz_feedback', code: e.code, message: e.message, tabId });
   }
 }
 
@@ -1494,7 +1494,7 @@ async function runAnalyzeStream(tabId, s, ctx, rawSelection, opts = {}) {
         variant: 'success'
       });
     }
-    toPanel({ type: 'ERROR', code: err?.code, message: err?.message || String(err), tabId });
+    toPanel({ type: 'ERROR', task:'analysis', requestId, code: err?.code, message: err?.message || String(err), tabId });
   };
   try {
     await streamTask({

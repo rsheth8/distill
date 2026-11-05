@@ -59,3 +59,24 @@ it('source navigation focuses the destination and Return focuses the original vi
  expect(document.activeElement).toBe(second);expect(nav.playbackPosition()).toBe(0);
  expect(document.querySelector('#distill-read-along').shadowRoot.querySelector('#progress').value).toBe(0);
 });
+
+it('multiple source jumps preserve the original reading excursion anchor',async()=>{
+ const first=document.querySelector('p');first.getBoundingClientRect=()=>({top:-800,bottom:-700,height:100});
+ const second=document.createElement('p');second.textContent='Original reading place with an important caveat.';second.getBoundingClientRect=()=>({top:200,bottom:500,height:300});document.querySelector('article').append(second);
+ Element.prototype.scrollIntoView=vi.fn();await setup();const nav=globalThis.distillReadingNavigation;
+ await nav.jump('The next sentence has a clear conclusion.');
+ first.getBoundingClientRect=()=>({top:200,bottom:500,height:300});second.getBoundingClientRect=()=>({top:-800,bottom:-700,height:100});
+ await nav.jump('The first sentence has 2.5 mg.');
+ expect(await nav.returnToReading()).toBe(true);expect(document.activeElement).toBe(second);expect(nav.playbackPosition()).toBe(0);
+});
+it('returns to the Original PDF page fallback after a source jump switches views',async()=>{
+ const article=document.querySelector('article');article.id='reading';article.hidden=true;
+ const pages=document.createElement('div');pages.id='pages';pages.innerHTML='<div class="page" data-page="3"></div>';document.body.append(pages);
+ pages.firstChild.getBoundingClientRect=()=>({top:-100,bottom:600});
+ const reading=()=>{article.hidden=false;};const pdf=()=>{article.hidden=true;};
+ document.addEventListener('distill-show-reading',reading);document.addEventListener('distill-show-pdf',pdf);
+ Element.prototype.scrollIntoView=vi.fn();await setup();const nav=globalThis.distillReadingNavigation;
+ expect(await nav.jump('The next sentence has a clear conclusion.')).toBe(true);expect(article.hidden).toBe(false);
+ expect(await nav.returnToReading()).toBe(true);expect(article.hidden).toBe(true);
+ document.removeEventListener('distill-show-reading',reading);document.removeEventListener('distill-show-pdf',pdf);
+});
